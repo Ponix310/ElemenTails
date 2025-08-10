@@ -91,18 +91,18 @@
       const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
       // ================== FIREBASE ==================
-      // 1) Paste your config here (from Firebase console, Web app):
+      // Your config (pasted from your screenshot)
       const firebaseConfig = {
-        // apiKey: "...",
-        // authDomain: "...",
-        // projectId: "...",
-        // appId: "...",
+        apiKey: "AIzaSyBaIjbm7dVNJkE7CJXPQOievhkiIF17rds",
+        authDomain: "elementails.firebaseapp.com",
+        projectId: "elementails",
+        storageBucket: "elementails.firebasestorage.app",
+        messagingSenderId: "497100635124",
+        appId: "1:497100635124:web:aeeb25ead96b84751e57a1",
+        measurementId: "G-H7ZXWH59GS"
       };
-      let db = null;
-      if (Object.keys(firebaseConfig).length) {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-      }
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
 
       // ================== APP ==================
       function PartySelect() {
@@ -119,7 +119,7 @@
 
         // Live listeners
         React.useEffect(() => {
-          if (!db || !roomId) return;
+          if (!roomId) return;
           // Room state
           const unsubRoom = db.collection("rooms").doc(roomId).onSnapshot((snap) => {
             const data = snap.data();
@@ -136,17 +136,17 @@
               setPlayers(arr);
             });
           return () => { unsubRoom(); unsubPlayers(); };
-        }, [db, roomId]);
+        }, [roomId]);
 
         // Clean up my player doc on close
         React.useEffect(() => {
-          if (!db || !roomId || !me?.id) return;
+          if (!roomId || !me?.id) return;
           const onUnload = async () => {
             try { await db.collection("rooms").doc(roomId).collection("players").doc(me.id).delete(); } catch(e){}
           };
           window.addEventListener("beforeunload", onUnload);
           return () => window.removeEventListener("beforeunload", onUnload);
-        }, [db, roomId, me]);
+        }, [roomId, me]);
 
         const partyFull = Object.keys(selections).length >= 4;
 
@@ -164,40 +164,30 @@
         };
 
         const handlePick = async (className) => {
-          if (!me) return;
-          if (!db || !roomId) {
-            // local fallback (single-browser play)
-            setSelections((prev) => {
-              const owner = prev[className];
-              const next = { ...prev };
-              if (owner === me.id) delete next[className];
-              else next[className] = me.id;
-              return next;
-            });
-            return;
-          }
+          if (!me || !roomId) return;
           const ref = db.collection("rooms").doc(roomId);
-          const key = `selections.${className}`;
+          const path = `selections.${className}`;
           const newOwner = selections[className] === me.id ? firebase.firestore.FieldValue.delete() : me.id;
-          await ref.set({ selections: { [className]: newOwner } }, { merge: true });
+          // Use update to support FieldValue.delete on nested field path
+          await ref.update({ [path]: newOwner }).catch(async (e)=>{
+            // If room doc doesn't exist yet (edge), create it
+            await ref.set({ selections: { [className]: me.id } }, { merge: true });
+          });
         };
 
         const reroll = async () => {
-          if (!isHost) return;
+          if (!isHost || !roomId) return;
           const newRoll = randPickN(ALL_WEAPONS, 4);
-          if (!db || !roomId) { setRolledWeapons(newRoll); setSelections({}); return; }
           await db.collection("rooms").doc(roomId).set({ rolledWeapons: newRoll, selections: {} }, { merge: true });
         };
 
         const clearAll = async () => {
-          if (!isHost) return;
-          if (!db || !roomId) { setSelections({}); return; }
+          if (!isHost || !roomId) return;
           await db.collection("rooms").doc(roomId).set({ selections: {} }, { merge: true });
         };
 
         const createRoom = async () => {
-          if (!db) { alert("Firebase not configured yet."); return; }
-          const id = shortId();
+          const id = Math.random().toString(36).slice(2, 8).toUpperCase();
           const ref = db.collection("rooms").doc(id);
           await ref.set({ createdAt: firebase.firestore.FieldValue.serverTimestamp(), rolledWeapons: randPickN(ALL_WEAPONS,4), selections: {}, hostCreatedAt: Date.now() });
           setRoomId(id);
@@ -208,9 +198,8 @@
         };
 
         const joinRoom = async () => {
-          if (!db) { alert("Firebase not configured yet."); return; }
           if (!roomId || !joinName.trim()) return;
-          const myId = shortId();
+          const myId = Math.random().toString(36).slice(2, 10);
           const p = { id: myId, name: joinName.trim(), color: joinColor, joinedAt: firebase.firestore.FieldValue.serverTimestamp() };
           await db.collection("rooms").doc(roomId).collection("players").doc(myId).set(p);
           setMe(p);
@@ -233,11 +222,7 @@
               <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold">Elemen Tails — Party Select</h1>
-                  {db ? (
-                    <p className="text-slate-300">Multiplayer via Firebase — create or join a room and share the link.</p>
-                  ) : (
-                    <p className="text-amber-300">Firebase not configured — running in local mode.</p>
-                  )}
+                  <p className="text-slate-300">Multiplayer via Firebase — create or join a room and share the link.</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button onClick={reroll} disabled={!isHost} className={`px-3 py-2 rounded-xl ${isHost ? "bg-indigo-600 hover:bg-indigo-500" : "bg-slate-700 opacity-50 cursor-not-allowed"}`}>Re-roll Weapons</button>
