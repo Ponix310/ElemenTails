@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ElemenTails — Party Select (Custom Players)</title>
-    <!-- Tailwind CDN with safelist for dynamic color classes -->
+    <title>ElemenTails — Party Select (Multiplayer)</title>
+    <!-- Tailwind with safelist for dynamic colors -->
     <script>
       tailwind = window.tailwind || {};
       tailwind.config = {
@@ -30,8 +30,12 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Firebase (compat SDK so we don't need a bundler) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
     <script type="text/babel" data-presets="react">
-      // ==== Data ===============================================================
+      // ================== DATA ==================
       const HERO_PRIMARY = { Fox: "🔥", Frog: "💧", Rabbit: "🌿", Raven: "💨", Wolf: "⚡", Bear: "🪨" };
       const CLASS_INFO = {
         Monk: { hero: "Fox", weapon: "Knuckles" },
@@ -53,7 +57,6 @@
         Barbearian: { hero: "Bear", weapon: "Greataxe" },
         Warrior: { hero: "Bear", weapon: "Sword & Shield" },
       };
-
       const BASE = "./images/class-portraits";
       const CLASS_PORTRAITS = {
         Monk: `${BASE}/monk.png`, Summoner: `${BASE}/summoner.png`, Assassin: `${BASE}/assassin.png`,
@@ -63,14 +66,11 @@
         Ninja: `${BASE}/ninja.png`, Samurai: `${BASE}/samurai.png`, Paladin: `${BASE}/paladin.png`,
         Lancer: `${BASE}/lancer.png`, Barbearian: `${BASE}/barbearian.png`, Warrior: `${BASE}/warrior.png`,
       };
-
-      // Weapon -> element (per your mapping)
       const WEAPON_ELEMENT = {
         "Knuckles": "🔥", "Daggers": "⚡", "Staff": "💧", "Tome": "🌿",
         "Bow": "💨", "Sword & Shield": "🌿", "Greataxe": "🔥", "Spear": "🪨", "Katana": "💧",
       };
 
-      // UI color styles
       const COLOR_STYLES = {
         blue:   { border: "border-sky-400",    text: "text-sky-200",    bg: "bg-sky-400/20" },
         green:  { border: "border-emerald-400",text: "text-emerald-200",bg: "bg-emerald-400/20" },
@@ -83,156 +83,217 @@
       };
       const COLOR_OPTIONS = Object.keys(COLOR_STYLES);
 
-      // ==== Helpers ============================================================
+      // ================== HELPERS ==================
       const ALL_CLASSES = Object.keys(CLASS_INFO);
       const ALL_WEAPONS = Array.from(new Set(ALL_CLASSES.map((c) => CLASS_INFO[c].weapon))).sort();
       const weaponToClasses = ALL_WEAPONS.reduce((acc, w) => { acc[w] = ALL_CLASSES.filter((c) => CLASS_INFO[c].weapon === w); return acc; }, {});
-
       function randPickN(arr, n) { const pool=[...arr], out=[]; while(out.length<n && pool.length){ const i=Math.floor(Math.random()*pool.length); out.push(pool.splice(i,1)[0]); } return out; }
-      const uid = (()=>{ let i=1; return () => i++; })();
+      const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
-      // ==== App ================================================================
+      // ================== FIREBASE ==================
+      // 1) Paste your config here (from Firebase console, Web app):
+      const firebaseConfig = {
+        // apiKey: "...",
+        // authDomain: "...",
+        // projectId: "...",
+        // appId: "...",
+      };
+      let db = null;
+      if (Object.keys(firebaseConfig).length) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+      }
+
+      // ================== APP ==================
       function PartySelect() {
+        // Local state
         const [rolledWeapons, setRolledWeapons] = React.useState(() => randPickN(ALL_WEAPONS, 4));
-        const [players, setPlayers] = React.useState([]); // {id, name, color:'blue|green|...'}
-        const [activePlayerId, setActivePlayerId] = React.useState(null);
-        const [selections, setSelections] = React.useState({}); // className -> playerId
+        const [players, setPlayers] = React.useState([]); // multiplayer: comes from Firestore
+        const [selections, setSelections] = React.useState({});
+        const [roomId, setRoomId] = React.useState(new URLSearchParams(location.search).get("room") || "");
+        const [isHost, setIsHost] = React.useState(false);
+        const [me, setMe] = React.useState(null); // {id, name, color}
+        const [joinName, setJoinName] = React.useState("");
+        const [joinColor, setJoinColor] = React.useState("blue");
+        const [status, setStatus] = React.useState("");
 
-        const selectedClasses = React.useMemo(() => Object.keys(selections), [selections]);
-        const usedHeroes = React.useMemo(() => new Set(selectedClasses.map((c) => CLASS_INFO[c].hero)), [selectedClasses]);
-        const usedWeapons = React.useMemo(() => new Set(selectedClasses.map((c) => CLASS_INFO[c].weapon)), [selectedClasses]);
-        const optionsByWeapon = React.useMemo(() => rolledWeapons.map((w) => ({ weapon: w, classes: weaponToClasses[w] })), [rolledWeapons]);
-        const partyFull = selectedClasses.length >= 4;
+        // Live listeners
+        React.useEffect(() => {
+          if (!db || !roomId) return;
+          // Room state
+          const unsubRoom = db.collection("rooms").doc(roomId).onSnapshot((snap) => {
+            const data = snap.data();
+            if (!data) return;
+            setRolledWeapons(data.rolledWeapons || []);
+            setSelections(data.selections || {});
+          });
+          // Players subcollection
+          const unsubPlayers = db.collection("rooms").doc(roomId).collection("players")
+            .orderBy("joinedAt", "asc")
+            .onSnapshot((qs) => {
+              const arr = [];
+              qs.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+              setPlayers(arr);
+            });
+          return () => { unsubRoom(); unsubPlayers(); };
+        }, [db, roomId]);
 
-        const activePlayer = players.find(p => p.id === activePlayerId) || null;
+        // Clean up my player doc on close
+        React.useEffect(() => {
+          if (!db || !roomId || !me?.id) return;
+          const onUnload = async () => {
+            try { await db.collection("rooms").doc(roomId).collection("players").doc(me.id).delete(); } catch(e){}
+          };
+          window.addEventListener("beforeunload", onUnload);
+          return () => window.removeEventListener("beforeunload", onUnload);
+        }, [db, roomId, me]);
+
+        const partyFull = Object.keys(selections).length >= 4;
 
         const canSelectNew = (className) => {
-          if (selections[className]) return true; // already selected (transfer allowed)
-          if (!activePlayer) return false;
+          if (selections[className]) return true; // transfer allowed
+          if (!me) return false;
           if (partyFull) return false;
           const { hero, weapon } = CLASS_INFO[className];
           if (!rolledWeapons.includes(weapon)) return false;
+          const usedHeroes = new Set(Object.keys(selections).map((c) => CLASS_INFO[c].hero));
+          const usedWeapons = new Set(Object.keys(selections).map((c) => CLASS_INFO[c].weapon));
           if (usedHeroes.has(hero)) return false;
           if (usedWeapons.has(weapon)) return false;
           return true;
         };
 
-        const handlePick = (className) => {
-          setSelections((prev) => {
-            const ownerId = prev[className];
-            if (ownerId) {
+        const handlePick = async (className) => {
+          if (!me) return;
+          if (!db || !roomId) {
+            // local fallback (single-browser play)
+            setSelections((prev) => {
+              const owner = prev[className];
               const next = { ...prev };
-              if (ownerId === activePlayerId) delete next[className];
-              else if (activePlayerId) next[className] = activePlayerId;
+              if (owner === me.id) delete next[className];
+              else next[className] = me.id;
               return next;
-            }
-            if (!canSelectNew(className)) return prev;
-            return { ...prev, [className]: activePlayerId };
-          });
-        };
-
-        const reroll = () => { setSelections({}); setRolledWeapons(randPickN(ALL_WEAPONS, 4)); };
-        const clearAll = () => setSelections({});
-
-        // ---- Player management ----
-        const [newName, setNewName] = React.useState("");
-        const [newColor, setNewColor] = React.useState("blue");
-
-        const addPlayer = () => {
-          if (!newName.trim() || players.length >= 4) return;
-          const p = { id: uid(), name: newName.trim(), color: newColor };
-          const next = [...players, p];
-          setPlayers(next);
-          setNewName("");
-          if (!activePlayerId) setActivePlayerId(p.id);
-        };
-
-        const removePlayer = (id) => {
-          // unassign any classes owned by this player
-          setSelections((prev) => {
-            const next = { ...prev };
-            for (const cls of Object.keys(next)) if (next[cls] === id) delete next[cls];
-            return next;
-          });
-          setPlayers((prev) => prev.filter(p => p.id !== id));
-          if (activePlayerId === id) {
-            const remaining = players.filter(p => p.id !== id);
-            setActivePlayerId(remaining[0]?.id ?? null);
+            });
+            return;
           }
+          const ref = db.collection("rooms").doc(roomId);
+          const key = `selections.${className}`;
+          const newOwner = selections[className] === me.id ? firebase.firestore.FieldValue.delete() : me.id;
+          await ref.set({ selections: { [className]: newOwner } }, { merge: true });
         };
 
-        const setColor = (id, color) => {
-          setPlayers(prev => prev.map(p => p.id === id ? { ...p, color } : p));
+        const reroll = async () => {
+          if (!isHost) return;
+          const newRoll = randPickN(ALL_WEAPONS, 4);
+          if (!db || !roomId) { setRolledWeapons(newRoll); setSelections({}); return; }
+          await db.collection("rooms").doc(roomId).set({ rolledWeapons: newRoll, selections: {} }, { merge: true });
         };
 
+        const clearAll = async () => {
+          if (!isHost) return;
+          if (!db || !roomId) { setSelections({}); return; }
+          await db.collection("rooms").doc(roomId).set({ selections: {} }, { merge: true });
+        };
+
+        const createRoom = async () => {
+          if (!db) { alert("Firebase not configured yet."); return; }
+          const id = shortId();
+          const ref = db.collection("rooms").doc(id);
+          await ref.set({ createdAt: firebase.firestore.FieldValue.serverTimestamp(), rolledWeapons: randPickN(ALL_WEAPONS,4), selections: {}, hostCreatedAt: Date.now() });
+          setRoomId(id);
+          setIsHost(true);
+          const url = new URL(location.href);
+          url.searchParams.set("room", id);
+          history.replaceState(null, "", url.toString());
+        };
+
+        const joinRoom = async () => {
+          if (!db) { alert("Firebase not configured yet."); return; }
+          if (!roomId || !joinName.trim()) return;
+          const myId = shortId();
+          const p = { id: myId, name: joinName.trim(), color: joinColor, joinedAt: firebase.firestore.FieldValue.serverTimestamp() };
+          await db.collection("rooms").doc(roomId).collection("players").doc(myId).set(p);
+          setMe(p);
+          setStatus("Joined room " + roomId);
+        };
+
+        const shareLink = roomId ? location.origin + location.pathname + "?room=" + roomId : "";
+
+        // UI color style helper
+        const styleForOwner = (ownerId) => {
+          const owner = players.find(p => p.id === ownerId);
+          return owner ? COLOR_STYLES[owner.color] : null;
+        };
+
+        // Render
         return (
           <div className="min-h-screen w-full bg-slate-950 text-slate-100 p-4 md:p-8">
             <div className="max-w-6xl mx-auto grid gap-4">
 
-              {/* Header */}
               <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold">Elemen Tails — Party Select</h1>
-                  <p className="text-slate-300">Roll 4 weapons ⇒ pick up to 4 classes. No duplicate heroes or weapons. Any player can control multiple characters.</p>
+                  {db ? (
+                    <p className="text-slate-300">Multiplayer via Firebase — create or join a room and share the link.</p>
+                  ) : (
+                    <p className="text-amber-300">Firebase not configured — running in local mode.</p>
+                  )}
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <button onClick={reroll} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Re-roll Weapons</button>
-                  <button onClick={clearAll} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Clear Picks</button>
+                  <button onClick={reroll} disabled={!isHost} className={`px-3 py-2 rounded-xl ${isHost ? "bg-indigo-600 hover:bg-indigo-500" : "bg-slate-700 opacity-50 cursor-not-allowed"}`}>Re-roll Weapons</button>
+                  <button onClick={clearAll} disabled={!isHost} className={`px-3 py-2 rounded-xl ${isHost ? "bg-slate-700 hover:bg-slate-600" : "bg-slate-700 opacity-50 cursor-not-allowed"}`}>Clear Picks</button>
                 </div>
               </header>
 
-              {/* Player setup */}
+              {/* Room controls */}
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4 space-y-3">
-                <h2 className="font-semibold">Players</h2>
-
+                <h2 className="font-semibold">Room</h2>
                 <div className="flex flex-col md:flex-row gap-2 md:items-end">
-                  <div className="flex-1">
-                    <label className="block text-sm text-slate-300 mb-1">Name</label>
-                    <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g., Ponix" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-300 mb-1">Color</div>
-                    <div className="flex gap-1 flex-wrap">
-                      {COLOR_OPTIONS.map((c) => (
-                        <button key={c} onClick={()=>setNewColor(c)} className={`px-3 py-2 rounded-xl border ${COLOR_STYLES[c].border} ${newColor===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}>
-                          {c}
-                        </button>
-                      ))}
+                  <button onClick={createRoom} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Create Room</button>
+                  <div className="flex items-end gap-2">
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-1">Room code</label>
+                      <input value={roomId} onChange={e=>setRoomId(e.target.value.toUpperCase())} placeholder="e.g., ABC123" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
                     </div>
-                  </div>
-                  <button onClick={addPlayer} disabled={!newName.trim() || players.length>=4} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Add Player
-                  </button>
-                </div>
-
-                {players.length === 0 ? (
-                  <p className="text-slate-400 text-sm">Add 1–4 players, then click a class to assign to the active player.</p>
-                ) : (
-                  <div className="flex gap-2 flex-wrap items-center">
-                    <div className="text-sm text-slate-300">Active:</div>
-                    {players.map((p) => (
-                      <div key={p.id} className="flex items-center gap-1">
-                        <button
-                          onClick={()=>setActivePlayerId(p.id)}
-                          className={`px-3 py-1.5 rounded-full border text-sm ${p.id===activePlayerId?COLOR_STYLES[p.color].bg+" "+COLOR_STYLES[p.color].border: "bg-slate-800 border-slate-700 hover:bg-slate-700"}`}
-                        >
-                          {p.name}
-                        </button>
-                        <div className="flex gap-1">
-                          {COLOR_OPTIONS.map((c)=>(
-                            <button key={c} title={c} onClick={()=>setColor(p.id,c)} className={`w-5 h-5 rounded-full border ${COLOR_STYLES[c].border} ${p.color===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}></button>
-                          ))}
-                        </div>
-                        <button onClick={()=>removePlayer(p.id)} className="ml-1 text-slate-400 hover:text-rose-300 text-sm" title="Remove">✖</button>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-1">Your name</label>
+                      <input value={joinName} onChange={e=>setJoinName(e.target.value)} placeholder="e.g., Ponix" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-1">Color</label>
+                      <div className="flex gap-1">
+                        {COLOR_OPTIONS.map((c)=>(
+                          <button key={c} onClick={()=>setJoinColor(c)} className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${joinColor===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`} title={c}></button>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    <button onClick={joinRoom} className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500">Join</button>
+                  </div>
+                </div>
+                {roomId && (
+                  <div className="text-sm text-slate-300 flex items-center gap-2">
+                    <span>Share link:</span>
+                    <input readOnly value={shareLink} className="w-full md:w-[420px] px-2 py-1 rounded bg-slate-800 border border-slate-700" onFocus={(e)=>e.target.select()} />
                   </div>
                 )}
-
-                {partyFull && <p className="text-amber-300">Party is full (4/4). Click a selected class to unassign or transfer.</p>}
+                {status && <div className="text-slate-400 text-sm">{status}</div>}
               </section>
 
-              {/* Rolled weapons */}
+              {/* Players present */}
+              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
+                <h2 className="font-semibold mb-2">Players in Room</h2>
+                {players.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {players.map(p => (
+                      <span key={p.id} className={`px-3 py-1 rounded-full border ${COLOR_STYLES[p.color].border} ${COLOR_STYLES[p.color].bg}`}>{p.name}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-slate-400 text-sm">(none yet)</div>
+                )}
+              </section>
+
+              {/* Weapons */}
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-2">Weapons Drawn</h2>
                 <div className="flex flex-wrap gap-2">
@@ -240,31 +301,31 @@
                 </div>
               </section>
 
-              {/* Class options grouped by weapon */}
+              {/* Class options */}
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-3">Choose classes</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                  {optionsByWeapon.map(({ weapon, classes }) => (
+                  {ALL_WEAPONS.map((weapon) => (
                     <div key={weapon} className="rounded-xl border border-slate-700 bg-slate-900/40">
                       <div className="px-3 py-2 bg-slate-800 border-b border-slate-700 rounded-t-xl font-semibold text-sm text-center">{weapon}</div>
                       <div className="p-2 grid gap-2">
-                        {classes.map((cls) => {
-                          const { hero, weapon } = CLASS_INFO[cls];
+                        {weaponToClasses[weapon].map((cls) => {
+                          const { hero } = CLASS_INFO[cls];
                           const heroEmoji = HERO_PRIMARY[hero];
                           const ownerId = selections[cls];
-                          const owner = players.find(p => p.id === ownerId);
+                          const owner = players.find(p=>p.id===ownerId);
                           const disabled = !ownerId && !canSelectNew(cls);
                           const bg = CLASS_PORTRAITS[cls] ?? "./images/class-portraits/_placeholder.png";
-                          const ownerBorder = owner ? COLOR_STYLES[owner.color].border : "border-slate-700 hover:border-emerald-400";
+                          const style = styleForOwner(ownerId);
                           return (
                             <button
                               key={cls}
                               onClick={() => handlePick(cls)}
-                              disabled={disabled}
+                              disabled={!me || disabled}
                               style={{ backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center", aspectRatio: "3 / 2" }}
-                              className={`group relative w-full rounded-xl overflow-hidden border text-left transition-all ${owner ? ownerBorder : "border-slate-700 hover:border-emerald-400"} ${disabled ? "opacity-60 grayscale" : ""}`}
+                              className={`group relative w-full rounded-xl overflow-hidden border text-left transition-all ${style ? style.border : "border-slate-700 hover:border-emerald-400"} ${(!me || disabled) ? "opacity-60 grayscale" : ""}`}
                             >
-                              {/* Bottom text row */}
+                              {/* bottom bar */}
                               <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent">
                                 <div className="flex items-end justify-between gap-2">
                                   <div className="font-semibold text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">{cls}</div>
@@ -274,7 +335,6 @@
                                   </div>
                                 </div>
                               </div>
-                              {/* Owner badge with player name */}
                               {owner && (
                                 <div className={`absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded-full border ${COLOR_STYLES[owner.color].bg} ${COLOR_STYLES[owner.color].border} ${COLOR_STYLES[owner.color].text}`}>
                                   {owner.name}
@@ -294,10 +354,10 @@
                 <h2 className="font-semibold mb-2">Summary</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {players.length === 0 ? (
-                    <div className="text-slate-400 text-sm">(add players above)</div>
+                    <div className="text-slate-400 text-sm">(no players yet)</div>
                   ) : (
                     players.map((p) => {
-                      const mine = selectedClasses.filter((c) => selections[c] === p.id);
+                      const mine = Object.keys(selections).filter((c) => selections[c] === p.id);
                       return (
                         <div key={p.id} className="border border-slate-700 rounded-xl p-3 bg-slate-900/40">
                           <div className="font-semibold mb-1 flex items-center gap-2">
