@@ -351,7 +351,7 @@
                           </div>
                           {mine.length ? (
                             <ul className="text-sm space-y-1">
-                              {mine.map((c) => (<li key={c}>• <strong>{c}</strong> — {CLASS_INFO[c].hero} {HERO_PRIMARY[CLASS_INFO[c].hero]} / {CLASS_INFO[c].weapon}</li>))}
+                              {mine.map((c) => (<li key={c}>• <strong>{c}</strong> — {CLASS_INFO[c].hero} {HERO_PRIMARY[CLASS_INFO[c].hero]} / {WEAPON_ELEMENT[CLASS_INFO[c].weapon]} {CLASS_INFO[c].weapon}</li>))}
                             </ul>
                           ) : (<div className="text-slate-400 text-sm">(none)</div>)}
                         </div>
