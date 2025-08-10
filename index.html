@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ElemenTails — Party Select (Custom Players)</title>
+    <!-- Tailwind CDN with safelist for dynamic color classes -->
+    <script>
+      tailwind = window.tailwind || {};
+      tailwind.config = {
+        safelist: [
+          'border-sky-400','text-sky-200','bg-sky-400/20',
+          'border-emerald-400','text-emerald-200','bg-emerald-400/20',
+          'border-rose-400','text-rose-200','bg-rose-400/20',
+          'border-amber-400','text-amber-200','bg-amber-400/20',
+          'border-violet-400','text-violet-200','bg-violet-400/20',
+          'border-cyan-400','text-cyan-200','bg-cyan-400/20',
+          'border-orange-400','text-orange-200','bg-orange-400/20',
+          'border-pink-400','text-pink-200','bg-pink-400/20'
+        ]
+      }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950">
+    <div id="root"></div>
+
+    <!-- React + ReactDOM + Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel" data-presets="react">
+      // ==== Data ===============================================================
+      const HERO_PRIMARY = { Fox: "🔥", Frog: "💧", Rabbit: "🌿", Raven: "💨", Wolf: "⚡", Bear: "🪨" };
+      const CLASS_INFO = {
+        Monk: { hero: "Fox", weapon: "Knuckles" },
+        Summoner: { hero: "Fox", weapon: "Tome" },
+        Assassin: { hero: "Fox", weapon: "Daggers" },
+        Wizard: { hero: "Frog", weapon: "Staff" },
+        Berserker: { hero: "Frog", weapon: "Knuckles" },
+        Myrmidon: { hero: "Frog", weapon: "Spear" },
+        Cleric: { hero: "Rabbit", weapon: "Tome" },
+        Druid: { hero: "Rabbit", weapon: "Staff" },
+        Bard: { hero: "Rabbit", weapon: "Bow" },
+        Archer: { hero: "Raven", weapon: "Bow" },
+        Battlemage: { hero: "Raven", weapon: "Katana" },
+        Reaper: { hero: "Raven", weapon: "Greataxe" },
+        Ninja: { hero: "Wolf", weapon: "Daggers" },
+        Samurai: { hero: "Wolf", weapon: "Katana" },
+        Paladin: { hero: "Wolf", weapon: "Sword & Shield" },
+        Lancer: { hero: "Bear", weapon: "Spear" },
+        Barbearian: { hero: "Bear", weapon: "Greataxe" },
+        Warrior: { hero: "Bear", weapon: "Sword & Shield" },
+      };
+
+      const BASE = "./images/class-portraits";
+      const CLASS_PORTRAITS = {
+        Monk: `${BASE}/monk.png`, Summoner: `${BASE}/summoner.png`, Assassin: `${BASE}/assassin.png`,
+        Wizard: `${BASE}/wizard.png`, Berserker: `${BASE}/berserker.png`, Myrmidon: `${BASE}/myrmidon.png`,
+        Cleric: `${BASE}/cleric.png`, Druid: `${BASE}/druid.png`, Bard: `${BASE}/bard.png`,
+        Archer: `${BASE}/archer.png`, Battlemage: `${BASE}/battlemage.png`, Reaper: `${BASE}/reaper.png`,
+        Ninja: `${BASE}/ninja.png`, Samurai: `${BASE}/samurai.png`, Paladin: `${BASE}/paladin.png`,
+        Lancer: `${BASE}/lancer.png`, Barbearian: `${BASE}/barbearian.png`, Warrior: `${BASE}/warrior.png`,
+      };
+
+      // Weapon -> element (per your mapping)
+      const WEAPON_ELEMENT = {
+        "Knuckles": "🔥", "Daggers": "⚡", "Staff": "💧", "Tome": "🌿",
+        "Bow": "💨", "Sword & Shield": "🌿", "Greataxe": "🔥", "Spear": "🪨", "Katana": "💧",
+      };
+
+      // UI color styles
+      const COLOR_STYLES = {
+        blue:   { border: "border-sky-400",    text: "text-sky-200",    bg: "bg-sky-400/20" },
+        green:  { border: "border-emerald-400",text: "text-emerald-200",bg: "bg-emerald-400/20" },
+        red:    { border: "border-rose-400",   text: "text-rose-200",   bg: "bg-rose-400/20" },
+        yellow: { border: "border-amber-400",  text: "text-amber-200",  bg: "bg-amber-400/20" },
+        purple: { border: "border-violet-400", text: "text-violet-200", bg: "bg-violet-400/20" },
+        cyan:   { border: "border-cyan-400",   text: "text-cyan-200",   bg: "bg-cyan-400/20" },
+        orange: { border: "border-orange-400", text: "text-orange-200", bg: "bg-orange-400/20" },
+        pink:   { border: "border-pink-400",   text: "text-pink-200",   bg: "bg-pink-400/20" },
+      };
+      const COLOR_OPTIONS = Object.keys(COLOR_STYLES);
+
+      // ==== Helpers ============================================================
+      const ALL_CLASSES = Object.keys(CLASS_INFO);
+      const ALL_WEAPONS = Array.from(new Set(ALL_CLASSES.map((c) => CLASS_INFO[c].weapon))).sort();
+      const weaponToClasses = ALL_WEAPONS.reduce((acc, w) => { acc[w] = ALL_CLASSES.filter((c) => CLASS_INFO[c].weapon === w); return acc; }, {});
+
+      function randPickN(arr, n) { const pool=[...arr], out=[]; while(out.length<n && pool.length){ const i=Math.floor(Math.random()*pool.length); out.push(pool.splice(i,1)[0]); } return out; }
+      const uid = (()=>{ let i=1; return () => i++; })();
+
+      // ==== App ================================================================
+      function PartySelect() {
+        const [rolledWeapons, setRolledWeapons] = React.useState(() => randPickN(ALL_WEAPONS, 4));
+        const [players, setPlayers] = React.useState([]); // {id, name, color:'blue|green|...'}
+        const [activePlayerId, setActivePlayerId] = React.useState(null);
+        const [selections, setSelections] = React.useState({}); // className -> playerId
+
+        const selectedClasses = React.useMemo(() => Object.keys(selections), [selections]);
+        const usedHeroes = React.useMemo(() => new Set(selectedClasses.map((c) => CLASS_INFO[c].hero)), [selectedClasses]);
+        const usedWeapons = React.useMemo(() => new Set(selectedClasses.map((c) => CLASS_INFO[c].weapon)), [selectedClasses]);
+        const optionsByWeapon = React.useMemo(() => rolledWeapons.map((w) => ({ weapon: w, classes: weaponToClasses[w] })), [rolledWeapons]);
+        const partyFull = selectedClasses.length >= 4;
+
+        const activePlayer = players.find(p => p.id === activePlayerId) || null;
+
+        const canSelectNew = (className) => {
+          if (selections[className]) return true; // already selected (transfer allowed)
+          if (!activePlayer) return false;
+          if (partyFull) return false;
+          const { hero, weapon } = CLASS_INFO[className];
+          if (!rolledWeapons.includes(weapon)) return false;
+          if (usedHeroes.has(hero)) return false;
+          if (usedWeapons.has(weapon)) return false;
+          return true;
+        };
+
+        const handlePick = (className) => {
+          setSelections((prev) => {
+            const ownerId = prev[className];
+            if (ownerId) {
+              const next = { ...prev };
+              if (ownerId === activePlayerId) delete next[className];
+              else if (activePlayerId) next[className] = activePlayerId;
+              return next;
+            }
+            if (!canSelectNew(className)) return prev;
+            return { ...prev, [className]: activePlayerId };
+          });
+        };
+
+        const reroll = () => { setSelections({}); setRolledWeapons(randPickN(ALL_WEAPONS, 4)); };
+        const clearAll = () => setSelections({});
+
+        // ---- Player management ----
+        const [newName, setNewName] = React.useState("");
+        const [newColor, setNewColor] = React.useState("blue");
+
+        const addPlayer = () => {
+          if (!newName.trim() || players.length >= 4) return;
+          const p = { id: uid(), name: newName.trim(), color: newColor };
+          const next = [...players, p];
+          setPlayers(next);
+          setNewName("");
+          if (!activePlayerId) setActivePlayerId(p.id);
+        };
+
+        const removePlayer = (id) => {
+          // unassign any classes owned by this player
+          setSelections((prev) => {
+            const next = { ...prev };
+            for (const cls of Object.keys(next)) if (next[cls] === id) delete next[cls];
+            return next;
+          });
+          setPlayers((prev) => prev.filter(p => p.id !== id));
+          if (activePlayerId === id) {
+            const remaining = players.filter(p => p.id !== id);
+            setActivePlayerId(remaining[0]?.id ?? null);
+          }
+        };
+
+        const setColor = (id, color) => {
+          setPlayers(prev => prev.map(p => p.id === id ? { ...p, color } : p));
+        };
+
+        return (
+          <div className="min-h-screen w-full bg-slate-950 text-slate-100 p-4 md:p-8">
+            <div className="max-w-6xl mx-auto grid gap-4">
+
+              {/* Header */}
+              <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold">Elemen Tails — Party Select</h1>
+                  <p className="text-slate-300">Roll 4 weapons ⇒ pick up to 4 classes. No duplicate heroes or weapons. Any player can control multiple characters.</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={reroll} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Re-roll Weapons</button>
+                  <button onClick={clearAll} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Clear Picks</button>
+                </div>
+              </header>
+
+              {/* Player setup */}
+              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4 space-y-3">
+                <h2 className="font-semibold">Players</h2>
+
+                <div className="flex flex-col md:flex-row gap-2 md:items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm text-slate-300 mb-1">Name</label>
+                    <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g., Ponix" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-300 mb-1">Color</div>
+                    <div className="flex gap-1 flex-wrap">
+                      {COLOR_OPTIONS.map((c) => (
+                        <button key={c} onClick={()=>setNewColor(c)} className={`px-3 py-2 rounded-xl border ${COLOR_STYLES[c].border} ${newColor===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={addPlayer} disabled={!newName.trim() || players.length>=4} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Add Player
+                  </button>
+                </div>
+
+                {players.length === 0 ? (
+                  <p className="text-slate-400 text-sm">Add 1–4 players, then click a class to assign to the active player.</p>
+                ) : (
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <div className="text-sm text-slate-300">Active:</div>
+                    {players.map((p) => (
+                      <div key={p.id} className="flex items-center gap-1">
+                        <button
+                          onClick={()=>setActivePlayerId(p.id)}
+                          className={`px-3 py-1.5 rounded-full border text-sm ${p.id===activePlayerId?COLOR_STYLES[p.color].bg+" "+COLOR_STYLES[p.color].border: "bg-slate-800 border-slate-700 hover:bg-slate-700"}`}
+                        >
+                          {p.name}
+                        </button>
+                        <div className="flex gap-1">
+                          {COLOR_OPTIONS.map((c)=>(
+                            <button key={c} title={c} onClick={()=>setColor(p.id,c)} className={`w-5 h-5 rounded-full border ${COLOR_STYLES[c].border} ${p.color===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}></button>
+                          ))}
+                        </div>
+                        <button onClick={()=>removePlayer(p.id)} className="ml-1 text-slate-400 hover:text-rose-300 text-sm" title="Remove">✖</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {partyFull && <p className="text-amber-300">Party is full (4/4). Click a selected class to unassign or transfer.</p>}
+              </section>
+
+              {/* Rolled weapons */}
+              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
+                <h2 className="font-semibold mb-2">Weapons Drawn</h2>
+                <div className="flex flex-wrap gap-2">
+                  {rolledWeapons.map((w) => (<span key={w} className="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-sm">{w}</span>))}
+                </div>
+              </section>
+
+              {/* Class options grouped by weapon */}
+              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
+                <h2 className="font-semibold mb-3">Choose classes</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                  {optionsByWeapon.map(({ weapon, classes }) => (
+                    <div key={weapon} className="rounded-xl border border-slate-700 bg-slate-900/40">
+                      <div className="px-3 py-2 bg-slate-800 border-b border-slate-700 rounded-t-xl font-semibold text-sm text-center">{weapon}</div>
+                      <div className="p-2 grid gap-2">
+                        {classes.map((cls) => {
+                          const { hero, weapon } = CLASS_INFO[cls];
+                          const heroEmoji = HERO_PRIMARY[hero];
+                          const ownerId = selections[cls];
+                          const owner = players.find(p => p.id === ownerId);
+                          const disabled = !ownerId && !canSelectNew(cls);
+                          const bg = CLASS_PORTRAITS[cls] ?? "./images/class-portraits/_placeholder.png";
+                          const ownerBorder = owner ? COLOR_STYLES[owner.color].border : "border-slate-700 hover:border-emerald-400";
+                          return (
+                            <button
+                              key={cls}
+                              onClick={() => handlePick(cls)}
+                              disabled={disabled}
+                              style={{ backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center", aspectRatio: "3 / 2" }}
+                              className={`group relative w-full rounded-xl overflow-hidden border text-left transition-all ${owner ? ownerBorder : "border-slate-700 hover:border-emerald-400"} ${disabled ? "opacity-60 grayscale" : ""}`}
+                            >
+                              {/* Bottom text row */}
+                              <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent">
+                                <div className="flex items-end justify-between gap-2">
+                                  <div className="font-semibold text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">{cls}</div>
+                                  <div className="flex items-center gap-1 text-lg">
+                                    <span title={`Hero: ${hero}`}>{heroEmoji}</span>
+                                    <span title={weapon}>{WEAPON_ELEMENT[weapon] || "⚔️"}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Owner badge with player name */}
+                              {owner && (
+                                <div className={`absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded-full border ${COLOR_STYLES[owner.color].bg} ${COLOR_STYLES[owner.color].border} ${COLOR_STYLES[owner.color].text}`}>
+                                  {owner.name}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Summary */}
+              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
+                <h2 className="font-semibold mb-2">Summary</h2>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {players.length === 0 ? (
+                    <div className="text-slate-400 text-sm">(add players above)</div>
+                  ) : (
+                    players.map((p) => {
+                      const mine = selectedClasses.filter((c) => selections[c] === p.id);
+                      return (
+                        <div key={p.id} className="border border-slate-700 rounded-xl p-3 bg-slate-900/40">
+                          <div className="font-semibold mb-1 flex items-center gap-2">
+                            <span className={`inline-block w-3 h-3 rounded-full border ${COLOR_STYLES[p.color].border}`}></span>
+                            {p.name}
+                          </div>
+                          {mine.length ? (
+                            <ul className="text-sm space-y-1">
+                              {mine.map((c) => (<li key={c}>• <strong>{c}</strong> — {CLASS_INFO[c].hero} {HERO_PRIMARY[CLASS_INFO[c].hero]} / {CLASS_INFO[c].weapon}</li>))}
+                            </ul>
+                          ) : (<div className="text-slate-400 text-sm">(none)</div>)}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<PartySelect />);
+    </script>
+  </body>
+</html>
