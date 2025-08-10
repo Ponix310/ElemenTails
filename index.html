@@ -208,6 +208,14 @@
 
         const shareLink = roomId ? location.origin + location.pathname + "?room=" + roomId : "";
 
+        const setMyColor = async (c) => {
+          if (!me || !roomId) return;
+          try {
+            await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ color: c });
+            setMe(prev => prev ? { ...prev, color: c } : prev);
+          } catch (e) { console.error(e); }
+        };
+
         // UI color style helper
         const styleForOwner = (ownerId) => {
           const owner = players.find(p => p.id === ownerId);
@@ -265,18 +273,35 @@
               </section>
 
               {/* Players present */}
+              
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-2">Players in Room</h2>
                 {players.length ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mb-3">
                     {players.map(p => (
-                      <span key={p.id} className={`px-3 py-1 rounded-full border ${COLOR_STYLES[p.color].border} ${COLOR_STYLES[p.color].bg}`}>{p.name}</span>
+                      <span key={p.id} className={\`px-3 py-1 rounded-full border \${COLOR_STYLES[p.color].border} \${COLOR_STYLES[p.color].bg}\`}>{p.name}</span>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-slate-400 text-sm">(none yet)</div>
+                  <div className="text-slate-400 text-sm mb-3">(none yet)</div>
+                )}
+                {me && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-300">My color:</span>
+                    <div className="flex gap-1">
+                      {COLOR_OPTIONS.map((c)=>(
+                        <button
+                          key={c}
+                          onClick={()=>setMyColor(c)}
+                          title={c}
+                          className={\`w-8 h-8 rounded-full border \${COLOR_STYLES[c].border} \${(me?.color===c)?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}\`}
+                        ></button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </section>
+
 
               {/* Weapons */}
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
