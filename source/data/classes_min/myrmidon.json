@@ -1,0 +1,45 @@
+{
+  "name": "Myrmidon",
+  "hero": "Frog",
+  "weapon": "Spear",
+  "range": 2,
+  "energyRule": {
+    "name": "🎲Tactical🎲",
+    "text": "You may save 1 dice roll and use its Energy next turn"
+  },
+  "passive": {
+    "name": "Muddy Strikes",
+    "text": "Your melee attacks deal +1💧and, to non-adjacent enemies, apply Slowed"
+  },
+  "weaponPassive": {
+    "weapon": "Spear",
+    "text": "Your single target attacks can also hit an enemy between you and the target"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "💧🪨",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Gain +1 range for this round"
+    },
+    "advanced": {
+      "manaSymbols": "💧🪨",
+      "cost": [
+        1,
+        2
+      ],
+      "desc": "Gain 2🛡️and Taunt 1 enemy"
+    },
+    "epic": {
+      "manaSymbols": "🔥💧🪨",
+      "cost": [
+        1,
+        3,
+        1
+      ],
+      "desc": "Deal 2 damage and apply Slowed to all enemies in range"
+    }
+  }
+}

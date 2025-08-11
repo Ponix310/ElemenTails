@@ -1,0 +1,45 @@
+{
+  "name": "Barbearian",
+  "hero": "Bear",
+  "weapon": "Greataxe",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Reckless🎲",
+    "text": "You may reroll all dice but must keep new roll"
+  },
+  "passive": {
+    "name": "Rampage",
+    "text": "Gain 1 Inspired when you use an Attack. At 3 Inspired, your next Attack deals x2 damage and removes all Inspired. (Limit 3 Inspired)"
+  },
+  "weaponPassive": {
+    "weapon": "Greataxe",
+    "text": "When you play a card that hits 2+ enemies, gain 1 Energy"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "🔥⚡",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Gain 1 Inspired"
+    },
+    "advanced": {
+      "manaSymbols": "🔥🪨",
+      "cost": [
+        1,
+        2
+      ],
+      "desc": "Remove all Inspired, then gain 2🛡️ stack removed"
+    },
+    "epic": {
+      "manaSymbols": "🔥⚡",
+      "cost": [
+        2,
+        2,
+        1
+      ],
+      "desc": "Deal either 4🔥or 4🪨 damage to all enemies in range. Heal 1 Corruption per target hit."
+    }
+  }
+}

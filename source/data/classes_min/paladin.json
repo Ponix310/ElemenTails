@@ -1,0 +1,44 @@
+{
+  "name": "Paladin",
+  "hero": "Wolf",
+  "weapon": "Sword & Shield",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Disciplined🎲",
+    "text": "If no dice rolls match, gain 1 Energy"
+  },
+  "passive": {
+    "name": "Stalwart Protector",
+    "text": "You may keep up to 3 of your🛡️between turns"
+  },
+  "weaponPassive": {
+    "weapon": "Sword & Shield",
+    "text": "Donate any amount of your🛡️ to an adjacent player for 1 Energy"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "⚡🪨",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Gain 2🛡️and 1 Energized"
+    },
+    "advanced": {
+      "manaSymbols": "⚡🪨",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Your next attack has Chain. Gain 1🛡️+1🛡️per target hit."
+    },
+    "epic": {
+      "manaSymbols": "🌿⚡",
+      "cost": [
+        3,
+        2
+      ],
+      "desc": "Convert up to 10🛡️to Give up to 5 Rejuvenate (2🛡️= 1 Rejuvenate)"
+    }
+  }
+}

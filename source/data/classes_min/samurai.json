@@ -1,0 +1,45 @@
+{
+  "name": "Samurai",
+  "hero": "Wolf",
+  "weapon": "Katana",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Disciplined🎲",
+    "text": "If no dice rolls match, gain 1 Energy"
+  },
+  "passive": {
+    "name": "Patient Offense",
+    "text": "When using an Attack, if no enemies are within range you may end your turn, then immediately use that Attack on the first enemy to enter your Range."
+  },
+  "weaponPassive": {
+    "weapon": "Katana",
+    "text": "Gain 2 Inspired, but set Speed to 0 for this turn."
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "💧⚡",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "2💧push 1"
+    },
+    "advanced": {
+      "manaSymbols": "⚡🪨",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Taunt 1 Enemy (range 3) then gain 1 Inspired"
+    },
+    "epic": {
+      "manaSymbols": "💧💨⚡",
+      "cost": [
+        2,
+        1,
+        2
+      ],
+      "desc": "Your next Attack gains +3 damage and Chain"
+    }
+  }
+}

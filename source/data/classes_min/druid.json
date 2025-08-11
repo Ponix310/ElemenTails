@@ -1,0 +1,44 @@
+{
+  "name": "Druid",
+  "hero": "Rabbit",
+  "weapon": "Staff",
+  "range": 3,
+  "energyRule": {
+    "name": "🎲Generous🎲",
+    "text": "Roll 1 extra dice Donate the lowest roll to one ally"
+  },
+  "passive": {
+    "name": "Nourishing Waters",
+    "text": "You may spend 1💧 mana to grant 1🛡️ to your summons"
+  },
+  "weaponPassive": {
+    "weapon": "Staff",
+    "text": "When you would generate 💧 mana, generate 1 extra 💧"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "💧🌿",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Summon or Channel a Healsprout (Limit 2)"
+    },
+    "advanced": {
+      "manaSymbols": "💧🌿",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Summon or Channel a Thornwall (Limit 3)"
+    },
+    "epic": {
+      "manaSymbols": "💧🌿",
+      "cost": [
+        3,
+        2
+      ],
+      "desc": "Summon or Channel the Lifetree (Limit 1)"
+    }
+  }
+}

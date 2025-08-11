@@ -1,0 +1,45 @@
+{
+  "name": "Reaper",
+  "hero": "Raven",
+  "weapon": "Greataxe",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Mobile🎲",
+    "text": "After your first move each turn, roll 1 more dice"
+  },
+  "passive": {
+    "name": "Bloodthirsty",
+    "text": "When Corruption is 5 or more, your Attacks apply 1 Rejuvenation to self."
+  },
+  "weaponPassive": {
+    "weapon": "Greataxe",
+    "text": "When you play an Attack that hits 2+ enemies, gain 1 Energy"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "🔥💨",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Your next attack grants 1 Rejuvenate per target hit"
+    },
+    "advanced": {
+      "manaSymbols": "💨⚡",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Move 1 then Gain 1 Energy"
+    },
+    "epic": {
+      "manaSymbols": "🔥🌿💨",
+      "cost": [
+        2,
+        1,
+        3
+      ],
+      "desc": "Gain up to 3 Corruption. Deal 1🔥or 1💨 damage to all adjacent enemies equal to your Corruption."
+    }
+  }
+}

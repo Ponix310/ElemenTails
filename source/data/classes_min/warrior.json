@@ -1,0 +1,45 @@
+{
+  "name": "Warrior",
+  "hero": "Bear",
+  "weapon": "Sword & Shield",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Reckless🎲",
+    "text": "You may reroll all dice but must keep new roll"
+  },
+  "passive": {
+    "name": "Immovable Object",
+    "text": "When you generate🛡️on yourself, Gain double. While you have 3 or more🛡️you are immune to forced movement."
+  },
+  "weaponPassive": {
+    "weapon": "Sword & Shield",
+    "text": "Donate any amount of your🛡️ to an adjacent player for 1 Energy"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "🌿🪨",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Gain 1🛡️and 1 Aegis"
+    },
+    "advanced": {
+      "manaSymbols": "🌿🪨",
+      "cost": [
+        1,
+        2
+      ],
+      "desc": "Your next Defense Power also affects adjacent allies"
+    },
+    "epic": {
+      "manaSymbols": "💧🌿🪨",
+      "cost": [
+        1,
+        1,
+        3
+      ],
+      "desc": "Taunt all enemies in 3 range, gain 1🛡️per enemy Taunted"
+    }
+  }
+}

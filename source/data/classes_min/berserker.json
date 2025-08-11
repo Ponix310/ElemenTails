@@ -1,0 +1,45 @@
+{
+  "name": "Berserker",
+  "hero": "Frog",
+  "weapon": "Guantlets",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Tactical🎲",
+    "text": "You may save 1 dice roll and use its Energy next turn"
+  },
+  "passive": {
+    "name": "Thrill of Battle",
+    "text": "At start of turn gain 1 Inspired for every 3 Corruption you have."
+  },
+  "weaponPassive": {
+    "weapon": "Guantlets",
+    "text": "When you deal 🔥with an Attack, also apply 1 Burn"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "🔥💧",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Move then attack once for 1🔥and once for 1💧"
+    },
+    "advanced": {
+      "manaSymbols": "🔥💧",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Gain 1 Corruption and 2 Energy"
+    },
+    "epic": {
+      "manaSymbols": "🔥💧🌿",
+      "cost": [
+        2,
+        2,
+        1
+      ],
+      "desc": "Attack all enemies in range for: \"1🔥1🔥\"or \"2💧, Cleanse self 1 per target hit\""
+    }
+  }
+}

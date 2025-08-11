@@ -1,0 +1,44 @@
+{
+  "name": "Archer",
+  "hero": "Raven",
+  "weapon": "Bow",
+  "range": 4,
+  "energyRule": {
+    "name": "🎲Mobile🎲",
+    "text": "After your first move each turn, roll 1 more dice"
+  },
+  "passive": {
+    "name": "Eagle Eye",
+    "text": "Your first Attack each turn before moving deals +2 damage"
+  },
+  "weaponPassive": {
+    "weapon": "Bow",
+    "text": "When you attack an Adjacent enemy, you may move 1 for free"
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "💨",
+      "cost": [
+        2
+      ],
+      "desc": "Move 1, then Add +1 damage to your next attack"
+    },
+    "advanced": {
+      "manaSymbols": "💨⚡",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Untap 1 Attack card"
+    },
+    "epic": {
+      "manaSymbols": "🔥💨⚡",
+      "cost": [
+        1,
+        2,
+        2
+      ],
+      "desc": "Your next attack ignore's Resistance and deals +2 damage"
+    }
+  }
+}

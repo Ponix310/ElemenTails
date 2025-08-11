@@ -1,0 +1,45 @@
+{
+  "name": "Cleric",
+  "hero": "Rabbit",
+  "weapon": "Tome",
+  "range": 3,
+  "energyRule": {
+    "name": "🎲Generous🎲",
+    "text": "Roll 1 extra dice Donate the lowest roll to one ally"
+  },
+  "passive": {
+    "name": "Graceful Embrace",
+    "text": "Applying Rejuvenate to an ally with 5 or more Corruption also grants 1🛡️"
+  },
+  "weaponPassive": {
+    "weapon": "Tome",
+    "text": "You may save any number of unspent Energy you generated this turn."
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "🌿",
+      "cost": [
+        2
+      ],
+      "desc": "Give 1 ally 2 Rejuvenate"
+    },
+    "advanced": {
+      "manaSymbols": "💧🌿💨",
+      "cost": [
+        1,
+        1,
+        1
+      ],
+      "desc": "Remove one condition from an ally"
+    },
+    "epic": {
+      "manaSymbols": "💧🌿🪨",
+      "cost": [
+        2,
+        1,
+        2
+      ],
+      "desc": "Give Rejuvenate 1 and 2🛡️ to all allies"
+    }
+  }
+}

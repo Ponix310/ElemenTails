@@ -1,0 +1,44 @@
+{
+  "name": "Battlemage",
+  "hero": "Raven",
+  "weapon": "Katana",
+  "range": 1,
+  "energyRule": {
+    "name": "🎲Mobile🎲",
+    "text": "After your first move each turn, roll 1 more dice"
+  },
+  "passive": {
+    "name": "Elemental Adaptability",
+    "text": "Once per turn, you may change 1 Attack's type to match a Mana you generated this turn"
+  },
+  "weaponPassive": {
+    "weapon": "Katana",
+    "text": "Gain 2 Inspired, but set Speed to 0 for this turn."
+  },
+  "powers": {
+    "basic": {
+      "manaSymbols": "💧💨",
+      "cost": [
+        1,
+        1
+      ],
+      "desc": "Add +1 range to your next Attack"
+    },
+    "advanced": {
+      "manaSymbols": "💧⚡",
+      "cost": [
+        2,
+        1
+      ],
+      "desc": "Untap 1 card"
+    },
+    "epic": {
+      "manaSymbols": "💧💨",
+      "cost": [
+        3,
+        2
+      ],
+      "desc": "You main change one of your Affinities for this Encounter"
+    }
+  }
+}
