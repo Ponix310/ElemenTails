@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ElemenTails — Main Menu</title>
+    
+<script>
+  tailwind = window.tailwind || {};
+  tailwind.config = {
+    safelist: [
+      'border-sky-400','text-sky-200','bg-sky-400/20',
+      'border-emerald-400','text-emerald-200','bg-emerald-400/20',
+      'border-rose-400','text-rose-200','bg-rose-400/20',
+      'border-amber-400','text-amber-200','bg-amber-400/20',
+      'border-violet-400','text-violet-200','bg-violet-400/20',
+      'border-cyan-400','text-cyan-200','bg-cyan-400/20',
+      'border-orange-400','text-orange-200','bg-orange-400/20',
+      'border-pink-400','text-pink-200','bg-pink-400/20'
+    ]
+  }
+</script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100">
+    <div id="root"></div>
+
+    <!-- React + ReactDOM + Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase (compat SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+
+    <script type="text/babel" data-presets="react">
+      
+// ================== DATA ==================
+const HERO_PRIMARY = { Fox: "🔥", Frog: "💧", Rabbit: "🌿", Raven: "💨", Wolf: "⚡", Bear: "🪨" };
+const CLASS_INFO = {
+  Monk: { hero: "Fox", weapon: "Knuckles" },
+  Summoner: { hero: "Fox", weapon: "Tome" },
+  Assassin: { hero: "Fox", weapon: "Daggers" },
+  Wizard: { hero: "Frog", weapon: "Staff" },
+  Berserker: { hero: "Frog", weapon: "Knuckles" },
+  Myrmidon: { hero: "Frog", weapon: "Spear" },
+  Cleric: { hero: "Rabbit", weapon: "Tome" },
+  Druid: { hero: "Rabbit", weapon: "Staff" },
+  Bard: { hero: "Rabbit", weapon: "Bow" },
+  Archer: { hero: "Raven", weapon: "Bow" },
+  Battlemage: { hero: "Raven", weapon: "Katana" },
+  Reaper: { hero: "Raven", weapon: "Greataxe" },
+  Ninja: { hero: "Wolf", weapon: "Daggers" },
+  Samurai: { hero: "Wolf", weapon: "Katana" },
+  Paladin: { hero: "Wolf", weapon: "Sword & Shield" },
+  Lancer: { hero: "Bear", weapon: "Spear" },
+  Barbearian: { hero: "Bear", weapon: "Greataxe" },
+  Warrior: { hero: "Bear", weapon: "Sword & Shield" },
+};
+const BASE = "./images/class-portraits";
+const CLASS_PORTRAITS = {
+  Monk: `${BASE}/monk.png`, Summoner: `${BASE}/summoner.png`, Assassin: `${BASE}/assassin.png`,
+  Wizard: `${BASE}/wizard.png`, Berserker: `${BASE}/berserker.png`, Myrmidon: `${BASE}/myrmidon.png`,
+  Cleric: `${BASE}/cleric.png`, Druid: `${BASE}/druid.png`, Bard: `${BASE}/bard.png`,
+  Archer: `${BASE}/archer.png`, Battlemage: `${BASE}/battlemage.png`, Reaper: `${BASE}/reaper.png`,
+  Ninja: `${BASE}/ninja.png`, Samurai: `${BASE}/samurai.png`, Paladin: `${BASE}/paladin.png`,
+  Lancer: `${BASE}/lancer.png`, Barbearian: `${BASE}/barbearian.png`, Warrior: `${BASE}/warrior.png`,
+};
+const WEAPON_ELEMENT = {
+  "Knuckles": "🔥", "Daggers": "⚡", "Staff": "💧", "Tome": "🌿",
+  "Bow": "💨", "Sword & Shield": "🌿", "Greataxe": "🔥", "Spear": "🪨", "Katana": "💧",
+};
+const COLOR_STYLES = {
+  blue:   { border: "border-sky-400",    text: "text-sky-200",    bg: "bg-sky-400/20" },
+  green:  { border: "border-emerald-400",text: "text-emerald-200",bg: "bg-emerald-400/20" },
+  red:    { border: "border-rose-400",   text: "text-rose-200",   bg: "bg-rose-400/20" },
+  yellow: { border: "border-amber-400",  text: "text-amber-200",  bg: "bg-amber-400/20" },
+  purple: { border: "border-violet-400", text: "text-violet-200", bg: "bg-violet-400/20" },
+  cyan:   { border: "border-cyan-400",   text: "text-cyan-200",   bg: "bg-cyan-400/20" },
+  orange: { border: "border-orange-400", text: "text-orange-200", bg: "bg-orange-400/20" },
+  pink:   { border: "border-pink-400",   text: "text-pink-200",   bg: "bg-pink-400/20" },
+};
+const COLOR_OPTIONS = Object.keys(COLOR_STYLES);
+
+const ALL_CLASSES = Object.keys(CLASS_INFO);
+const ALL_WEAPONS = Array.from(new Set(ALL_CLASSES.map((c) => CLASS_INFO[c].weapon))).sort();
+const weaponToClasses = ALL_WEAPONS.reduce((acc, w) => { acc[w] = ALL_CLASSES.filter((c) => CLASS_INFO[c].weapon === w); return acc; }, {});
+function randPickN(arr, n) { const pool=[...arr], out=[]; while(out.length<n && pool.length){ const i=Math.floor(Math.random()*pool.length); out.push(pool.splice(i,1)[0]); } return out; }
+const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+
+
+      // ================== FIREBASE ==================
+      const firebaseConfig = {
+  apiKey: "AIzaSyBaIjbm7dVNJkE7CJXPQOievhkiIF17rds",
+  authDomain: "elementails.firebaseapp.com",
+  projectId: "elementails",
+  storageBucket: "elementails.firebasestorage.app",
+  messagingSenderId: "497100635124",
+  appId: "1:497100635124:web:aeeb25ead96b84751e57a1",
+  measurementId: "G-H7ZXWH59GS"
+};
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+
+      function App() {
+        // Auth state
+        const [user, setUser] = React.useState(null);
+        const [profile, setProfile] = React.useState(null);
+        const [friends, setFriends] = React.useState([]);
+        const [usernameDraft, setUsernameDraft] = React.useState("");
+
+        // Join form
+        const [roomId, setRoomId] = React.useState("");
+        const [joinName, setJoinName] = React.useState("");
+        const [joinColor, setJoinColor] = React.useState("blue");
+        const [status, setStatus] = React.useState("");
+
+        // ---------- AUTH ----------
+        const sanitizeUsername = (s) => (s || "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+        React.useEffect(() => {
+          auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+          const unsub = auth.onAuthStateChanged(async (u) => {
+            setUser(u);
+            if (!u) { setProfile(null); setFriends([]); return; }
+            const uref = db.collection('users').doc(u.uid);
+            const snap = await uref.get();
+            let data = snap.data() || {};
+            if (!data.displayName) data.displayName = u.displayName || "Player";
+            if (!data.friendCode) data.friendCode = u.uid.slice(-6).toUpperCase();
+            await uref.set({ ...data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            setProfile({ uid: u.uid, ...data });
+            if (!data.username) { setUsernameDraft(sanitizeUsername(u.displayName || "player") || "player"); }
+            // Friends
+            return db.collection('users').doc(u.uid).collection('friends').orderBy('addedAt','asc').onSnapshot(qs => {
+              const arr = []; qs.forEach(d => arr.push({ id: d.id, ...d.data() })); setFriends(arr);
+            });
+          });
+          return () => unsub();
+        }, []);
+
+        const signInGoogle = async () => { try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); } catch(e){ setStatus(e.message || String(e)); } };
+        const signInGuest  = async () => { try { await auth.signInAnonymously(); } catch(e){ setStatus(e.message || String(e)); } };
+        const signOut      = async () => { try { await auth.signOut(); } catch(e){} };
+
+        const claimUsername = async () => {
+          if (!user) return setStatus("Sign in to claim a username.");
+          const raw = (usernameDraft || "").trim();
+          const uname = sanitizeUsername(raw);
+          if (uname.length < 3) return setStatus("Username must be 3–20 characters (letters, numbers, _).");
+          const unameRef = db.collection('usernames').doc(uname);
+          try {
+            await db.runTransaction(async (tx) => {
+              const s = await tx.get(unameRef);
+              if (s.exists) throw new Error("That username is taken.");
+              tx.set(unameRef, { uid: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+              tx.set(db.collection('users').doc(user.uid), {
+                username: raw, displayName: raw, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            });
+            setProfile(prev => prev ? { ...prev, username: raw, displayName: raw } : prev);
+            setStatus("Username saved!");
+          } catch(e) { setStatus(e.message || String(e)); }
+        };
+
+        // ---------- MENU ACTIONS ----------
+        const createRoom = async () => {
+          const id = shortId();
+          await db.collection("rooms").doc(id).set({
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rolledWeapons: randPickN(ALL_WEAPONS,4),
+            selections: {},
+            locked: false,
+            hostId: auth.currentUser ? auth.currentUser.uid : null
+          });
+          location.href = "partyselect.html?room=" + id;
+        };
+
+        const joinRoom = async () => {
+          if (!roomId) return;
+          const myId = (auth.currentUser && auth.currentUser.uid) || Math.random().toString(36).slice(2, 10);
+          const finalName = (joinName.trim() || profile?.username || profile?.displayName || "Player");
+          const p = { id: myId, name: finalName, color: joinColor, joinedAt: firebase.firestore.FieldValue.serverTimestamp() };
+          await db.collection("rooms").doc(roomId).collection("players").doc(myId).set(p);
+          location.href = "partyselect.html?room=" + roomId;
+        };
+
+        // ---------- UI ----------
+        return (
+          <div className="min-h-screen w-full p-4 md:p-8">
+            <div className="max-w-6xl mx-auto grid gap-6">
+              <div className="flex items-center justify-between">
+                <div className="text-xl font-semibold">Elemen Tails</div>
+                <div className="flex items-center gap-2">
+                  {user ? (
+                    <>
+                      <span className="text-sm text-slate-300">{profile?.username ? `@${profile.username}` : (profile?.displayName || "Player")}</span>
+                      <button onClick={signOut} className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">Logout</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={signInGoogle} className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm">Login with Google</button>
+                      <button onClick={signInGuest} className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">Continue as Guest</button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {user && !profile?.username && (
+                <section className="bg-slate-900/60 rounded-2xl p-4 grid gap-3 border border-slate-700">
+                  <h2 className="text-lg font-semibold">Pick your username</h2>
+                  <p className="text-slate-300 text-sm">This will be your default name in lobbies.</p>
+                  <div className="flex items-end gap-2">
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-1">Username</label>
+                      <input value={usernameDraft} onChange={e=>setUsernameDraft(e.target.value)} className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                    </div>
+                    <button onClick={claimUsername} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Save</button>
+                  </div>
+                  <div className="text-xs text-slate-400">Allowed: letters, numbers, underscore. 3–20 chars. Unique.</div>
+                </section>
+              )}
+
+              <section className="bg-slate-900/60 rounded-2xl p-4 grid md:grid-cols-2 gap-4">
+                <div className="border border-slate-700 rounded-xl p-4 bg-slate-900/40">
+                  <h3 className="font-semibold mb-2">Add Friends</h3>
+                  {user ? (
+                    <>
+                      <div className="text-sm text-slate-300 mb-2">Your friend code</div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <input readOnly value={profile?.friendCode || ""} className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono" onFocus={(e)=>e.target.select()} />
+                        <button onClick={()=>navigator.clipboard.writeText(profile?.friendCode || "")} className="px-2 py-1 rounded bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">Copy</button>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div>
+                          <label className="block text-sm text-slate-300 mb-1">Enter friend code</label>
+                          <input id="friendCodeInput" placeholder="e.g., ABC123" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                        </div>
+                        <button onClick={async()=>{
+                          if(!user) return setStatus("Sign in first.");
+                          const el = document.getElementById('friendCodeInput');
+                          const val = (el?.value || '').toUpperCase();
+                          if(!val) return;
+                          const qs = await db.collection('users').where('friendCode','==',val).limit(1).get();
+                          if(qs.empty) return setStatus("No user with that code.");
+                          const doc = qs.docs[0];
+                          const friendUid = doc.id;
+                          if(friendUid === user.uid) return setStatus("That's your own code.");
+                          await db.collection('users').doc(user.uid).collection('friends').doc(friendUid).set({
+                            addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            displayName: doc.data().displayName || 'Player',
+                            friendCode: val
+                          }, { merge: true });
+                          el.value = '';
+                        }} className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Add</button>
+                      </div>
+                      <div className="mt-4">
+                        <div className="text-sm text-slate-300 mb-1">Your friends</div>
+                        {friends.length ? (
+                          <ul className="text-sm space-y-1">
+                            {friends.map(f => <li key={f.id}>• {f.displayName || f.id}</li>)}
+                          </ul>
+                        ) : (<div className="text-slate-500 text-sm">(none yet)</div>)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-slate-400 text-sm">Login to manage your friends.</div>
+                  )}
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="border border-slate-700 rounded-xl p-4 bg-slate-900/40">
+                    <h3 className="font-semibold mb-2">Host a Session</h3>
+                    <button onClick={createRoom} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Create Room</button>
+                  </div>
+
+                  <div className="border border-slate-700 rounded-xl p-4 bg-slate-900/40">
+                    <h3 className="font-semibold mb-2">Join a Session</h3>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Room code</label>
+                        <input value={roomId} onChange={e=>setRoomId(e.target.value.toUpperCase())} placeholder="e.g., ABC123" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Your name</label>
+                        <input value={joinName} onChange={e=>setJoinName(e.target.value)} placeholder={profile?.username || profile?.displayName || "e.g., Ponix"} className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Color</label>
+                        <div className="flex gap-1">
+                          {COLOR_OPTIONS.map((c)=>(
+                            <button key={c} onClick={()=>setJoinColor(c)} className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${joinColor===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`} title={c}></button>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={joinRoom} className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500">Join</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {status && <div className="text-slate-300 text-sm">{status}</div>}
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
