@@ -169,6 +169,7 @@ const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
         // ---------- MENU ACTIONS ----------
         const createRoom = async () => {
           const id = shortId();
+          // Create room
           await db.collection("rooms").doc(id).set({
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             rolledWeapons: randPickN(ALL_WEAPONS,4),
@@ -176,6 +177,18 @@ const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
             locked: false,
             hostId: auth.currentUser ? auth.currentUser.uid : null
           });
+          // If signed in, auto-add host as first player with default color
+          if (auth.currentUser) {
+            const myId = auth.currentUser.uid;
+            const name = (profile?.username || profile?.displayName || auth.currentUser.displayName || "Player");
+            const color = "blue";
+            await db.collection("rooms").doc(id).collection("players").doc(myId).set({
+              id: myId,
+              name,
+              color,
+              joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
           location.href = "partyselect.html?room=" + id;
         };
 
