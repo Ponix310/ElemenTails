@@ -73,6 +73,19 @@ const WEAPON_ELEMENT = {
   "Knuckles": "🔥", "Daggers": "⚡", "Staff": "💧", "Tome": "🌿",
   "Bow": "💨", "Sword & Shield": "🌿", "Greataxe": "🔥", "Spear": "🪨", "Katana": "💧",
 };
+// Images for the rolled-weapons chips
+const WEAPON_IMAGES_BASE = "./images/weapons";
+const WEAPON_IMAGES = {
+  "Bow": `${WEAPON_IMAGES_BASE}/bow.png`,
+  "Daggers": `${WEAPON_IMAGES_BASE}/daggers.png`,
+  "Greataxe": `${WEAPON_IMAGES_BASE}/greataxe.png`,
+  "Katana": `${WEAPON_IMAGES_BASE}/katana.png`,
+  "Knuckles": `${WEAPON_IMAGES_BASE}/knuckles.png`,
+  "Spear": `${WEAPON_IMAGES_BASE}/spear.png`,
+  "Staff": `${WEAPON_IMAGES_BASE}/staff.png`,
+  "Sword & Shield": `${WEAPON_IMAGES_BASE}/sword-shield.png`,
+  "Tome": `${WEAPON_IMAGES_BASE}/tome.png`,
+};
 const COLOR_STYLES = {
   blue:   { border: "border-sky-400",    text: "text-sky-200",    bg: "bg-sky-400/20" },
   green:  { border: "border-emerald-400",text: "text-emerald-200",bg: "bg-emerald-400/20" },
@@ -312,8 +325,18 @@ const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-2">Weapons Drawn</h2>
-                <div className="flex flex-wrap gap-2">
-                  {rolledWeapons.map((w) => (<span key={w} className="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-sm">{w}</span>))}
+                <div className="flex flex-wrap items-center gap-3">
+                  {rolledWeapons.map((w) => {
+                    const src = WEAPON_IMAGES[w];
+                    return (
+                      <div key={w} className="flex items-center gap-2">
+                        {src ? (
+                          <img src={src} alt={w} title={w} className="h-10 w-10 object-contain rounded-md border border-slate-700 bg-slate-800 p-1" />
+                        ) : (
+                          <span className="h-10 w-10 grid place-items-center rounded-md border border-slate-700 bg-slate-800 text-xl" title={w}>{WEAPON_ELEMENT[w] || "⚔️"}</span>
+                        )}</div>
+                    );
+                  })}
                 </div>
               </section>
 
