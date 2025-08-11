@@ -19,7 +19,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
     <script type="text/babel" data-presets="react">
-      // Same data constants
       const HERO_PRIMARY = { Fox: "🔥", Frog: "💧", Rabbit: "🌿", Raven: "💨", Wolf: "⚡", Bear: "🪨" };
       const CLASS_INFO = {
         Monk: { hero: "Fox", weapon: "Knuckles" },
@@ -55,7 +54,6 @@
         "Bow": "💨", "Sword & Shield": "🌿", "Greataxe": "🔥", "Spear": "🪨", "Katana": "💧",
       };
 
-      // Firebase init
       const firebaseConfig = {
         apiKey: "AIzaSyBaIjbm7dVNJkE7CJXPQOievhkiIF17rds",
         authDomain: "elementails.firebaseapp.com",
@@ -73,7 +71,6 @@
         const initRun = params.get("run") || "";
         const [runId, setRunId] = React.useState(initRun);
         const [run, setRun] = React.useState(null);
-        const [status, setStatus] = React.useState("");
 
         React.useEffect(() => {
           if (!runId) return;
@@ -91,14 +88,12 @@
           if (!run.seed)  patch.seed  = Math.random().toString(36).slice(2,10).toUpperCase();
           if (Object.keys(patch).length) await db.collection("runs").doc(runId).set(patch, { merge: true });
         };
-
         React.useEffect(() => { ensureRunFields(); }, [run?.id]);
 
         const nextFloor = async () => {
           if (!runId) return;
           await db.collection("runs").doc(runId).set({ floor: (run?.floor || 1) + 1, phase: "map" }, { merge: true });
         };
-
         const setPhase = async (p) => {
           if (!runId) return;
           await db.collection("runs").doc(runId).set({ phase: p }, { merge: true });
@@ -120,10 +115,8 @@
         const roster = run?.selections || {};
         const players = run?.players || [];
         const party = Object.keys(roster).map(cls => ({ cls, playerId: roster[cls], hero: CLASS_INFO[cls]?.hero, weapon: CLASS_INFO[cls]?.weapon }));
-
         const playerById = (id) => players.find(p => p.id === id);
-
-        const lobbyLink = run?.roomId ? `index.html?room=${run.roomId}` : "index.html";
+        const lobbyLink = run?.roomId ? `partyselect.html?room=${run.roomId}` : "partyselect.html";
 
         return (
           <div className="max-w-6xl mx-auto p-6 grid gap-4">
