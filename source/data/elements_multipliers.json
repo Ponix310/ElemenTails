@@ -1,50 +1,50 @@
 {
     "Fire": {
-        "Fire": 1.0,
+        "Fire": 0.5,
         "Water": 0.5,
-        "Plant": 1.5,
+        "Plant": 2.0,
         "Air": 1.0,
         "Lightning": 1.0,
         "Earth": 1.0
     },
     "Water": {
-        "Fire": 1.5,
-        "Water": 1.0,
+        "Fire": 2.0,
+        "Water": 0.5,
         "Plant": 0.5,
         "Air": 1.0,
         "Lightning": 1.0,
-        "Earth": 1.0
+        "Earth": 2.0
     },
     "Plant": {
         "Fire": 0.5,
-        "Water": 1.5,
-        "Plant": 1.0,
-        "Air": 1.0,
+        "Water": 2.0,
+        "Plant": 0.5,
+        "Air": 0.5,
         "Lightning": 1.0,
-        "Earth": 1.0
+        "Earth": 2.0
     },
     "Air": {
         "Fire": 1.0,
         "Water": 1.0,
-        "Plant": 1.0,
+        "Plant": 2.0,
         "Air": 1.0,
         "Lightning": 0.5,
-        "Earth": 1.5
+        "Earth": 1.0
     },
     "Lightning": {
         "Fire": 1.0,
-        "Water": 1.0,
-        "Plant": 1.0,
-        "Air": 1.5,
-        "Lightning": 1.0,
-        "Earth": 0.5
+        "Water": 2.0,
+        "Plant": 0.5,
+        "Air": 2.0,
+        "Lightning": 0.5,
+        "Earth": 0
     },
     "Earth": {
-        "Fire": 1.0,
+        "Fire": 2.0,
         "Water": 1.0,
-        "Plant": 1.0,
-        "Air": 0.5,
-        "Lightning": 1.5,
+        "Plant": 0.5,
+        "Air": 0,
+        "Lightning": 2.0,
         "Earth": 1.0
     }
 }
