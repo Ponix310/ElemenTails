@@ -232,6 +232,15 @@ const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
           }, { merge: true });
         };
 
+        const setMyColor = async (c) => {
+          if (!me || !roomId) return;
+          // Block if someone else already has this color
+          const taken = players.some(p => p.color === c && p.id !== me.id);
+          if (taken) return;
+          await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ color: c });
+          setMe(prev => prev ? { ...prev, color: c } : prev);
+        };
+
         const styleForOwner = (ownerId) => {
           const owner = players.find(p => p.id === ownerId);
           return owner ? COLOR_STYLES[owner.color] : null;
@@ -265,6 +274,29 @@ const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
                   <button onClick={leaveRoom} className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500">Leave Room</button>
                 </div>
               </header>
+
+              {me && (
+                <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
+                  <h2 className="font-semibold mb-2">My Settings</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-300">Color:</span>
+                    <div className="flex gap-1">
+                      {COLOR_OPTIONS.map((c)=>{
+                        const taken = players.some(p => p.color === c && p.id !== me.id);
+                        return (
+                          <button
+                            key={c}
+                            onClick={()=>!taken && setMyColor(c)}
+                            disabled={taken}
+                            className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${me?.color===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"} ${taken && me?.color!==c ? "opacity-40 cursor-not-allowed" : ""}`}
+                            title={taken && me?.color!==c ? `${c} taken` : c}>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {(!partyComplete && roomId && !locked) && (
                 <div className="rounded-xl border border-amber-500 bg-amber-500/10 text-amber-200 px-3 py-2">
