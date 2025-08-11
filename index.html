@@ -180,7 +180,9 @@
           return () => unsub();
         }, [runId]);
 
-        const partyFull = Object.keys(selections).length >= 4;
+        const partyCount = Object.keys(selections).length;
+        const partyFull = partyCount >= 4;
+        const partyComplete = partyCount === 4;
 
         const canSelectNew = (className) => {
           if (locked) return false;
@@ -219,24 +221,31 @@
         };
 
         // ---- Run snapshot creation ----
+        
         const startRun = async () => {
           if (!isHost || locked || !roomId) return;
-          const id = shortId();
-          const snapshot = {
-            roomId,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            rolledWeapons,
-            selections,
-            players,
-          };
-          await db.collection("runs").doc(id).set(snapshot);
-          await db.collection("rooms").doc(roomId).set({ locked: true, runId: id }, { merge: true });
-          setLocked(true);
-          setRunId(id);
-          const url = new URL(location.href);
-          url.searchParams.set("run", id);
-          history.replaceState(null, "", url.toString());
+          if (Object.keys(selections).length !== 4) { setStatus("Assign all 4 classes before starting."); return; }
+          try {
+            const id = shortId();
+            const snapshot = {
+              roomId,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              rolledWeapons,
+              selections,
+              players,
+            };
+            await db.collection("runs").doc(id).set(snapshot);
+            await db.collection("rooms").doc(roomId).set({ locked: true, runId: id }, { merge: true });
+            setLocked(true);
+            setRunId(id);
+            // Redirect to game.html with run id
+            location.href = "game.html?run=" + id;
+          } catch (e) {
+            console.error(e);
+            setStatus("Failed to start run: " + (e.message || e));
+          }
         };
+    
 
         // ---- Create / Join / Leave Room ----
         const createRoom = async () => {
@@ -342,7 +351,7 @@
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={reroll} disabled={!isHost || locked} className={`px-3 py-2 rounded-xl ${(!isHost || locked) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500"}`}>Re-roll Weapons</button>
                     <button onClick={clearAll} disabled={!isHost || locked} className={`px-3 py-2 rounded-xl ${(!isHost || locked) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600"}`}>Clear Picks</button>
-                    <button onClick={startRun} disabled={!isHost || locked || !roomId} className={`px-3 py-2 rounded-xl ${(!isHost || locked || !roomId) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-emerald-700 hover:bg-emerald-600"}`}>Start Run</button>
+                    <button onClick={startRun} disabled={!isHost || locked || !roomId || !partyComplete} className={`px-3 py-2 rounded-xl ${(!isHost || locked || !roomId || !partyComplete) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-emerald-700 hover:bg-emerald-600"}`}>Start Run</button>
                   </div>
                 )}
                 {runId && (
@@ -351,6 +360,12 @@
                   </div>
                 )}
               </header>
+              {(!partyComplete && roomId && !locked) && (
+                <div className="rounded-xl border border-amber-500 bg-amber-500/10 text-amber-200 px-3 py-2">
+                  Assign all 4 classes to start the run.
+                </div>
+              )}
+
 
               {locked && !runId && (
                 <div className="rounded-xl border border-emerald-500 bg-emerald-500/10 text-emerald-200 px-3 py-2">
