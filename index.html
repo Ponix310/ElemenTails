@@ -2,11 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="refresh" content="0; url=partyselect.html">
-    <title>Redirecting…</title>
+    <title>ElemenTails — Loading…</title>
+    <meta http-equiv="refresh" content="0; url=mainmenu.html">
+    <script>
+      (function() {
+        var target = 'mainmenu.html' + window.location.search + window.location.hash;
+        // Use replace so the back button doesn't come back here
+        window.location.replace(target);
+      })();
+    </script>
+    <style>
+      html,body{height:100%;margin:0;background:#0b1220;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
+      .wrap{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem}
+      a{color:#7dd3fc}
+    </style>
   </head>
   <body>
-    <p>Redirecting to <a href="partyselect.html">partyselect.html</a>…</p>
-    <script>location.replace("partyselect.html");</script>
+    <div class="wrap">
+      <div>Redirecting to Main Menu…</div>
+      <a href="mainmenu.html">Click here if you aren't redirected</a>
+    </div>
   </body>
 </html>
