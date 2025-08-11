@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ElemenTails — Party Select (Multiplayer)</title>
+    <title>ElemenTails — Party Select (Multiplayer + Runs)</title>
     <!-- Tailwind with safelist for dynamic colors -->
     <script>
       tailwind = window.tailwind || {};
@@ -30,7 +30,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase (compat SDK so we don't need a bundler) -->
+    <!-- Firebase (compat SDK) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
@@ -91,7 +91,6 @@
       const shortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
       // ================== FIREBASE ==================
-      // Your config (pasted from your screenshot)
       const firebaseConfig = {
         apiKey: "AIzaSyBaIjbm7dVNJkE7CJXPQOievhkiIF17rds",
         authDomain: "elementails.firebaseapp.com",
@@ -106,28 +105,53 @@
 
       // ================== APP ==================
       function PartySelect() {
-        // Local state
+        // ---- Shared UI state ----
         const [rolledWeapons, setRolledWeapons] = React.useState(() => randPickN(ALL_WEAPONS, 4));
-        const [players, setPlayers] = React.useState([]); // multiplayer: comes from Firestore
+        const [players, setPlayers] = React.useState([]);
         const [selections, setSelections] = React.useState({});
-        const [roomId, setRoomId] = React.useState(new URLSearchParams(location.search).get("room") || "");
+        const params = new URLSearchParams(location.search);
+        const initialRoom = params.get("room") || "";
+        const initialRun  = params.get("run") || "";
+        const [roomId, setRoomId] = React.useState(initialRoom);
+        const [runId, setRunId] = React.useState(initialRun);
         const [isHost, setIsHost] = React.useState(false);
         const [me, setMe] = React.useState(null); // {id, name, color}
         const [joinName, setJoinName] = React.useState("");
         const [joinColor, setJoinColor] = React.useState("blue");
+        const [locked, setLocked] = React.useState(false);
         const [status, setStatus] = React.useState("");
 
-        // Live listeners
+        // ---- Run view state (when viewing by run code) ----
+        const [runData, setRunData] = React.useState(null); // snapshot {players, selections, rolledWeapons, createdAt, roomId}
+
+        // ---- LocalStorage auto-rejoin convenience ----
+        React.useEffect(() => {
+          if (!roomId && !runId) {
+            const lsRoom = localStorage.getItem("et_room");
+            const lsPlayer = localStorage.getItem("et_player");
+            if (lsRoom && lsPlayer) {
+              setRoomId(lsRoom);
+              setStatus("Restored previous room from this browser.");
+            }
+          }
+        }, []);
+
+        React.useEffect(() => {
+          if (roomId) localStorage.setItem("et_room", roomId); else localStorage.removeItem("et_room");
+          if (me?.id) localStorage.setItem("et_player", me.id); else localStorage.removeItem("et_player");
+        }, [roomId, me?.id]);
+
+        // ---- Room listeners ----
         React.useEffect(() => {
           if (!roomId) return;
-          // Room state
           const unsubRoom = db.collection("rooms").doc(roomId).onSnapshot((snap) => {
             const data = snap.data();
             if (!data) return;
             setRolledWeapons(data.rolledWeapons || []);
             setSelections(data.selections || {});
+            setLocked(!!data.locked);
+            if (data.runId) setRunId(data.runId);
           });
-          // Players subcollection
           const unsubPlayers = db.collection("rooms").doc(roomId).collection("players")
             .orderBy("joinedAt", "asc")
             .onSnapshot((qs) => {
@@ -138,20 +162,29 @@
           return () => { unsubRoom(); unsubPlayers(); };
         }, [roomId]);
 
-        // Clean up my player doc on close
+        // ---- Run listener (view by code) ----
         React.useEffect(() => {
-          if (!roomId || !me?.id) return;
-          const onUnload = async () => {
-            try { await db.collection("rooms").doc(roomId).collection("players").doc(me.id).delete(); } catch(e){}
-          };
-          window.addEventListener("beforeunload", onUnload);
-          return () => window.removeEventListener("beforeunload", onUnload);
-        }, [roomId, me]);
+          if (!runId) return;
+          const unsub = db.collection("runs").doc(runId).onSnapshot((snap) => {
+            const data = snap.data();
+            if (!data) return;
+            setRunData(data);
+            if (!roomId) {
+              // When viewing a run without a room, render using snapshot data
+              setRolledWeapons(data.rolledWeapons || []);
+              setSelections(data.selections || {});
+              setPlayers(data.players || []);
+              setLocked(true);
+            }
+          });
+          return () => unsub();
+        }, [runId]);
 
         const partyFull = Object.keys(selections).length >= 4;
 
         const canSelectNew = (className) => {
-          if (selections[className]) return true; // transfer allowed
+          if (locked) return false;
+          if (selections[className]) return true;
           if (!me) return false;
           if (partyFull) return false;
           const { hero, weapon } = CLASS_INFO[className];
@@ -164,89 +197,136 @@
         };
 
         const handlePick = async (className) => {
+          if (locked) return;
           if (!me || !roomId) return;
           const ref = db.collection("rooms").doc(roomId);
           const path = `selections.${className}`;
           const newOwner = selections[className] === me.id ? firebase.firestore.FieldValue.delete() : me.id;
-          // Use update to support FieldValue.delete on nested field path
-          await ref.update({ [path]: newOwner }).catch(async (e)=>{
-            // If room doc doesn't exist yet (edge), create it
+          await ref.update({ [path]: newOwner }).catch(async () => {
             await ref.set({ selections: { [className]: me.id } }, { merge: true });
           });
         };
 
         const reroll = async () => {
-          if (!isHost || !roomId) return;
+          if (!isHost || locked || !roomId) return;
           const newRoll = randPickN(ALL_WEAPONS, 4);
           await db.collection("rooms").doc(roomId).set({ rolledWeapons: newRoll, selections: {} }, { merge: true });
         };
 
         const clearAll = async () => {
-          if (!isHost || !roomId) return;
+          if (!isHost || locked || !roomId) return;
           await db.collection("rooms").doc(roomId).set({ selections: {} }, { merge: true });
         };
 
+        // ---- Run snapshot creation ----
+        const startRun = async () => {
+          if (!isHost || locked || !roomId) return;
+          const id = shortId();
+          const snapshot = {
+            roomId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rolledWeapons,
+            selections,
+            players,
+          };
+          await db.collection("runs").doc(id).set(snapshot);
+          await db.collection("rooms").doc(roomId).set({ locked: true, runId: id }, { merge: true });
+          setLocked(true);
+          setRunId(id);
+          const url = new URL(location.href);
+          url.searchParams.set("run", id);
+          history.replaceState(null, "", url.toString());
+        };
+
+        // ---- Create / Join / Leave Room ----
         const createRoom = async () => {
-          const id = Math.random().toString(36).slice(2, 8).toUpperCase();
-          const ref = db.collection("rooms").doc(id);
-          await ref.set({ createdAt: firebase.firestore.FieldValue.serverTimestamp(), rolledWeapons: randPickN(ALL_WEAPONS,4), selections: {}, hostCreatedAt: Date.now() });
+          const id = shortId();
+          await db.collection("rooms").doc(id).set({
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rolledWeapons: randPickN(ALL_WEAPONS,4),
+            selections: {}, locked: false
+          });
           setRoomId(id);
           setIsHost(true);
           const url = new URL(location.href);
           url.searchParams.set("room", id);
+          url.searchParams.delete("run");
           history.replaceState(null, "", url.toString());
         };
 
-        
         const joinRoom = async () => {
+          if (locked) { setStatus('Room is locked.'); return; }
           if (!roomId) return;
           const myId = Math.random().toString(36).slice(2, 10);
-          // default name if blank: Player N where N is first unused number
+          // default name if blank: Player N (first unused number)
           const usedNums = players
             .map(p => (p.name || ""))
             .map(n => (n.match(/^Player\s+(\d+)$/i)?.[1]) ? parseInt(n.match(/^Player\s+(\d+)$/i)[1],10) : null)
             .filter(x => x !== null);
-          let nextNum = 1;
-          while (usedNums.includes(nextNum)) nextNum++;
+          let nextNum = 1; while (usedNums.includes(nextNum)) nextNum++;
           const finalName = (joinName.trim() || `Player ${nextNum}`);
           const p = { id: myId, name: finalName, color: joinColor, joinedAt: firebase.firestore.FieldValue.serverTimestamp() };
           await db.collection("rooms").doc(roomId).collection("players").doc(myId).set(p);
           setMe(p);
           setStatus("Joined room " + roomId);
         };
-    
-
-        const shareLink = roomId ? location.origin + location.pathname + "?room=" + roomId : "";
 
         const setMyColor = async (c) => {
           if (!me || !roomId) return;
-          try {
-            await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ color: c });
-            setMe(prev => prev ? { ...prev, color: c } : prev);
-          } catch (e) { console.error(e); }
+          await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ color: c });
+          setMe(prev => prev ? { ...prev, color: c } : prev);
         };
-        
+
         const [myNameDraft, setMyNameDraft] = React.useState("");
         React.useEffect(() => { setMyNameDraft(me?.name || ""); }, [me?.name]);
-
         const setMyName = async (newName) => {
           if (!me || !roomId) return;
-          const name = (newName || "").trim();
-          if (!name) return;
-          try {
-            await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ name });
-            setMe(prev => prev ? { ...prev, name } : prev);
-          } catch (e) { console.error(e); }
+          const name = (newName || "").trim(); if (!name) return;
+          await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ name });
+          setMe(prev => prev ? { ...prev, name } : prev);
         };
-        
 
-        // UI color style helper
+        const leaveRoom = async () => {
+          try {
+            if (roomId && me?.id) {
+              const ref = db.collection("rooms").doc(roomId);
+              const deletes = {};
+              Object.entries(selections || {}).forEach(([cls, pid]) => { if (pid === me.id) deletes[`selections.${cls}`] = firebase.firestore.FieldValue.delete(); });
+              if (Object.keys(deletes).length) { try { await ref.update(deletes); } catch(e) {} }
+              try { await ref.collection("players").doc(me.id).delete(); } catch (e) {}
+            }
+          } finally {
+            setMe(null); setIsHost(false); setPlayers([]); setSelections({}); setRoomId(""); setJoinName(""); setJoinColor("blue");
+            const url = new URL(location.href); url.searchParams.delete("room"); history.replaceState(null, "", url.toString());
+          }
+        };
+
+        // ---- Run viewer (enter code) ----
+        const [viewRunCode, setViewRunCode] = React.useState(runId || "");
+        const openRun = () => {
+          if (!viewRunCode.trim()) return;
+          setRunId(viewRunCode.toUpperCase());
+          const url = new URL(location.href);
+          url.searchParams.set("run", viewRunCode.toUpperCase());
+          url.searchParams.delete("room");
+          history.replaceState(null, "", url.toString());
+          setStatus("Viewing run " + viewRunCode.toUpperCase());
+        };
+        const exitRunView = () => {
+          setRunId(""); setRunData(null); setLocked(false);
+          const url = new URL(location.href);
+          url.searchParams.delete("run");
+          history.replaceState(null, "", url.toString());
+        };
+
+        const shareRoomLink = roomId ? location.origin + location.pathname + "?room=" + roomId : "";
+        const shareRunLink  = runId  ? location.origin + location.pathname + "?run="  + runId  : "";
+
         const styleForOwner = (ownerId) => {
           const owner = players.find(p => p.id === ownerId);
           return owner ? COLOR_STYLES[owner.color] : null;
         };
 
-        // Render
         return (
           <div className="min-h-screen w-full bg-slate-950 text-slate-100 p-4 md:p-8">
             <div className="max-w-6xl mx-auto grid gap-4">
@@ -254,96 +334,117 @@
               <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold">Elemen Tails — Party Select</h1>
-                  <p className="text-slate-300">Multiplayer via Firebase — create or join a room and share the link.</p>
+                  <p className="text-slate-300">
+                    {runId ? "Viewing saved run." : "Multiplayer via Firebase — create or join a room and share the link."}
+                  </p>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={reroll} disabled={!isHost} className={`px-3 py-2 rounded-xl ${isHost ? "bg-indigo-600 hover:bg-indigo-500" : "bg-slate-700 opacity-50 cursor-not-allowed"}`}>Re-roll Weapons</button>
-                  <button onClick={clearAll} disabled={!isHost} className={`px-3 py-2 rounded-xl ${isHost ? "bg-slate-700 hover:bg-slate-600" : "bg-slate-700 opacity-50 cursor-not-allowed"}`}>Clear Picks</button>
-                </div>
-              </header>
-
-              {/* Room controls */}
-              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4 space-y-3">
-                <h2 className="font-semibold">Room</h2>
-                <div className="flex flex-col md:flex-row gap-2 md:items-end">
-                  <button onClick={createRoom} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Create Room</button>
-                  <div className="flex items-end gap-2">
-                    <div>
-                      <label className="block text-sm text-slate-300 mb-1">Room code</label>
-                      <input value={roomId} onChange={e=>setRoomId(e.target.value.toUpperCase())} placeholder="e.g., ABC123" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-slate-300 mb-1">Your name</label>
-                      <input value={joinName} onChange={e=>setJoinName(e.target.value)} placeholder="e.g., Ponix" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-slate-300 mb-1">Color</label>
-                      <div className="flex gap-1">
-                        {COLOR_OPTIONS.map((c)=>(
-                          <button key={c} onClick={()=>setJoinColor(c)} className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${joinColor===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`} title={c}></button>
-                        ))}
-                      </div>
-                    </div>
-                    <button onClick={joinRoom} className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500">Join</button>
-                  </div>
-                </div>
-                {roomId && (
-                  <div className="text-sm text-slate-300 flex items-center gap-2">
-                    <span>Share link:</span>
-                    <input readOnly value={shareLink} className="w-full md:w-[420px] px-2 py-1 rounded bg-slate-800 border border-slate-700" onFocus={(e)=>e.target.select()} />
+                {!runId && (
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={reroll} disabled={!isHost || locked} className={`px-3 py-2 rounded-xl ${(!isHost || locked) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500"}`}>Re-roll Weapons</button>
+                    <button onClick={clearAll} disabled={!isHost || locked} className={`px-3 py-2 rounded-xl ${(!isHost || locked) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600"}`}>Clear Picks</button>
+                    <button onClick={startRun} disabled={!isHost || locked || !roomId} className={`px-3 py-2 rounded-xl ${(!isHost || locked || !roomId) ? "bg-slate-700 opacity-50 cursor-not-allowed" : "bg-emerald-700 hover:bg-emerald-600"}`}>Start Run</button>
                   </div>
                 )}
-                {status && <div className="text-slate-400 text-sm">{status}</div>}
-              </section>
+                {runId && (
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={exitRunView} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Exit Run View</button>
+                  </div>
+                )}
+              </header>
 
-              {/* Players present */}
-              
-              
-              <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
-                <h2 className="font-semibold mb-2">Players in Room</h2>
-                {players.length ? (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {players.map(p => (
+              {locked && !runId && (
+                <div className="rounded-xl border border-emerald-500 bg-emerald-500/10 text-emerald-200 px-3 py-2">
+                  Run is locked. Party selection is disabled.
+                </div>
+              )}
+
+              {/* Main menu if no room & not viewing a run */}
+              {!roomId && !runId && (
+                <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4 space-y-3">
+                  <h2 className="font-semibold">Main Menu</h2>
+                  <div className="flex flex-col md:flex-row gap-2 md:items-end">
+                    <button onClick={createRoom} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Create Room</button>
+                    <div className="flex items-end gap-2">
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Room code</label>
+                        <input value={roomId} onChange={e=>setRoomId(e.target.value.toUpperCase())} placeholder="e.g., ABC123" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Your name</label>
+                        <input value={joinName} onChange={e=>setJoinName(e.target.value)} placeholder="e.g., Ponix" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Color</label>
+                        <div className="flex gap-1">
+                          {COLOR_OPTIONS.map((c)=>(
+                            <button key={c} onClick={()=>setJoinColor(c)} className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${joinColor===c?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`} title={c}></button>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={joinRoom} className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500">Join</button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-700 pt-3">
+                    <div className="flex items-end gap-2">
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">View saved run</label>
+                        <input value={viewRunCode} onChange={e=>setViewRunCode(e.target.value.toUpperCase())} placeholder="RUN123" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                      </div>
+                      <button onClick={openRun} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Open Run</button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Room details when in a room */}
+              {roomId && !runId && (
+                <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4 space-y-3">
+                  <h2 className="font-semibold">Room</h2>
+                  <div className="text-sm text-slate-300 flex items-center gap-2">
+                    <span>Share room link:</span>
+                    <input readOnly value={shareRoomLink} className="w-full md:w-[420px] px-2 py-1 rounded bg-slate-800 border border-slate-700" onFocus={(e)=>e.target.select()} />
+                  </div>
+                  {locked && runId && (
+                    <div className="text-sm text-emerald-200 flex items-center gap-2">
+                      <span>Run ID:</span>
+                      <input readOnly value={runId} className="px-2 py-1 rounded bg-slate-800 border border-emerald-500 text-emerald-200 w-[140px]" onFocus={(e)=>e.target.select()} />
+                      <span>Share run link:</span>
+                      <input readOnly value={shareRunLink} className="w-full md:w-[420px] px-2 py-1 rounded bg-slate-800 border border-emerald-500 text-emerald-200" onFocus={(e)=>e.target.select()} />
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap items-center">
+                    {players.map((p) => (
                       <span key={p.id} className={`px-3 py-1 rounded-full border ${COLOR_STYLES[p.color].border} ${COLOR_STYLES[p.color].bg}`}>{p.name}</span>
                     ))}
                   </div>
-                ) : (
-                  <div className="text-slate-400 text-sm mb-3">(none yet)</div>
-                )}
-                {me && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-300">My color:</span>
-                      <div className="flex gap-1">
-                        {COLOR_OPTIONS.map((c)=>(
-                          <button
-                            key={c}
-                            onClick={()=>setMyColor(c)}
-                            title={c}
-                            className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${(me?.color===c)?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}
-                          ></button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <div>
-                        <label className="block text-sm text-slate-300 mb-1">My name</label>
-                        <input
-                          value={myNameDraft}
-                          onChange={e=>setMyNameDraft(e.target.value)}
-                          placeholder="Your name"
-                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none"
-                        />
-                      </div>
-                      <button onClick={()=>setMyName(myNameDraft)} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">Save</button>
-                    </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={joinRoom} className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500">Join</button>
+                    {me && (<button onClick={leaveRoom} className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500">Leave Room</button>)}
                   </div>
-                )}
-              </section>
-        
+                  {me && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-300">My color:</span>
+                        <div className="flex gap-1">
+                          {COLOR_OPTIONS.map((c)=>(
+                            <button key={c} onClick={()=>setMyColor(c)} title={c} className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${(me?.color===c)?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}></button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div>
+                          <label className="block text-sm text-slate-300 mb-1">My name</label>
+                          <input value={myNameDraft} onChange={e=>setMyNameDraft(e.target.value)} placeholder="Your name" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none" />
+                        </div>
+                        <button onClick={()=>setMyName(myNameDraft)} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Save</button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
 
-
-              {/* Weapons */}
+              {/* Weapons Drawn */}
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-2">Weapons Drawn</h2>
                 <div className="flex flex-wrap gap-2">
@@ -351,7 +452,7 @@
                 </div>
               </section>
 
-              {/* Class options */}
+              {/* Class options (only rolled weapons) */}
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-3">Choose classes</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -375,7 +476,6 @@
                               style={{ backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center", aspectRatio: "3 / 2" }}
                               className={`group relative w-full rounded-xl overflow-hidden border text-left transition-all ${style ? style.border : "border-slate-700 hover:border-emerald-400"} ${(!me || disabled) ? "opacity-60 grayscale" : ""}`}
                             >
-                              {/* bottom bar */}
                               <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent">
                                 <div className="flex items-end justify-between gap-2">
                                   <div className="font-semibold text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">{cls}</div>
@@ -425,6 +525,23 @@
                   )}
                 </div>
               </section>
+
+              {/* Run viewer footer when viewing a run */}
+              {runId && (
+                <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
+                  <h2 className="font-semibold mb-2">Run Info</h2>
+                  <div className="flex flex-col md:flex-row md:items-end gap-2">
+                    <div className="text-sm text-slate-300 flex items-center gap-2">
+                      <span>Run ID:</span>
+                      <input readOnly value={runId} className="px-2 py-1 rounded bg-slate-800 border border-slate-700 w-[140px]" onFocus={(e)=>e.target.select()} />
+                    </div>
+                    <div className="text-sm text-slate-300 flex items-center gap-2">
+                      <span>Share run link:</span>
+                      <input readOnly value={shareRunLink} className="w-full md:w-[420px] px-2 py-1 rounded bg-slate-800 border border-slate-700" onFocus={(e)=>e.target.select()} />
+                    </div>
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         );
