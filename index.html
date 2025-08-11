@@ -197,14 +197,24 @@
           history.replaceState(null, "", url.toString());
         };
 
+        
         const joinRoom = async () => {
-          if (!roomId || !joinName.trim()) return;
+          if (!roomId) return;
           const myId = Math.random().toString(36).slice(2, 10);
-          const p = { id: myId, name: joinName.trim(), color: joinColor, joinedAt: firebase.firestore.FieldValue.serverTimestamp() };
+          // default name if blank: Player N where N is first unused number
+          const usedNums = players
+            .map(p => (p.name || ""))
+            .map(n => (n.match(/^Player\s+(\d+)$/i)?.[1]) ? parseInt(n.match(/^Player\s+(\d+)$/i)[1],10) : null)
+            .filter(x => x !== null);
+          let nextNum = 1;
+          while (usedNums.includes(nextNum)) nextNum++;
+          const finalName = (joinName.trim() || `Player ${nextNum}`);
+          const p = { id: myId, name: finalName, color: joinColor, joinedAt: firebase.firestore.FieldValue.serverTimestamp() };
           await db.collection("rooms").doc(roomId).collection("players").doc(myId).set(p);
           setMe(p);
           setStatus("Joined room " + roomId);
         };
+    
 
         const shareLink = roomId ? location.origin + location.pathname + "?room=" + roomId : "";
 
@@ -215,6 +225,20 @@
             setMe(prev => prev ? { ...prev, color: c } : prev);
           } catch (e) { console.error(e); }
         };
+        
+        const [myNameDraft, setMyNameDraft] = React.useState("");
+        React.useEffect(() => { setMyNameDraft(me?.name || ""); }, [me?.name]);
+
+        const setMyName = async (newName) => {
+          if (!me || !roomId) return;
+          const name = (newName || "").trim();
+          if (!name) return;
+          try {
+            await db.collection("rooms").doc(roomId).collection("players").doc(me.id).update({ name });
+            setMe(prev => prev ? { ...prev, name } : prev);
+          } catch (e) { console.error(e); }
+        };
+        
 
         // UI color style helper
         const styleForOwner = (ownerId) => {
@@ -274,33 +298,49 @@
 
               {/* Players present */}
               
+              
               <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
                 <h2 className="font-semibold mb-2">Players in Room</h2>
                 {players.length ? (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {players.map(p => (
-                      <span key={p.id} className={\`px-3 py-1 rounded-full border \${COLOR_STYLES[p.color].border} \${COLOR_STYLES[p.color].bg}\`}>{p.name}</span>
+                      <span key={p.id} className={`px-3 py-1 rounded-full border ${COLOR_STYLES[p.color].border} ${COLOR_STYLES[p.color].bg}`}>{p.name}</span>
                     ))}
                   </div>
                 ) : (
                   <div className="text-slate-400 text-sm mb-3">(none yet)</div>
                 )}
                 {me && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-300">My color:</span>
-                    <div className="flex gap-1">
-                      {COLOR_OPTIONS.map((c)=>(
-                        <button
-                          key={c}
-                          onClick={()=>setMyColor(c)}
-                          title={c}
-                          className={\`w-8 h-8 rounded-full border \${COLOR_STYLES[c].border} \${(me?.color===c)?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}\`}
-                        ></button>
-                      ))}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-300">My color:</span>
+                      <div className="flex gap-1">
+                        {COLOR_OPTIONS.map((c)=>(
+                          <button
+                            key={c}
+                            onClick={()=>setMyColor(c)}
+                            title={c}
+                            className={`w-8 h-8 rounded-full border ${COLOR_STYLES[c].border} ${(me?.color===c)?COLOR_STYLES[c].bg:"bg-slate-800 border-slate-700"}`}
+                          ></button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">My name</label>
+                        <input
+                          value={myNameDraft}
+                          onChange={e=>setMyNameDraft(e.target.value)}
+                          placeholder="Your name"
+                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none"
+                        />
+                      </div>
+                      <button onClick={()=>setMyName(myNameDraft)} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">Save</button>
                     </div>
                   </div>
                 )}
               </section>
+        
 
 
               {/* Weapons */}
