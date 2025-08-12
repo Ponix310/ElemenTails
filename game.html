@@ -1,184 +1,33 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ElemenTails — Game</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-slate-950 text-slate-100">
-    <div id="root"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ElemenTails — Game</title>
+  <link rel="stylesheet" href="source/components/Layout.css">
+</head>
+<body>
+  <div id="app">
+    <main id="stage"></main>
+    <div id="mat-top-left" class="et-corner"></div>
+    <div id="mat-top-right" class="et-corner"></div>
+    <div id="mat-bottom-left" class="et-corner"></div>
+    <div id="mat-bottom-right" class="et-corner"></div>
+  </div>
 
-    <!-- React + ReactDOM + Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Firebase (compat SDK) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-
-    <script type="text/babel" data-presets="react">
-      const HERO_PRIMARY = { Fox: "🔥", Frog: "💧", Rabbit: "🌿", Raven: "💨", Wolf: "⚡", Bear: "🪨" };
-      const CLASS_INFO = {
-        Monk: { hero: "Fox", weapon: "Knuckles" },
-        Summoner: { hero: "Fox", weapon: "Tome" },
-        Assassin: { hero: "Fox", weapon: "Daggers" },
-        Wizard: { hero: "Frog", weapon: "Staff" },
-        Berserker: { hero: "Frog", weapon: "Knuckles" },
-        Myrmidon: { hero: "Frog", weapon: "Spear" },
-        Cleric: { hero: "Rabbit", weapon: "Tome" },
-        Druid: { hero: "Rabbit", weapon: "Staff" },
-        Bard: { hero: "Rabbit", weapon: "Bow" },
-        Archer: { hero: "Raven", weapon: "Bow" },
-        Battlemage: { hero: "Raven", weapon: "Katana" },
-        Reaper: { hero: "Raven", weapon: "Greataxe" },
-        Ninja: { hero: "Wolf", weapon: "Daggers" },
-        Samurai: { hero: "Wolf", weapon: "Katana" },
-        Paladin: { hero: "Wolf", weapon: "Sword & Shield" },
-        Lancer: { hero: "Bear", weapon: "Spear" },
-        Barbearian: { hero: "Bear", weapon: "Greataxe" },
-        Warrior: { hero: "Bear", weapon: "Sword & Shield" },
-      };
-      const BASE = "./images/class-portraits";
-      const CLASS_PORTRAITS = {
-        Monk: `${BASE}/monk.png`, Summoner: `${BASE}/summoner.png`, Assassin: `${BASE}/assassin.png`,
-        Wizard: `${BASE}/wizard.png`, Berserker: `${BASE}/berserker.png`, Myrmidon: `${BASE}/myrmidon.png`,
-        Cleric: `${BASE}/cleric.png`, Druid: `${BASE}/druid.png`, Bard: `${BASE}/bard.png`,
-        Archer: `${BASE}/archer.png`, Battlemage: `${BASE}/battlemage.png`, Reaper: `${BASE}/reaper.png`,
-        Ninja: `${BASE}/ninja.png`, Samurai: `${BASE}/samurai.png`, Paladin: `${BASE}/paladin.png`,
-        Lancer: `${BASE}/lancer.png`, Barbearian: `${BASE}/barbearian.png`, Warrior: `${BASE}/warrior.png`,
-      };
-      const WEAPON_ELEMENT = {
-        "Knuckles": "🔥", "Daggers": "⚡", "Staff": "💧", "Tome": "🌿",
-        "Bow": "💨", "Sword & Shield": "🌿", "Greataxe": "🔥", "Spear": "🪨", "Katana": "💧",
-      };
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyBaIjbm7dVNJkE7CJXPQOievhkiIF17rds",
-        authDomain: "elementails.firebaseapp.com",
-        projectId: "elementails",
-        storageBucket: "elementails.firebasestorage.app",
-        messagingSenderId: "497100635124",
-        appId: "1:497100635124:web:aeeb25ead96b84751e57a1",
-        measurementId: "G-H7ZXWH59GS"
-      };
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-
-      function GameApp() {
-        const params = new URLSearchParams(location.search);
-        const initRun = params.get("run") || "";
-        const [runId, setRunId] = React.useState(initRun);
-        const [run, setRun] = React.useState(null);
-
-        React.useEffect(() => {
-          if (!runId) return;
-          const unsub = db.collection("runs").doc(runId).onSnapshot((snap) => {
-            setRun({ id: runId, ...snap.data() });
-          });
-          return () => unsub();
-        }, [runId]);
-
-        const ensureRunFields = async () => {
-          if (!runId || !run) return;
-          const patch = {};
-          if (run.floor == null) patch.floor = 1;
-          if (!run.phase) patch.phase = "map";
-          if (!run.seed)  patch.seed  = Math.random().toString(36).slice(2,10).toUpperCase();
-          if (Object.keys(patch).length) await db.collection("runs").doc(runId).set(patch, { merge: true });
-        };
-        React.useEffect(() => { ensureRunFields(); }, [run?.id]);
-
-        const nextFloor = async () => {
-          if (!runId) return;
-          await db.collection("runs").doc(runId).set({ floor: (run?.floor || 1) + 1, phase: "map" }, { merge: true });
-        };
-        const setPhase = async (p) => {
-          if (!runId) return;
-          await db.collection("runs").doc(runId).set({ phase: p }, { merge: true });
-        };
-
-        if (!runId) {
-          return (
-            <div className="max-w-5xl mx-auto p-6 space-y-4">
-              <h1 className="text-2xl font-bold">Enter Run ID</h1>
-              <div className="flex gap-2">
-                <input className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 outline-none"
-                       placeholder="RUNCODE" onChange={e=>setRunId(e.target.value.toUpperCase())} />
-                <button className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500" onClick={() => setRunId(runId)}>Open</button>
-              </div>
-            </div>
-          );
-        }
-
-        const roster = run?.selections || {};
-        const players = run?.players || [];
-        const party = Object.keys(roster).map(cls => ({ cls, playerId: roster[cls], hero: CLASS_INFO[cls]?.hero, weapon: CLASS_INFO[cls]?.weapon }));
-        const playerById = (id) => players.find(p => p.id === id);
-        const lobbyLink = run?.roomId ? `partyselect.html?room=${run.roomId}` : "partyselect.html";
-
-        return (
-          <div className="max-w-6xl mx-auto p-6 grid gap-4">
-            <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">Elemen Tails — Run</h1>
-                <p className="text-slate-300">Run ID: <span className="font-mono">{runId}</span></p>
-                {run?.roomId && <a href={lobbyLink} className="text-sky-300 underline text-sm">Back to Lobby</a>}
-              </div>
-              <div className="flex flex-wrap gap-2 items-end">
-                <div className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm">Floor: <strong>{run?.floor ?? "…"}</strong></div>
-                <div className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm">Phase: <strong>{run?.phase ?? "…"}</strong></div>
-                <div className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm">Seed: <strong className="font-mono">{run?.seed ?? "…"}</strong></div>
-              </div>
-            </header>
-
-            <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
-              <h2 className="font-semibold mb-2">Party</h2>
-              {party.length ? (
-                <ul className="grid sm:grid-cols-2 gap-2">
-                  {party.map(({cls, playerId, hero, weapon}) => (
-                    <li key={cls} className="rounded-xl border border-slate-700 p-3 bg-slate-900/40 flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold">{cls}</div>
-                        <div className="text-sm text-slate-300">{hero} {HERO_PRIMARY[hero]} / {WEAPON_ELEMENT[weapon]} {weapon}</div>
-                      </div>
-                      <div className="text-sm text-slate-200">{playerById(playerId)?.name || "??"}</div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-slate-400 text-sm">(empty)</div>
-              )}
-            </section>
-
-            <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
-              <h2 className="font-semibold mb-2">Controls (prototype)</h2>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => setPhase('map')} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Phase: Map</button>
-                <button onClick={() => setPhase('encounter')} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Phase: Encounter</button>
-                <button onClick={() => setPhase('shop')} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Phase: Shop</button>
-                <button onClick={() => setPhase('boss')} className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Phase: Boss</button>
-                <button onClick={nextFloor} className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Next Floor</button>
-              </div>
-              <p className="text-slate-400 text-xs mt-2">We can lock these to host-only later using auth/claims.</p>
-            </section>
-
-            <section className="bg-slate-900/60 rounded-2xl p-3 md:p-4">
-              <h2 className="font-semibold mb-2">Coming next</h2>
-              <ul className="list-disc ml-5 text-slate-300 space-y-1 text-sm">
-                <li>Map node generation from seed (branching paths).</li>
-                <li>Encounter schema (enemies, rewards) & battle UI.</li>
-                <li>Inventory & meta-progression saves.</li>
-                <li>Permissions: host-only writes, player actions via turn events.</li>
-              </ul>
-            </section>
-          </div>
-        );
+  <!-- Lightweight boot: load state (from localStorage if present) and default to map -->
+  <script src="source/state/init.js"></script>
+  <script src="source/components/CornerMats.js" defer></script>
+  <script src="source/utils/loadScreen.js" defer></script>
+  <script>
+    // Force Map screen on first load of this shell.
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof loadScreen === 'function') loadScreen('map');
+      if (window.ET_UI && typeof window.ET_UI.refreshCorners === 'function') {
+        window.ET_UI.refreshCorners();
       }
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<GameApp />);
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
