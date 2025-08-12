@@ -166,8 +166,10 @@
     
     // ---------- Navigation helpers ----------
     function routeToPartySelect(roomId){
-      const candidates = [
-        `party-select.html?roomId=${roomId}`,
+  const url = `partyselect.html?roomId=${roomId}`;  // exact filename
+  if (window.Router && typeof Router.to === 'function') { Router.to(url); return; }
+  window.location.href = url;
+}`,
         `party.html?roomId=${roomId}`,
         `PartySelect.html?roomId=${roomId}`,
         `Party.html?roomId=${roomId}`
@@ -236,8 +238,8 @@
           const loadBtn = document.createElement('button'); loadBtn.className='btn'; loadBtn.textContent='Load';
           loadBtn.onclick = () => {
             if (window.Session && Session.setRoomCode) Session.setRoomCode(r.id);
-            if (window.Router && Router.to) Router.to('lobby.html?roomId=' + r.id);
-            else location.href = 'lobby.html?roomId=' + r.id;
+            if (window.Router && Router.to) Router.to('partyselect.html?roomId=' + r.id);
+            else location.href = 'partyselect.html?roomId=' + r.id;
           };
 
           const delBtn = document.createElement('button'); delBtn.className='btn ghost icon-btn'; delBtn.title='Delete save';
@@ -415,8 +417,8 @@
               if (includesMe(joinable)) {
                 ensureSessionBtn('Rejoin Game', true, () => {
                   if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
-                  if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
-                  else location.href = 'lobby.html?roomId='+joinable.id;
+                  if (window.Router && Router.to) Router.to('partyselect.html?roomId='+joinable.id);
+                  else location.href = 'partyselect.html?roomId='+joinable.id;
                 });
               } else {
                 ensureSessionBtn('In Game', false);
@@ -425,8 +427,8 @@
               const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
               ensureSessionBtn('In Party Select', roomHasRoom, () => {
                 if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
-                if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
-                else location.href = 'lobby.html?roomId='+joinable.id;
+                if (window.Router && Router.to) Router.to('partyselect.html?roomId='+joinable.id);
+                else location.href = 'partyselect.html?roomId='+joinable.id;
               });
             } else {
               ensureSessionBtn('In Game', false);
@@ -435,8 +437,8 @@
             if (includesMe(latest)) {
               ensureSessionBtn('Rejoin Game', true, () => {
                 if (window.Session && Session.setRoomCode) Session.setRoomCode(latest.id);
-                if (window.Router && Router.to) Router.to('lobby.html?roomId='+latest.id);
-                else location.href = 'lobby.html?roomId='+latest.id;
+                if (window.Router && Router.to) Router.to('partyselect.html?roomId='+latest.id);
+                else location.href = 'partyselect.html?roomId='+latest.id;
               });
             } else {
               ensureSessionBtn('In Game', false);
