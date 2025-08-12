@@ -21,12 +21,8 @@
     .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media (max-width:700px){.two{grid-template-columns:1fr}}
     .muted{color:#9aa4b2;font-size:12px}
-
-    /* Two-column layout: SP/MP left, Friends right */
     .columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     @media (max-width:1000px){ .columns{grid-template-columns:1fr} }
-
-    /* Friends UI styles */
     .et-friends { display:grid; gap:10px; }
     .et-friends-row { display:flex; gap:8px; align-items:center; }
     .et-friends-input { flex:1; padding:10px; border-radius:10px; border:1px solid #2a3147; background:#0f1320; color:#fff }
@@ -43,7 +39,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
-    // Initialize Firebase (compat API so our UI can use firebase.auth()/firestore())
     const firebaseConfig = {
       apiKey: "AIzaSyBa1ybMDvNjKE7CJOXPiOevhiK1FI77ds",
       authDomain: "elementails.firebaseapp.com",
@@ -64,7 +59,7 @@
     </header>
 
     <div class="columns">
-      <!-- LEFT: SP/MP card (unchanged) -->
+      <!-- LEFT: SP/MP -->
       <section class="card grid">
         <div class="row">
           <button class="btn primary" onclick="Router.to('partyselect.html')">Singleplayer: New Run</button>
@@ -86,172 +81,113 @@
         </div>
       </section>
 
-      <!-- RIGHT: Friends panel -->
+      <!-- RIGHT: Friends -->
       <section class="card">
         <h2 style="margin:0 0 10px 0;font-size:18px">Friends</h2>
-        <div id="friends-panel"></div>
+        <div class="et-friends">
+          <div class="et-friends-row">
+            <input id="et-friend-input" class="et-friends-input" type="text" placeholder="Enter username">
+            <button id="et-friend-add" class="et-friends-btn">Add</button>
+          </div>
+          <div id="et-friends-status" class="et-friends-status et-muted"></div>
+          <div id="et-friends-list" class="et-friends-list"></div>
+        </div>
         <div class="muted" style="margin-top:8px">Add friends by <strong>username</strong>. No friend codes.</div>
       </section>
     </div>
   </div>
 
-  <!-- Your existing scripts -->
+  <!-- Existing scripts -->
   <script src="source/state/router.js"></script>
   <script src="source/state/session.js"></script>
 
-  <!-- Inline Friends UI (Firebase-powered) -->
+  <!-- Friends logic -->
   <script>
-  (function(){
-    const norm = s => String(s||'').trim();
-    const lower = s => norm(s).toLowerCase();
+    (function(){
+      const norm = s => String(s||'').trim();
+      const lower = s => norm(s).toLowerCase();
+      const statusEl = document.getElementById('et-friends-status');
+      const listEl = document.getElementById('et-friends-list');
+      const inputEl = document.getElementById('et-friend-input');
+      const addBtn  = document.getElementById('et-friend-add');
 
-    let statusEl, listEl, inputEl, addBtn;
-    function setStatus(msg, tone=null){
-      if(!statusEl) return;
-      statusEl.textContent = msg || '';
-      statusEl.className = 'et-friends-status ' + (tone===true ? 'et-ok' : tone===false ? 'et-err' : 'et-muted');
-      console.log('[FriendsUI]', msg);
-    }
-    function hasFirebase(){ return !!(window.firebase && firebase.auth && firebase.firestore); }
+      function setStatus(msg, ok=null){
+        statusEl.textContent = msg || '';
+        statusEl.className = 'et-friends-status ' + (ok===true ? 'et-ok' : ok===false ? 'et-err' : 'et-muted');
+      }
+      function hasFirebase(){ return !!(window.firebase && firebase.auth && firebase.firestore); }
 
-    const FB = (function(){
-      async function addByUsername(u){
-        if(!hasFirebase()) return {ok:false,error:'no_firebase'};
+      async function add(){
+        const v = norm(inputEl.value);
+        if(!v){ setStatus('Type a username.', false); return; }
+        if(!hasFirebase()){ setStatus('Firebase not loaded.', false); return; }
         const auth=firebase.auth(), db=firebase.firestore();
-        const me=auth.currentUser; if(!me) return {ok:false,error:'no_auth'};
-        const uname=norm(u); const unameLower=lower(uname);
-        const claim=await db.collection('usernames').doc(unameLower).get();
-        if(!claim.exists) return {ok:false,error:'not_found'};
-        const friendUid=claim.data()?.uid; if(!friendUid) return {ok:false,error:'not_found'};
-        if(friendUid===me.uid) return {ok:false,error:'self'};
-        const prof=await db.collection('users').doc(friendUid).get();
-        const display = prof.exists ? (prof.data()?.username || uname) : uname;
-        const ref=db.collection('users').doc(me.uid).collection('friends').doc(friendUid);
-        const snap=await ref.get();
-        if(snap.exists) return {ok:false,error:'exists'};
-        await ref.set({ uid: friendUid, username: display, usernameLower: unameLower, addedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        return {ok:true};
+        const me=auth.currentUser; if(!me){ setStatus('Sign in first.', false); return; }
+
+        try{
+          setStatus('Searching…', null);
+          const uLower = lower(v);
+          const claim = await db.collection('usernames').doc(uLower).get();
+          if(!claim.exists){ setStatus('User not found.', false); return; }
+          const friendUid = claim.data() && claim.data().uid;
+          if(!friendUid){ setStatus('User not found.', false); return; }
+          if(friendUid === me.uid){ setStatus('That’s you 🙂', false); return; }
+
+          const prof = await db.collection('users').doc(friendUid).get();
+          const username = prof.exists ? (prof.data().username || v) : v;
+
+          const ref = db.collection('users').doc(me.uid).collection('friends').doc(friendUid);
+          const snap = await ref.get();
+          if(snap.exists){ setStatus('Already in your friends.', true); return; }
+
+          await ref.set({
+            uid: friendUid,
+            username: username,
+            usernameLower: uLower,
+            addedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          inputEl.value='';
+          setStatus('Friend added ✔', true);
+          await refresh();
+        }catch(e){
+          console.error(e); setStatus('Could not add friend.', false);
+        }
       }
-      async function list(){
-        if(!hasFirebase()) return [];
+
+      async function refresh(){
+        listEl.innerHTML = '';
+        if(!hasFirebase()){ setStatus('Firebase not detected — include SDK.', false); return; }
         const auth=firebase.auth(), db=firebase.firestore();
-        const me=auth.currentUser; if(!me) return [];
-        const qs=await db.collection('users').doc(me.uid).collection('friends').orderBy('usernameLower').get();
-        return qs.docs.map(d => Object.assign({id:d.id}, d.data()));
+        const me=auth.currentUser; if(!me){ setStatus('Sign in first.', false); return; }
+        try{
+          const qs = await db.collection('users').doc(me.uid).collection('friends').orderBy('usernameLower').get();
+          const items = qs.docs.map(d => Object.assign({id:d.id}, d.data()));
+          if(!items.length){ listEl.innerHTML = '<div class="et-muted">(none yet)</div>'; return; }
+          items.forEach(it => {
+            const row = document.createElement('div'); row.className = 'et-friends-item';
+            const span = document.createElement('span'); span.textContent = it.username || it.usernameLower || it.id;
+            const rm = document.createElement('button'); rm.className='et-friends-btn secondary'; rm.textContent='Remove';
+            rm.onclick = async ()=>{
+              try{ await db.collection('users').doc(me.uid).collection('friends').doc(it.id).delete();
+                setStatus('Removed.', true); refresh(); } catch(err){ console.error(err); setStatus('Could not remove.', false); }
+            };
+            const btns = document.createElement('div'); btns.appendChild(rm);
+            row.append(span, btns); listEl.appendChild(row);
+          });
+          setStatus('Ready.', true);
+        }catch(e){
+          console.error(e); setStatus('Could not load friends.', false);
+        }
       }
-      async function remove(id){
-        if(!hasFirebase()) return {ok:false,error:'no_firebase'};
-        const auth=firebase.auth(), db=firebase.firestore();
-        const me=auth.currentUser; if(!me) return {ok:false,error:'no_auth'};
-        await db.collection('users').doc(me.uid).collection('friends').doc(id).delete();
-        return {ok:true};
-      }
-      function watch(callback, errorCb){
-        if(!hasFirebase()) return ()=>{};
-        const auth=firebase.auth(), db=firebase.firestore();
-        return auth.onAuthStateChanged(user=>{
-          if(!user){ callback([]); return; }
-          const unsub = db.collection('users').doc(user.uid).collection('friends').orderBy('usernameLower')
-            .onSnapshot(s=>{ callback(s.docs.map(d=>Object.assign({id:d.id}, d.data()))); }, errorCb);
-          callback.__unsub && callback.__unsub();
-          callback.__unsub = ()=>{ try{unsub();}catch{} };
-        });
-      }
-      return { addByUsername, list, remove, watch };
+
+      document.getElementById('et-friend-add').addEventListener('click', add);
+      inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') add(); });
+      document.addEventListener('DOMContentLoaded', refresh);
+      // Also refresh after auth state changes
+      if(hasFirebase()){ firebase.auth().onAuthStateChanged(()=> refresh()); }
     })();
 
-    function render(container){
-      container.innerHTML = '';
-      const row = document.createElement('div'); row.className='et-friends-row';
-      inputEl = document.createElement('input'); inputEl.className='et-friends-input'; inputEl.placeholder='Enter username';
-      inputEl.onkeydown=(e)=>{ if(e.key==='Enter') onAdd(); };
-      addBtn = document.createElement('button'); addBtn.className='et-friends-btn'; addBtn.textContent='Add'; addBtn.onclick=onAdd;
-      row.append(inputEl, addBtn);
-
-      statusEl = document.createElement('div'); statusEl.className='et-friends-status et-muted'; statusEl.textContent='Friends ready.';
-      listEl = document.createElement('div'); listEl.className='et-friends-list';
-
-      const wrap = document.createElement('div'); wrap.className='et-friends';
-      wrap.append(row, statusEl, listEl);
-      container.append(wrap);
-
-      refresh();
-      try{ FB.watch(items=>{ renderList(items); setStatus('Realtime list updated.', true); }, err=>{ console.error(err); setStatus('Realtime failed.', false); }); }catch(e){ console.error(e); }
-    }
-
-    async function onAdd(){
-      setStatus('Processing…', null);
-      addBtn.disabled = true;
-      try{
-        const v = norm(inputEl.value);
-        const res = await FB.addByUsername(v);
-        if(!res.ok){
-          const msg = res.error==='not_found' ? 'User not found.'
-                    : res.error==='exists'    ? 'Already in your friends.'
-                    : res.error==='self'      ? 'That’s you 🙂'
-                    : res.error==='no_auth'   ? 'Sign in first.'
-                    : res.error==='no_firebase'? 'Firebase not loaded.'
-                    : 'Could not add friend.';
-          setStatus(msg, false);
-        }else{
-          setStatus('Friend added ✔', true);
-          inputEl.value='';
-          refresh();
-        }
-      }catch(e){
-        console.error(e);
-        setStatus('Unexpected error adding friend.', false);
-      }finally{
-        addBtn.disabled = false;
-      }
-    }
-
-    async function refresh(){
-      try{
-        const items = await FB.list();
-        renderList(items);
-        if(!hasFirebase()){ setStatus('Firebase not detected — include SDK.', false); }
-        else { setStatus('Ready.', true); }
-      }catch(e){
-        console.error(e);
-        setStatus('Could not load friends.', false);
-      }
-    }
-
-    function renderList(items){
-      listEl.innerHTML = '';
-      if(!items || !items.length){
-        const empty = document.createElement('div'); empty.className='et-muted'; empty.textContent='(none yet)';
-        listEl.append(empty);
-        return;
-      }
-      items.forEach(it=>{
-        const row = document.createElement('div'); row.className='et-friends-item';
-        const name = it.username || it.usernameLower || it.id;
-        const span = document.createElement('span'); span.textContent = name;
-        const btns = document.createElement('div');
-        const rm = document.createElement('button'); rm.className='et-friends-btn secondary'; rm.textContent='Remove';
-        rm.onclick = ()=> remove(it.id);
-        btns.append(rm);
-        row.append(span, btns);
-        listEl.append(row);
-      });
-    }
-
-    async function remove(id){
-      try{ await FB.remove(id); setStatus('Removed.', true); refresh(); }
-      catch(e){ console.error(e); setStatus('Could not remove.', false); }
-    }
-
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const panel = document.getElementById('friends-panel');
-      if(panel) render(panel);
-    });
-  })();
-  </script>
-
-  <script>
-    // Hydrate inputs from saved session
+    // Prefill SP/MP inputs
     document.getElementById('playerName').value = Session.getName() || '';
     document.getElementById('lastRoom').value = Session.getRoomCode() || '';
   </script>
