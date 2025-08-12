@@ -8,7 +8,7 @@
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:1100px;margin:40px auto;padding:0 16px;}
+    .wrap{max-width:900px;margin:40px auto;padding:0 16px;}
     header{margin-bottom:24px}
     h1{margin:0 0 6px 0;font-size:32px}
     .card{background:var(--panel);padding:20px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
@@ -22,11 +22,6 @@
     .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media (max-width:700px){.two{grid-template-columns:1fr}}
     .muted{color:var(--muted);font-size:12px}
-
-    /* New: two-column main area for Friends + Play options */
-    .columns{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
-    @media (max-width:1000px){ .columns{grid-template-columns:1fr} }
-    .subtle{opacity:.8}
   </style>
 </head>
 <body>
@@ -36,51 +31,34 @@
       <div class="muted">Prototype menu • Singleplayer & Multiplayer lobby</div>
     </header>
 
-    <div class="columns">
-      <!-- FRIENDS PANEL (username-based) -->
-      <section class="card">
-        <h2 style="margin:0 0 10px 0;font-size:18px">Friends</h2>
-        <div id="friends-panel"></div>
-        <div class="muted" style="margin-top:8px">Add friends by <strong>username</strong>. No friend codes.</div>
-      </section>
-
-      <!-- PLAY OPTIONS -->
-      <section class="card grid">
-        <div class="row">
-          <button class="btn primary" onclick="Router.to('partyselect.html')">Singleplayer: New Run</button>
-          <button class="btn" onclick="Router.to('lobby.html')">Multiplayer</button>
+    <section class="card grid">
+      <div class="row">
+        <button class="btn primary" onclick="Router.to('partyselect.html')">Singleplayer: New Run</button>
+        <button class="btn" onclick="Router.to('lobby.html')">Multiplayer</button>
+      </div>
+      <div class="two">
+        <div>
+          <label for="playerName">Player name</label>
+          <input id="playerName" type="text" placeholder="Ponix" oninput="Session.setName(this.value)">
         </div>
-        <div class="two">
-          <div>
-            <label for="playerName">Player name</label>
-            <input id="playerName" type="text" placeholder="Ponix" oninput="Session.setName(this.value)">
-          </div>
-          <div>
-            <label for="lastRoom">Last room</label>
-            <input id="lastRoom" type="text" placeholder="Auto-saved…" oninput="Session.setRoomCode(this.value)">
-          </div>
+        <div>
+          <label for="lastRoom">Last room</label>
+          <input id="lastRoom" type="text" placeholder="Auto-saved…" oninput="Session.setRoomCode(this.value)">
         </div>
-        <div class="row">
-          <button class="btn" onclick="Session.mockFill()">Quick-fill demo</button>
-          <button class="btn" onclick="localStorage.clear();alert('Cleared localStorage for ElemenTails');">Clear saved</button>
-        </div>
-      </section>
-    </div>
+      </div>
+      <div class="row">
+        <button class="btn" onclick="Session.mockFill()">Quick-fill demo</button>
+        <button class="btn" onclick="localStorage.clear();alert('Cleared localStorage for ElemenTails');">Clear saved</button>
+      </div>
+    </section>
   </div>
 
-  <!-- existing scripts -->
   <script src="source/state/router.js"></script>
   <script src="source/state/session.js"></script>
-
-  <!-- new: friends state + UI helper -->
-  <script src="source/state/friends.js"></script>
-  <script src="source/components/FriendsUsernameUI.js"></script>
-
   <script>
     // Hydrate inputs from saved session
     document.getElementById('playerName').value = Session.getName() || '';
     document.getElementById('lastRoom').value = Session.getRoomCode() || '';
-    // FriendsUsernameUI auto-mounts itself into #friends-panel on DOMContentLoaded
   </script>
 </body>
 </html>
