@@ -79,10 +79,14 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // Final list of portrait keys based on your screenshot (pngs)
     const PORTRAITS = [
-      'druid','summoner','paladin','reaper','fox','rabbit','wolf','raven','mage','monk','rogue','knight'
+      'archer','assassin','barbarian','bard','battlemage','berserker','cleric',
+      'druid','lancer','monk','myrmidon','ninja','paladin','reaper',
+      'samurai','summoner','warrior','wizard'
     ];
-    const portraitUrl = key => `assets/portraits/${key}.jpg`; // fallback colors if image missing
+    // Point at your folder: /images/class-portraits/<key>.png
+    const portraitUrl = key => `images/class-portraits/${key}.png`;
 
     // ---------- Auth UI ----------
     document.addEventListener('DOMContentLoaded', () => {
@@ -169,7 +173,6 @@
     }
 
     function fallbackGradient(uid){
-      // Deterministic color from uid (simple hash)
       let h=0; for (let i=0;i<uid.length;i++) h=(h*31+uid.charCodeAt(i))>>>0;
       const a = h%360, b=(h>>8)%360;
       return `linear-gradient(135deg, hsl(${a} 45% 18%), hsl(${b} 45% 22%))`;
@@ -179,7 +182,7 @@
       try{
         const p = await getDoc(doc(db,'publicProfiles', uid));
         if (p.exists() && p.data().portrait) return p.data().portrait;
-      }catch(e){/* ignore */}
+      }catch(e){}
       return null;
     }
 
@@ -190,30 +193,25 @@
       const me = auth.currentUser;
       for (const it of items){
         const tile = document.createElement('div'); tile.className='friend-tile';
-        // bg
         const bg = document.createElement('div'); bg.className='friend-bg';
         const portraitKey = await fetchPublicPortrait(it.id);
         if (portraitKey) bg.style.backgroundImage = `url('${portraitUrl(portraitKey)}')`;
         else bg.style.background = fallbackGradient(it.id);
         tile.appendChild(bg);
 
-        // bottom bar
         const body = document.createElement('div'); body.className='friend-body';
         const name = document.createElement('div'); name.className='friend-name'; name.textContent = it.username || it.usernameLower || it.id;
         const right = document.createElement('div'); right.className='friend-cta';
 
-        // session pill and buttons
         const pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent='Checking…';
         const join = document.createElement('button'); join.className='friend-btn join'; join.textContent='Join'; join.style.display='none';
         const rm   = document.createElement('button'); rm.className='friend-btn'; rm.textContent='Remove';
 
-        // remove
         rm.onclick = async () => {
           try{ await deleteDoc(doc(db, 'users', me.uid, 'friends', it.id)); setStatus('Removed.', true); }
           catch{ setStatus('Could not remove.', false); }
         };
 
-        // lookup rooms
         try{
           const q1 = query(collection(db,'rooms'), where('participantUids','array-contains', it.id), orderBy('createdAt','desc'), limit(5));
           const ss = await getDocs(q1);
@@ -245,7 +243,6 @@
       }
     }
 
-    // live friends
     let unsub=null;
     function refreshFriends(){
       if (unsub) try{unsub();}catch{}
@@ -276,7 +273,6 @@
         c.onclick = async () => {
           try{
             await setDoc(doc(db,'publicProfiles', me.uid), { uid: me.uid, portrait: key, updatedAt: serverTimestamp() }, { merge:true });
-            // update UI
             [...grid.children].forEach(el=>el.classList.remove('active'));
             c.classList.add('active');
           }catch(e){
@@ -323,7 +319,7 @@
             <div class="muted">My Banner (Class Portrait)</div>
           </div>
           <div id="avatar-choices" class="avatar-choices"></div>
-          <div class="muted">Tip: place images at <code>assets/portraits/&lt;key&gt;.jpg</code>. Missing images will fall back to a color gradient.</div>
+          <div class="muted">Looks for files at <code>images/class-portraits/&lt;key&gt;.png</code>. Missing images fall back to a gradient.</div>
         </div>
       </section>
 
