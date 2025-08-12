@@ -151,8 +151,8 @@
           createdAt: serverTimestamp(), updatedAt: serverTimestamp()
         });
         if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
-        if (window.Router && Router.to) Router.to('lobby.html?roomId=' + ref.id);
-        else location.href = 'lobby.html?roomId=' + ref.id;
+        if (window.Router && Router.to) routeToPartySelect(ref.id);
+        else routeToPartySelect(ref.id);
       } catch (e) { alert('Could not create session.'); }
     }
 
@@ -163,7 +163,30 @@
     }
 
     
+    
+    // ---------- Navigation helpers ----------
+    function routeToPartySelect(roomId){
+      const candidates = [
+        `party-select.html?roomId=${roomId}`,
+        `party.html?roomId=${roomId}`,
+        `PartySelect.html?roomId=${roomId}`,
+        `Party.html?roomId=${roomId}`
+      ];
+      // prefer Router if present
+      for (const url of candidates){
+        try{
+          if (window.Router && typeof Router.to === 'function'){
+            Router.to(url);
+            return;
+          }
+        }catch{}
+      }
+      // fall back to plain navigation (first candidate)
+      window.location.href = candidates[0];
+    }
+
     // ---------- Create Session (Single/Multiplayer) ----------
+    
     async function createSession(visibility){
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       try {
@@ -173,8 +196,8 @@
           createdAt: serverTimestamp(), updatedAt: serverTimestamp()
         });
         if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
-        if (window.Router && Router.to) Router.to('lobby.html?roomId=' + ref.id);
-        else location.href = 'lobby.html?roomId=' + ref.id;
+        if (window.Router && Router.to) routeToPartySelect(ref.id);
+        else routeToPartySelect(ref.id);
       } catch (e) { alert('Could not create session.'); }
     }
 
