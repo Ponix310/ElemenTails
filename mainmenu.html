@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
-  <!-- Main Menu v3: banner top-right + vertical friends + 3:2 images + Edit Profile -->
+  <!-- Main Menu v4: banner top-right + vertical friends + 3:2 images + Edit Profile + Status Button logic -->
 
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
@@ -17,6 +17,8 @@
     .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
     .btn:hover{filter:brightness(1.08)}
     .btn.primary{background:var(--accent);color:#06241e}
+    .btn.ghost{background:#1e2433;color:#cbd5e1}
+    .btn[disabled]{opacity:.55;cursor:not-allowed;filter:none}
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
     .grid{display:grid;gap:12px}
     .row{display:flex;gap:10px;flex-wrap:wrap}
@@ -40,8 +42,10 @@
     .friend-main{display:flex;justify-content:space-between;align-items:center; gap:10px; flex:1}
     .friend-name{font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.6)}
     .friend-pill{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #2a3147;background:#0f1220;color:#cbd5e1;margin-right:6px}
-    .friend-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer}
-    .friend-btn.join{background:var(--accent);color:#06241e;font-weight:800}
+    .friend-actions{display:flex;align-items:center;gap:8px}
+    .status-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer;font-weight:700;min-width:120px;text-align:center}
+    .status-join{background:var(--accent);color:#06241e}
+    .status-disabled{background:#1e2433;color:#9aa4b2;cursor:not-allowed;opacity:.7}
   </style>
 
   <!-- Firebase v12 (modular) -->
@@ -91,6 +95,7 @@
           namePill.style.display = 'inline-block';
           loginBtn.style.display = 'none';
           logoutBtn.style.display = 'inline-block';
+          await upsertPresence('MainMenu');  // mark me online on Main Menu
           renderMyBanner();
           refreshFriends();
         } else {
@@ -110,6 +115,18 @@
       document.getElementById('edit-profile-btn').addEventListener('click', () => {
         if (window.Router && Router.to) Router.to('profile.html');
         else location.href = 'profile.html';
+      });
+
+      // handle visibility changes to keep presence fresh
+      document.addEventListener('visibilitychange', () => {
+        const me = auth.currentUser; if(!me) return;
+        if (document.visibilityState === 'visible') upsertPresence('MainMenu');
+      });
+      window.addEventListener('beforeunload', async () => {
+        const me = auth.currentUser; if(!me) return;
+        try {
+          await setDoc(doc(db,'presence', me.uid), { online:false, lastOnline: serverTimestamp() }, { merge:true });
+        } catch {}
       });
     });
 
@@ -134,6 +151,26 @@
       el.className = 'muted';
     }
 
+    // ---------- Lightweight Presence (Main Menu only) ----------
+    async function upsertPresence(screen){
+      const me = auth.currentUser; if(!me) return;
+      try {
+        await setDoc(doc(db,'presence', me.uid), { online:true, screen, updatedAt: serverTimestamp() }, { merge:true });
+      } catch {}
+    }
+
+    async function readPresence(uid){
+      try {
+        const p = await getDoc(doc(db,'presence', uid));
+        if (!p.exists()) return { online:false };
+        const data = p.data() || {};
+        // consider stale if last update older than ~5 minutes (no server clock here; we'll trust updatedAt to exist or fallback)
+        return { online: !!data.online, screen: data.screen || null, updatedAt: data.updatedAt || null };
+      } catch {
+        return { online:false };
+      }
+    }
+
     // ---------- Banner (top-right) ----------
     function fallbackGradient(uid){
       let h=0; for (let i=0;i<uid.length;i++) h=(h*31+uid.charCodeAt(i))>>>0;
@@ -154,7 +191,7 @@
       } catch { bg.style.background = fallbackGradient(me.uid); }
     }
 
-    // ---------- Friends vertical list ----------
+    // ---------- Friends vertical list with Status Button ----------
     async function onAdd(){
       const me = auth.currentUser; if(!me){ setStatus('Sign in first.'); return; }
       const v = (document.getElementById('et-friend-input').value || '').trim();
@@ -188,18 +225,21 @@
 
       const main = document.createElement('div'); main.className='friend-main';
       const name = document.createElement('div'); name.className='friend-name'; name.textContent = friend.username || friend.usernameLower || friend.id;
-      const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center';
+      const right = document.createElement('div'); right.className='friend-actions';
 
       const pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent='Checking…';
-      const join = document.createElement('button'); join.className='friend-btn join'; join.textContent='Join'; join.style.display='none';
-      const rm   = document.createElement('button'); rm.className='friend-btn'; rm.textContent='Remove';
+
+      // Status Button replaces "Join" button; label varies and may be enabled/disabled
+      const statusBtn = document.createElement('button'); statusBtn.className='status-btn status-disabled'; statusBtn.textContent='Checking…'; statusBtn.disabled=true;
+
+      const rm   = document.createElement('button'); rm.className='btn ghost'; rm.textContent='Remove';
 
       rm.onclick = async () => {
         try{ await deleteDoc(doc(db, 'users', me.uid, 'friends', friend.id)); setStatus('Removed.'); }
         catch{ setStatus('Could not remove.'); }
       };
 
-      right.appendChild(pill); right.appendChild(join); right.appendChild(rm);
+      right.appendChild(pill); right.appendChild(statusBtn); right.appendChild(rm);
       main.appendChild(name); main.appendChild(right);
       row.appendChild(main);
       container.appendChild(row);
@@ -210,30 +250,109 @@
         else thumb.style.background = fallbackGradient(friend.id);
       })();
 
+      // Determine friend status and configure button
       (async () => {
         try {
+          // presence
+          const presence = await readPresence(friend.id);
+
+          // latest rooms for friend
           const q1 = query(collection(db,'rooms'), where('participantUids','array-contains', friend.id), orderBy('createdAt','desc'), limit(5));
           const ss = await getDocs(q1);
-          let joinable=null;
+          let latest=null, joinable=null;
           ss.forEach(d=>{
             const r = d.data(); r.id=d.id;
+            // track first seen (most recent due to orderBy desc)
+            if (!latest) latest=r;
+            // compute joinable for me based on visibility and locks
             if (r.visibility==='private') return;
             if (r.partyLocked){
               const party = Array.isArray(r.partyUids)?r.partyUids:[];
-              if (!party.includes(me.uid)) return;
+              if (!party.includes(me.uid)) return; // locked party that doesn't include me
             }
             if (!joinable) joinable=r;
           });
-          if (joinable){
-            pill.textContent = (joinable.status||'open') + ' • ' + (joinable.visibility||'friends');
-            join.style.display='inline-block';
-            join.onclick = () => {
-              if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
-              if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
-              else location.href = 'lobby.html?roomId='+joinable.id;
-            };
-          } else pill.textContent='No session';
-        } catch { pill.textContent='No session'; }
+
+          // Helper checks
+          const isRunning = (room) => room && (room.status==='running' || room.status==='inGame');
+          const isPartySelect = (room) => room && (room.status==='party' || room.status==='lobby' || room.status==='open');
+          const partyCount = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
+          const includesMe = (room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(me.uid) : false;
+
+          // Decide pill and button
+          if (joinable) {
+            // Can join: either Party Select or a joinable running session that includes me (rejoin)
+            if (isRunning(joinable)) {
+              if (includesMe(joinable)) {
+                pill.textContent = 'Running • Joinable to you';
+                statusBtn.textContent = 'Rejoin Game';
+                statusBtn.className = 'status-btn status-join';
+                statusBtn.disabled = false;
+                statusBtn.onclick = () => {
+                  if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
+                  if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
+                  else location.href = 'lobby.html?roomId='+joinable.id;
+                };
+              } else {
+                // Running but (unexpectedly) joinable; treat as In Game but disable
+                pill.textContent = 'Running';
+                statusBtn.textContent = 'In Game';
+                statusBtn.className = 'status-btn status-disabled';
+                statusBtn.disabled = true;
+              }
+            } else if (isPartySelect(joinable)) {
+              pill.textContent = (joinable.status||'open') + ' • ' + (joinable.visibility||'friends');
+              const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
+              statusBtn.textContent = 'In Party Select';
+              statusBtn.className = roomHasRoom ? 'status-btn status-join' : 'status-btn status-disabled';
+              statusBtn.disabled = !roomHasRoom;
+              statusBtn.onclick = () => {
+                if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
+                if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
+                else location.href = 'lobby.html?roomId='+joinable.id;
+              };
+            } else {
+              pill.textContent = 'Active';
+              statusBtn.textContent = 'In Game';
+              statusBtn.className = 'status-btn status-disabled';
+              statusBtn.disabled = true;
+            }
+          } else if (latest && isRunning(latest)) {
+            // Friend is in a game you can't join
+            pill.textContent = 'Running';
+            statusBtn.textContent = includesMe(latest) ? 'Rejoin Game' : 'In Game';
+            if (includesMe(latest)) {
+              statusBtn.className = 'status-btn status-join';
+              statusBtn.disabled = false;
+              statusBtn.onclick = () => {
+                if (window.Session && Session.setRoomCode) Session.setRoomCode(latest.id);
+                if (window.Router && Router.to) Router.to('lobby.html?roomId='+latest.id);
+                else location.href = 'lobby.html?roomId='+latest.id;
+              };
+            } else {
+              statusBtn.className = 'status-btn status-disabled';
+              statusBtn.disabled = true;
+            }
+          } else {
+            // No room paths: rely on presence (Main Menu)
+            if (presence.online && presence.screen === 'MainMenu') {
+              pill.textContent = 'No session';
+              statusBtn.textContent = 'Online';
+              statusBtn.className = 'status-btn status-disabled';
+              statusBtn.disabled = true;
+            } else {
+              pill.textContent = 'No session';
+              statusBtn.textContent = 'Offline';
+              statusBtn.className = 'status-btn status-disabled';
+              statusBtn.disabled = true;
+            }
+          }
+        } catch (e) {
+          pill.textContent='No session';
+          statusBtn.textContent='Offline';
+          statusBtn.className='status-btn status-disabled';
+          statusBtn.disabled=true;
+        }
       })();
     }
 
