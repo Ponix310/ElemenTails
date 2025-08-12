@@ -43,16 +43,12 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-    import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import {
-      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    // EXACT config you provided
+    // Firebase config (from your console)
     const firebaseConfig = {
-      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
+      apiKey: "AIzaSyBaIjbm7dVNjKE7CJXPQiOevhiK1FI77ds",
       authDomain: "elementails.firebaseapp.com",
       projectId: "elementails",
       storageBucket: "elementails.firebasestorage.app",
@@ -61,41 +57,27 @@
       measurementId: "G-H7ZXWH59GS"
     };
 
-    // Init
     const app = initializeApp(firebaseConfig);
     getAnalytics(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
     // ---- Auth UI wiring ----
-    const loginBtn = document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
       const loginBtn = document.getElementById('auth-login');
       const logoutBtn = document.getElementById('auth-logout');
       const namePill = document.getElementById('auth-username');
 
       loginBtn.addEventListener('click', async () => {
-        try {
-          const provider = new GoogleAuthProvider();
-          await signInWithPopup(auth, provider);
-        } catch (e) {
-          console.error(e);
-          alert(e.code || 'Login failed');
-        }
+        try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+        catch (e) { console.error(e); alert(e.code || 'Login failed'); }
       });
-
-      logoutBtn.addEventListener('click', async () => {
-        try { await signOut(auth); }
-        catch (e) { console.error(e); }
-      });
+      logoutBtn.addEventListener('click', async () => { try { await signOut(auth); } catch (e) { console.error(e); } });
 
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-          // prefer ElemenTails username
           let display = user.displayName || '(user)';
-          try {
-            const uDoc = await getDoc(doc(db, 'users', user.uid));
-            if (uDoc.exists() && uDoc.data().username) display = uDoc.data().username;
-          } catch {}
+          try { const uDoc = await getDoc(doc(db, 'users', user.uid)); if (uDoc.exists() && uDoc.data().username) display = uDoc.data().username; } catch {}
           namePill.textContent = '@' + display;
           namePill.style.display = 'inline-block';
           loginBtn.style.display = 'none';
@@ -111,7 +93,7 @@
         }
       });
 
-      // ---- Friends logic (modular) ----
+      // ---- Friends logic ----
       const statusEl = document.getElementById('et-friends-status');
       const listEl = document.getElementById('et-friends-list');
       const inputEl = document.getElementById('et-friend-input');
@@ -127,10 +109,7 @@
         if(!u){ setStatus('Sign in first.', false); return null; }
         return u;
       }
-      function stopFriendsWatch(){
-        if (typeof unsubFriends === 'function') { try { unsubFriends(); } catch {} }
-        unsubFriends = null;
-      }
+      function stopFriendsWatch(){ if (typeof unsubFriends === 'function') { try { unsubFriends(); } catch {} } unsubFriends = null; }
 
       addBtn.addEventListener('click', onAdd);
       inputEl.addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
@@ -139,81 +118,53 @@
         const me = needAuth(); if(!me) return;
         const v = (inputEl.value || '').trim();
         if(!v){ setStatus('Type a username.', false); return; }
-
         addBtn.disabled = true; setStatus('Searching…');
-
         try{
           const uLower = v.toLowerCase();
-          const claimRef = doc(db, 'usernames', uLower);
-          const claim = await getDoc(claimRef);
+          const claim = await getDoc(doc(db, 'usernames', uLower));
           if(!claim.exists()){ setStatus('User not found.', false); addBtn.disabled=false; return; }
           const friendUid = claim.data() && claim.data().uid;
           if(!friendUid){ setStatus('User not found.', false); addBtn.disabled=false; return; }
           if(friendUid === me.uid){ setStatus('That’s you 🙂', false); addBtn.disabled=false; return; }
-
           const prof = await getDoc(doc(db, 'users', friendUid));
           const username = prof.exists() ? (prof.data().username || v) : v;
-
           const myFriendRef = doc(db, 'users', me.uid, 'friends', friendUid);
           const existing = await getDoc(myFriendRef);
           if(existing.exists()){ setStatus('Already in your friends.', true); addBtn.disabled=false; return; }
-
-          await setDoc(myFriendRef, {
-            uid: friendUid,
-            username,
-            usernameLower: uLower,
-            addedAt: (await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js')).serverTimestamp()
-          });
-          inputEl.value='';
-          setStatus('Friend added ✔', true);
-        }catch(e){
-          console.error(e);
-          setStatus(e.code || 'Could not add friend.', false);
-        }finally{
-          addBtn.disabled=false;
-        }
+          await setDoc(myFriendRef, { uid: friendUid, username, usernameLower: uLower, addedAt: serverTimestamp() });
+          inputEl.value=''; setStatus('Friend added ✔', true);
+        }catch(e){ console.error(e); setStatus(e.code || 'Could not add friend.', false); }
+        finally{ addBtn.disabled=false; }
       }
 
       function renderFriends(items){
         listEl.innerHTML = '';
-        if(!items || !items.length){
-          listEl.innerHTML = '<div class="et-muted">(none yet)</div>';
-          return;
-        }
+        if(!items || !items.length){ listEl.innerHTML = '<div class="et-muted">(none yet)</div>'; return; }
         for(const it of items){
           const row = document.createElement('div'); row.className='et-friends-item';
           const name = document.createElement('span'); name.textContent = it.username || it.usernameLower || it.id;
           const rm = document.createElement('button'); rm.className='et-friends-btn secondary'; rm.textContent='Remove';
           rm.onclick = async () => {
             const me = needAuth(); if(!me) return;
-            try{
-              await deleteDoc(doc(db, 'users', me.uid, 'friends', it.id));
-              setStatus('Removed.', true);
-            }catch(err){ console.error(err); setStatus(err.code || 'Could not remove.', false); }
+            try{ await deleteDoc(doc(db, 'users', me.uid, 'friends', it.id)); setStatus('Removed.', true); }
+            catch(err){ console.error(err); setStatus(err.code || 'Could not remove.', false); }
           };
           const right = document.createElement('div'); right.appendChild(rm);
-          row.append(name, right);
-          listEl.appendChild(row);
+          row.append(name, right); listEl.appendChild(row);
         }
       }
 
       function refreshFriends(){
         stopFriendsWatch();
-        const me = auth.currentUser;
-        if(!me){ return; }
-        const friendsCol = collection(db, 'users', me.uid, 'friends');
-        const q = query(friendsCol, orderBy('usernameLower'));
+        const me = auth.currentUser; if(!me) return;
+        const q = query(collection(db, 'users', me.uid, 'friends'), orderBy('usernameLower'));
         unsubFriends = onSnapshot(q, (snap) => {
           const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          renderFriends(items);
-          setStatus('Ready.', true);
-        }, (err) => {
-          console.error(err);
-          setStatus(err.code || 'Could not load friends.', false);
-        });
+          renderFriends(items); setStatus('Ready.', true);
+        }, (err) => { console.error(err); setStatus(err.code || 'Could not load friends.', false); });
       }
 
-      // Seed SP/MP fields from saved session (best effort)
+      // Seed SP/MP fields from saved session
       document.getElementById('playerName').value = (window.Session && Session.getName && Session.getName()) || '';
       document.getElementById('lastRoom').value  = (window.Session && Session.getRoomCode && Session.getRoomCode()) || '';
     });
