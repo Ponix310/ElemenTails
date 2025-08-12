@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ElemenTails — Lobby</title>
+  <style>
+    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
+    html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
+    .wrap{max-width:900px;margin:40px auto;padding:0 16px;}
+    h1{margin:0 0 6px 0;font-size:28px}
+    .card{background:var(--panel);padding:20px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
+    .grid{display:grid;gap:16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+    label{display:block;font-size:14px;margin-bottom:6px;color:var(--muted)}
+    input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff}
+    .btn{appearance:none;border:0;border-radius:10px;padding:12px 16px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
+    .btn:hover{filter:brightness(1.08)}
+    .btn.primary{background:var(--accent);color:#06241e}
+    .muted{color:var(--muted);font-size:12px}
+    .inline{display:flex;gap:10px;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Multiplayer Lobby</h1>
+    <section class="card grid">
+      <div class="row">
+        <div style="flex:1">
+          <label>Player name</label>
+          <input id="playerName" type="text" placeholder="Ponix" oninput="Session.setName(this.value)">
+        </div>
+        <div style="flex:1">
+          <label>Room code</label>
+          <input id="room" type="text" placeholder="e.g., 59Y09N" oninput="Session.setRoomCode(this.value)">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn primary" onclick="NetStub.host()">Create Room (Host)</button>
+        <button class="btn" onclick="NetStub.join()">Join Room</button>
+        <button class="btn" onclick="Router.to('mainmenu.html')">Back</button>
+      </div>
+
+      <div class="card" style="background:#0f1220">
+        <div class="inline">
+          <strong>Status:</strong>
+          <span id="status" class="muted">Not connected</span>
+        </div>
+        <div class="muted">This is a **stub** (no real networking yet). It simulates readiness so we can finish your UI flow without inventing game rules.</div>
+      </div>
+
+      <div class="row">
+        <button class="btn" onclick="Router.to('partyselect.html')">Go to Party Select (Host)</button>
+        <button class="btn" onclick="Router.to('game.html')">Go to Game Shell (Debug)</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="source/state/router.js"></script>
+  <script src="source/state/session.js"></script>
+  <script src="source/state/net-stub.js"></script>
+  <script>
+    document.getElementById('playerName').value = Session.getName() || '';
+    document.getElementById('room').value = Session.getRoomCode() || '';
+  </script>
+</body>
+</html>
