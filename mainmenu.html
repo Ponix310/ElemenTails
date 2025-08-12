@@ -114,7 +114,11 @@
 
     // ---------- Create Session ----------
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('create-session-btn').addEventListener('click', onCreateSession);
+      document.getElementById('create-session-btn')?.addEventListener('click', onCreateSession);
+      document.getElementById('btn-single')?.addEventListener('click', ()=> createSession('private'));
+      document.getElementById('btn-multi')?.addEventListener('click', ()=> createSession('public'));
+      document.getElementById('btn-load')?.addEventListener('click', toggleLoadList);
+    
       document.getElementById('et-friend-add').addEventListener('click', onAdd);
       document.getElementById('et-friend-input').addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
       document.getElementById('edit-profile-btn').addEventListener('click', () => {
@@ -136,6 +140,8 @@
     });
 
     async function onCreateSession(){
+      // legacy create button kept for compatibility (uses dropdown if present)
+    
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       const visibility = document.getElementById('session-visibility').value;
       try {
@@ -156,7 +162,89 @@
       el.className = 'muted';
     }
 
+    
+    // ---------- Create Session (Single/Multiplayer) ----------
+    async function createSession(visibility){
+      const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
+      try {
+        const ref = await addDoc(collection(db, 'rooms'), {
+          hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'),
+          partyLocked:false, participantUids:[me.uid], partyUids:[],
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        });
+        if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
+        if (window.Router && Router.to) Router.to('lobby.html?roomId=' + ref.id);
+        else location.href = 'lobby.html?roomId=' + ref.id;
+      } catch (e) { alert('Could not create session.'); }
+    }
+
+    function toggleLoadList(){
+      const panel = document.getElementById('load-list');
+      if (!panel) return;
+      const showing = panel.style.display !== 'none';
+      panel.style.display = showing ? 'none' : 'block';
+      if (!showing) loadHostedSessions(); // populate when opening
+    }
+
+    async function loadHostedSessions(){
+      const me = auth.currentUser; if(!me){ return; }
+      const wrap = document.getElementById('load-items'); if(!wrap) return;
+      wrap.innerHTML = '';
+      try {
+        const qy = query(collection(db,'rooms'),
+                         where('hostUid','==', me.uid),
+                         orderBy('createdAt','desc'),
+                         limit(25));
+        const ss = await getDocs(qy);
+        if (ss.empty){
+          wrap.innerHTML = '<div class="muted">(No saves found)</div>';
+          return;
+        }
+        ss.forEach(docSnap => {
+          const r = docSnap.data(); r.id = docSnap.id;
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid #2a3147;background:#0f1220;border-radius:10px;padding:10px';
+          const left = document.createElement('div');
+          const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : '[unknown time]';
+          left.innerHTML = `<div style="font-weight:700">Room ${r.id.slice(0,6)}…</div>
+                            <div class="muted">Status: ${r.status||'open'} · Visibility: ${r.visibility||'friends'} · ${when}</div>`;
+          const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+
+          const loadBtn = document.createElement('button'); loadBtn.className='btn'; loadBtn.textContent='Load';
+          loadBtn.onclick = () => {
+            if (window.Session && Session.setRoomCode) Session.setRoomCode(r.id);
+            if (window.Router && Router.to) Router.to('lobby.html?roomId=' + r.id);
+            else location.href = 'lobby.html?roomId=' + r.id;
+          };
+
+          const delBtn = document.createElement('button'); delBtn.className='btn ghost icon-btn'; delBtn.title='Delete save';
+          delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>`;
+          delBtn.onclick = async () => {
+            if (!confirm('Delete this save? This cannot be undone.')) return;
+            try{
+              await deleteDoc(doc(db,'rooms', r.id));
+              row.remove();
+            }catch{ alert('Failed to delete save.'); }
+          };
+
+          right.appendChild(loadBtn);
+          right.appendChild(delBtn);
+          row.appendChild(left);
+          row.appendChild(right);
+          wrap.appendChild(row);
+        });
+      } catch (e) {
+        wrap.innerHTML = '<div class="muted">Could not load your saves.</div>';
+      }
+    }
+
     // ---------- Presence helpers ----------
+    
     async function upsertPresence(screen){
       const me = auth.currentUser; if(!me) return;
       try {
@@ -369,22 +457,23 @@
 
     <div class="columns">
       <!-- LEFT: Create Session -->
-      <section class="card grid">
+      
+      <section class="card grid" id="left-actions">
         <div class="row" style="gap:12px">
-          <div style="flex:1;min-width:180px">
-            <label for="session-visibility">Session visibility</label>
-            <select id="session-visibility">
-              <option value="private">Private</option>
-              <option value="friends" selected>Friends only</option>
-              <option value="public">Public</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:flex-end;">
-            <button id="create-session-btn" class="btn primary">Create Session</button>
-          </div>
+          <button id="btn-single" class="btn primary" style="flex:1;min-width:220px;">Create Singleplayer Game</button>
+          <button id="btn-multi" class="btn" style="flex:1;min-width:220px;background:#1db954;color:#06241e;">Create Multiplayer Game</button>
         </div>
-        <p class="muted">Friends can join directly from your banner in their list when visibility allows.</p>
+
+        <div class="row" style="gap:12px">
+          <button id="btn-load" class="btn ghost" style="flex:1;min-width:220px;">Load Game</button>
+        </div>
+
+        <div id="load-list" class="grid" style="display:none;gap:8px">
+          <div class="muted">Your previously hosted sessions:</div>
+          <div id="load-items" class="grid" style="gap:8px"></div>
+        </div>
       </section>
+    
 
       <!-- RIGHT rail: My banner then Friends vertical -->
       <section class="right-rail">
