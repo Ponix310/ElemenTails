@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
-  <!-- Main Menu v6: presence-only + dynamic session button + icon Remove -->
+  <!-- Main Menu v7: friend tile = full background image; single presence button; conditional session button; remove extra pill -->
 
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
@@ -38,15 +38,19 @@
 
     /* Vertical friends list */
     .friends-col{display:grid;gap:10px}
-    .friend-tile{position:relative; display:flex; align-items:center; gap:10px; border:1px solid #2a3147; border-radius:12px; padding:10px; background:#0f1220; overflow:hidden;}
-    .friend-thumb{width:140px; aspect-ratio:3/2; border-radius:10px; background-size:cover; background-position:center; opacity:1}
-    .friend-main{display:flex;justify-content:space-between;align-items:center; gap:10px; flex:1}
-    .friend-name{font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.6)}
+    .friend-tile{
+      position:relative; display:flex; align-items:flex-end; gap:10px;
+      border:1px solid #2a3147; border-radius:12px; padding:12px;
+      background:#0f1220; overflow:hidden; min-height:110px; aspect-ratio:3/1.8;
+    }
+    .friend-bg{position:absolute; inset:0; background-size:cover; background-position:center; opacity:1;}
+    .friend-overlay{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.55));}
+    .friend-content{position:relative; z-index:1; width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .friend-name{font-weight:800; font-size:16px; text-shadow:0 1px 2px rgba(0,0,0,.6)}
     .friend-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .friend-pill{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #2a3147;background:#0f1220;color:#cbd5e1;margin-right:auto}
     .status-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer;font-weight:700;min-width:128px;text-align:center}
     .status-join{background:var(--accent);color:#06241e}
-    .status-disabled{background:#1e2433;color:#9aa4b2;cursor:not-allowed;opacity:.7}
+    .status-disabled{background:#1e2433;color:#cbd5e1;cursor:not-allowed;opacity:.9}
   </style>
 
   <!-- Firebase v12 (modular) -->
@@ -220,20 +224,21 @@
 
     function renderFriendRow(container, friend, me){
       const row = document.createElement('div'); row.className='friend-tile';
-      const thumb = document.createElement('div'); thumb.className='friend-thumb';
-      row.appendChild(thumb);
 
-      const main = document.createElement('div'); main.className='friend-main';
+      // background image
+      const bg = document.createElement('div'); bg.className='friend-bg';
+      const overlay = document.createElement('div'); overlay.className='friend-overlay';
+      row.appendChild(bg); row.appendChild(overlay);
+
+      // content
+      const content = document.createElement('div'); content.className='friend-content';
       const name = document.createElement('div'); name.className='friend-name'; name.textContent = friend.username || friend.usernameLower || friend.id;
       const right = document.createElement('div'); right.className='friend-actions';
-
-      // info pill
-      const pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent='…';
 
       // presence button
       const presenceBtn = document.createElement('button'); presenceBtn.className='status-btn status-disabled'; presenceBtn.textContent='Checking…'; presenceBtn.disabled=true;
 
-      // icon remove button
+      // remove icon
       const rm = document.createElement('button'); rm.className='btn ghost icon-btn'; rm.title='Remove';
       rm.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="9"></circle>
@@ -244,19 +249,17 @@
         catch{ setStatus('Could not remove.'); }
       };
 
-      // assemble row
-      right.appendChild(pill);
       right.appendChild(presenceBtn);
-      // session button will be appended conditionally below
+      // session button will be inserted conditionally before rm
       right.appendChild(rm);
-      main.appendChild(name); main.appendChild(right);
-      row.appendChild(main);
+      content.appendChild(name); content.appendChild(right);
+      row.appendChild(content);
       container.appendChild(row);
 
       (async () => {
         const key = await fetchPortrait(friend.id);
-        if (key) thumb.style.backgroundImage = `url('${portraitUrl(key)}')`;
-        else thumb.style.background = fallbackGradient(friend.id);
+        if (key) bg.style.backgroundImage = `url('${portraitUrl(key)}')`;
+        else bg.style.background = fallbackGradient(friend.id);
       })();
 
       // Determine status & render session button only when needed
@@ -266,7 +269,6 @@
           presenceBtn.textContent = presence.online ? 'Online' : 'Offline';
           presenceBtn.className = 'status-btn status-disabled';
           presenceBtn.disabled = true;
-          pill.textContent = presence.online && presence.screen==='MainMenu' ? 'Main Menu' : (presence.online ? 'Online' : 'Offline');
 
           // Rooms check
           const q1 = query(collection(db,'rooms'), where('participantUids','array-contains', friend.id), orderBy('createdAt','desc'), limit(5));
@@ -288,14 +290,12 @@
           const partyCount = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
           const includesMe = (room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(me.uid) : false;
 
-          // helper to add a session button once, before the remove icon
           function ensureSessionBtn(label, enabled, onClick){
             const sessionBtn = document.createElement('button');
             sessionBtn.className = enabled ? 'status-btn status-join' : 'status-btn status-disabled';
             sessionBtn.textContent = label;
             sessionBtn.disabled = !enabled;
             if (enabled && typeof onClick === 'function') sessionBtn.onclick = onClick;
-            // insert before remove icon to keep layout tidy
             right.insertBefore(sessionBtn, rm);
           }
 
@@ -307,10 +307,8 @@
                   if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
                   else location.href = 'lobby.html?roomId='+joinable.id;
                 });
-                pill.textContent = 'Running • Your party';
               } else {
                 ensureSessionBtn('In Game', false);
-                pill.textContent = 'Running';
               }
             } else if (isPartySelect(joinable)) {
               const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
@@ -319,10 +317,8 @@
                 if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
                 else location.href = 'lobby.html?roomId='+joinable.id;
               });
-              pill.textContent = (joinable.status||'open') + ' • ' + (joinable.visibility||'friends');
             } else {
               ensureSessionBtn('In Game', false);
-              pill.textContent = 'Active';
             }
           } else if (latest && isRunning(latest)) {
             if (includesMe(latest)) {
@@ -331,13 +327,10 @@
                 if (window.Router && Router.to) Router.to('lobby.html?roomId='+latest.id);
                 else location.href = 'lobby.html?roomId='+latest.id;
               });
-              pill.textContent = 'Running • Your party';
             } else {
               ensureSessionBtn('In Game', false);
-              pill.textContent = 'Running';
             }
           }
-          // else: no session button added (no session) — as requested
         } catch (e) {
           presenceBtn.textContent = 'Offline';
           presenceBtn.className = 'status-btn status-disabled';
