@@ -24,7 +24,7 @@
     select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff}
     .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width:900px){.two{grid-template-columns:1fr}}
-    .muted{color:var(--muted);font-size:12px}
+    .muted{color:#9aa4b2;font-size:12px}
     .columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     @media (max-width:1100px){ .columns{grid-template-columns:1fr} }
     .friend-pill{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #2a3147;background:#0f1220;color:#9aa4b2}
@@ -39,11 +39,6 @@
       where, getDocs, addDoc, updateDoc, arrayUnion, limit
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    // Make Firestore helpers available to net-sessions.js via a global
-    window.firebaseFirestoreV12 = { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp,
-      where, getDocs, addDoc, updateDoc, arrayUnion, limit };
-
-    // TODO: ensure this matches your deployed config (the working one)
     const firebaseConfig = {
       apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
       authDomain: "elementails.firebaseapp.com",
@@ -57,7 +52,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Simple auth UI
+    // ---------- Auth UI ----------
     document.addEventListener('DOMContentLoaded', () => {
       const loginBtn = document.getElementById('auth-login');
       const logoutBtn = document.getElementById('auth-logout');
@@ -92,7 +87,34 @@
       });
     });
 
-    // Friends logic + "joinable session" surface
+    // ---------- Singleplayer flow ----------
+    async function createSingleplayerAndGo(){
+      const me = auth.currentUser;
+      if(!me){ alert('Please sign in first.'); return; }
+
+      try {
+        // Create a private room for SP and route with roomId so next screen has context
+        const ref = await addDoc(collection(db, 'rooms'), {
+          hostUid: me.uid,
+          visibility: 'private',
+          status: 'open',
+          mode: 'singleplayer',
+          partyLocked: false,
+          participantUids: [me.uid],
+          partyUids: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
+        // Go straight to Party Select WITH the roomId to avoid "No room selected"
+        if (window.Router && Router.to) Router.to('partyselect.html?roomId=' + ref.id);
+        else window.location.href = 'partyselect.html?roomId=' + ref.id;
+      } catch (e) {
+        console.error(e); alert('Could not start singleplayer.');
+      }
+    }
+
+    // ---------- Friends list + Join Session ----------
     let unsubFriends = null;
     const statusEl = () => document.getElementById('et-friends-status');
     const listEl = () => document.getElementById('et-friends-list');
@@ -115,26 +137,27 @@
       addBtn().addEventListener('click', onAdd);
       inputEl().addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
       document.getElementById('create-session-btn').addEventListener('click', onCreateSession);
+      document.getElementById('sp-start-btn').addEventListener('click', createSingleplayerAndGo);
     });
 
     async function onCreateSession(){
       const me = needAuth(); if(!me) return;
-      const visibility = document.getElementById('session-visibility').value; // private|friends|public
+      const visibility = document.getElementById('session-visibility').value;
       try {
-        const roomsCol = collection(db, 'rooms');
-        const ref = await addDoc(roomsCol, {
+        const ref = await addDoc(collection(db, 'rooms'), {
           hostUid: me.uid,
           visibility,
           status: 'open',
+          mode: 'multiplayer',
           partyLocked: false,
           participantUids: [me.uid],
           partyUids: [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-        // Save locally & route (best effort; adapt to your router)
         if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
         if (window.Router && Router.to) Router.to('lobby.html?roomId=' + ref.id);
+        else window.location.href = 'lobby.html?roomId=' + ref.id;
         setStatus('Session created. ID: ' + ref.id, true);
       } catch (e) {
         console.error(e); setStatus('Could not create session.', false);
@@ -173,13 +196,11 @@
         const row = document.createElement('div'); row.className='et-friends-item';
         const name = document.createElement('span'); name.textContent = it.username || it.usernameLower || it.id;
 
-        // Find friend open session (rooms with participantUids contains friend)
         let pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent = 'No session';
         let joinBtn = document.createElement('button'); joinBtn.className='et-friends-btn secondary'; joinBtn.textContent='Join Session'; joinBtn.style.display='none';
 
         try {
-          const roomsCol = collection(db, 'rooms');
-          const q1 = query(roomsCol, where('participantUids', 'array-contains', it.id), orderBy('createdAt','desc'), limit(5));
+          const q1 = query(collection(db, 'rooms'), where('participantUids', 'array-contains', it.id), orderBy('createdAt','desc'), limit(5));
           const ss = await getDocs(q1);
           let joinable = null;
           ss.forEach(d => {
@@ -242,7 +263,7 @@
       <!-- LEFT: SP/MP + Create Session -->
       <section class="card grid">
         <div class="row">
-          <button class="btn primary" onclick="Router.to('partyselect.html')">Singleplayer: New Run</button>
+          <button id="sp-start-btn" class="btn primary">Singleplayer: New Run</button>
           <button class="btn" onclick="Router.to('lobby.html')">Multiplayer</button>
         </div>
         <div class="two">
