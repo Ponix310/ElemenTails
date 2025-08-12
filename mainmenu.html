@@ -1,86 +1,325 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
+
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:1100px;margin:40px auto;padding:0 16px;}
-    header{margin-bottom:24px}
-    h1{margin:0 0 6px 0;font-size:32px}
-    .card{background:var(--panel);padding:20px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
-    .grid{display:grid;gap:14px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .btn{appearance:none;border:0;border-radius:10px;padding:12px 16px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
+    .wrap{max-width:1180px;margin:32px auto;padding:0 16px;}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    h1{margin:0;font-size:28px}
+    .auth{display:flex;gap:10px;align-items:center;color:#cbd5e1}
+    .pill{background:#0f1220;border:1px solid #2a3147;border-radius:999px;padding:6px 10px;font-size:14px}
+    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
     .btn:hover{filter:brightness(1.08)}
     .btn.primary{background:var(--accent);color:#06241e}
-    label{display:block;font-size:14px;margin-bottom:6px;color:var(--muted)}
+    .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
+    .grid{display:grid;gap:12px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
     input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff}
-    .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:700px){.two{grid-template-columns:1fr}}
-    .muted{color:var(--muted);font-size:12px}
+    select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:900px){.two{grid-template-columns:1fr}}
+    .muted{color:#9aa4b2;font-size:12px}
+    .columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:1100px){ .columns{grid-template-columns:1fr} }
 
-    /* New: two-column main area for Friends + Play options */
-    .columns{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
-    @media (max-width:1000px){ .columns{grid-template-columns:1fr} }
-    .subtle{opacity:.8}
+    /* Right rail: profile banner at top, friends vertical under it */
+    .right-rail{display:grid;gap:16px}
+    .banner-card{position:relative;min-height:170px;border-radius:14px;overflow:hidden;border:1px solid #2a3147;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+    .banner-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.35;filter:saturate(1.1) contrast(1.05);}
+    .banner-body{position:relative;padding:14px;display:flex;justify-content:space-between;align-items:flex-end;height:100%;}
+    .banner-title{font-weight:800;font-size:20px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+
+    /* Vertical friends list */
+    .friends-col{display:grid;gap:10px}
+    .friend-tile{position:relative; display:flex; align-items:center; gap:10px; border:1px solid #2a3147; border-radius:12px; padding:10px; background:#0f1220; overflow:hidden;}
+    .friend-thumb{width:120px; aspect-ratio:3/2; border-radius:10px; background-size:cover; background-position:center; opacity:.8}
+    .friend-main{display:flex;justify-content:space-between;align-items:center; gap:10px; flex:1}
+    .friend-name{font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.6)}
+    .friend-pill{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #2a3147;background:#0f1220;color:#cbd5e1;margin-right:6px}
+    .friend-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer}
+    .friend-btn.join{background:var(--accent);color:#06241e;font-weight:800}
   </style>
+
+  <!-- Firebase v12 (modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp,
+      where, getDocs, addDoc, updateDoc, limit
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
+      authDomain: "elementails.firebaseapp.com",
+      projectId: "elementails",
+      storageBucket: "elementails.firebasestorage.app",
+      messagingSenderId: "497100635124",
+      appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const portraitUrl = key => `images/class-portraits/${key}.png`;
+
+    // ---------- Auth UI ----------
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginBtn = document.getElementById('auth-login');
+      const logoutBtn = document.getElementById('auth-logout');
+      const namePill = document.getElementById('auth-username');
+
+      loginBtn.addEventListener('click', async () => {
+        try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+        catch (e) { alert(e.code || 'Login failed'); }
+      });
+      logoutBtn.addEventListener('click', async () => { try { await signOut(auth); } catch {} });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          let display = user.displayName || '(user)';
+          try {
+            const uDoc = await getDoc(doc(db, 'users', user.uid));
+            if (uDoc.exists() && uDoc.data().username) display = uDoc.data().username;
+          } catch { }
+          namePill.textContent = '@' + display;
+          namePill.style.display = 'inline-block';
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-block';
+          renderMyBanner();
+          refreshFriends();
+        } else {
+          namePill.style.display = 'none';
+          loginBtn.style.display = 'inline-block';
+          logoutBtn.style.display = 'none';
+          document.getElementById('friends-col').innerHTML = '<div class="muted">(sign in to see friends)</div>';
+        }
+      });
+    });
+
+    // ---------- Create Session (unchanged) ----------
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('create-session-btn').addEventListener('click', onCreateSession);
+      document.getElementById('et-friend-add').addEventListener('click', onAdd);
+      document.getElementById('et-friend-input').addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
+      document.getElementById('edit-profile-btn').addEventListener('click', () => {
+        if (window.Router && Router.to) Router.to('profile.html');
+        else location.href = 'profile.html';
+      });
+    });
+
+    async function onCreateSession(){
+      const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
+      const visibility = document.getElementById('session-visibility').value;
+      try {
+        const ref = await addDoc(collection(db, 'rooms'), {
+          hostUid: me.uid, visibility, status: 'open', mode:'multiplayer',
+          partyLocked:false, participantUids:[me.uid], partyUids:[],
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        });
+        if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
+        if (window.Router && Router.to) Router.to('lobby.html?roomId=' + ref.id);
+        else location.href = 'lobby.html?roomId=' + ref.id;
+      } catch (e) { alert('Could not create session.'); }
+    }
+
+    function setStatus(msg, ok=null){
+      const el = document.getElementById('et-friends-status');
+      el.textContent = msg || '';
+      el.className = 'muted';
+    }
+
+    // ---------- Banner (top-right) ----------
+    function fallbackGradient(uid){
+      let h=0; for (let i=0;i<uid.length;i++) h=(h*31+uid.charCodeAt(i))>>>0;
+      const a = h%360, b=(h>>8)%360;
+      return `linear-gradient(135deg, hsl(${a} 45% 18%), hsl(${b} 45% 22%))`;
+    }
+
+    async function renderMyBanner(){
+      const me = auth.currentUser; if(!me) return;
+      const card = document.getElementById('banner-card');
+      const title = document.getElementById('banner-title');
+      const bg = document.getElementById('banner-bg');
+      title.textContent = '@' + (document.getElementById('auth-username').textContent.replace('@','') || 'Player');
+      try {
+        const p = await getDoc(doc(db,'publicProfiles', me.uid));
+        const key = (p.exists() && p.data().portrait) ? p.data().portrait : null;
+        if (key) bg.style.backgroundImage = `url('images/class-portraits/${key}.png')`;
+        else bg.style.background = fallbackGradient(me.uid);
+      } catch { bg.style.background = fallbackGradient(me.uid); }
+    }
+
+    // ---------- Friends vertical list ----------
+    async function onAdd(){
+      const me = auth.currentUser; if(!me){ setStatus('Sign in first.', false); return; }
+      const v = (document.getElementById('et-friend-input').value || '').trim();
+      if(!v){ setStatus('Type a username.', false); return; }
+      const uLower = v.toLowerCase();
+      try{
+        const claim = await getDoc(doc(db, 'usernames', uLower));
+        if(!claim.exists()){ setStatus('User not found.', false); return; }
+        const friendUid = claim.data() && claim.data().uid;
+        if(!friendUid){ setStatus('User not found.', false); return; }
+        if(friendUid === me.uid){ setStatus('That’s you 🙂', false); return; }
+        const myRef = doc(db, 'users', me.uid, 'friends', friendUid);
+        const exists = await getDoc(myRef);
+        if(exists.exists()){ setStatus('Already in your friends.', true); return; }
+        await setDoc(myRef, { uid: friendUid, username: v, usernameLower: uLower, addedAt: serverTimestamp() });
+        document.getElementById('et-friend-input').value='';
+        setStatus('Friend added ✔', true);
+      }catch(e){ setStatus('Could not add friend.', false); }
+    }
+
+    async function fetchPortrait(uid){
+      try{ const p = await getDoc(doc(db,'publicProfiles', uid)); if (p.exists() && p.data().portrait) return p.data().portrait; }
+      catch{}
+      return null;
+    }
+
+    function renderFriendRow(container, friend, me){
+      const row = document.createElement('div'); row.className='friend-tile';
+
+      const thumb = document.createElement('div'); thumb.className='friend-thumb';
+      // fill later after portrait lookup
+      row.appendChild(thumb);
+
+      const main = document.createElement('div'); main.className='friend-main';
+      const name = document.createElement('div'); name.className='friend-name'; name.textContent = friend.username || friend.usernameLower || friend.id;
+      const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center';
+
+      const pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent='Checking…';
+      const join = document.createElement('button'); join.className='friend-btn join'; join.textContent='Join'; join.style.display='none';
+      const rm   = document.createElement('button'); rm.className='friend-btn'; rm.textContent='Remove';
+
+      rm.onclick = async () => {
+        try{ await deleteDoc(doc(db, 'users', me.uid, 'friends', friend.id)); setStatus('Removed.', true); }
+        catch{ setStatus('Could not remove.', false); }
+      };
+
+      right.appendChild(pill); right.appendChild(join); right.appendChild(rm);
+      main.appendChild(name); main.appendChild(right);
+      row.appendChild(main);
+      container.appendChild(row);
+
+      // portrait
+      (async () => {
+        const key = await fetchPortrait(friend.id);
+        if (key) thumb.style.backgroundImage = `url('images/class-portraits/${key}.png')`;
+        else thumb.style.background = fallbackGradient(friend.id);
+      })();
+
+      // session
+      (async () => {
+        try {
+          const q1 = query(collection(db,'rooms'), where('participantUids','array-contains', friend.id), orderBy('createdAt','desc'), limit(5));
+          const ss = await getDocs(q1);
+          let joinable=null;
+          ss.forEach(d=>{
+            const r = d.data(); r.id=d.id;
+            if (r.visibility==='private') return;
+            if (r.partyLocked){
+              const party = Array.isArray(r.partyUids)?r.partyUids:[];
+              if (!party.includes(me.uid)) return;
+            }
+            if (!joinable) joinable=r;
+          });
+          if (joinable){
+            pill.textContent = (joinable.status||'open') + ' • ' + (joinable.visibility||'friends');
+            join.style.display='inline-block';
+            join.onclick = () => {
+              if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
+              if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
+              else location.href = 'lobby.html?roomId='+joinable.id;
+            };
+          } else pill.textContent='No session';
+        } catch { pill.textContent='No session'; }
+      })();
+    }
+
+    let unsub=null;
+    function refreshFriends(){
+      if (unsub) try{unsub();}catch{}
+      const me = auth.currentUser; if(!me) return;
+      const list = document.getElementById('friends-col');
+      const q = query(collection(db,'users', me.uid, 'friends'), orderBy('usernameLower'));
+      unsub = onSnapshot(q, (snap)=>{
+        list.innerHTML = '';
+        const items = snap.docs.map(d=>({id:d.id, ...d.data()}));
+        if(!items.length) list.innerHTML = '<div class="muted">(no friends yet)</div>';
+        items.forEach(it => renderFriendRow(list, it, me));
+      }, ()=> setStatus('Could not load friends.', false));
+    }
+  </script>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Elemen Tails</h1>
-      <div class="muted">Prototype menu • Singleplayer & Multiplayer lobby</div>
+      <div>
+        <h1>Elemen Tails</h1>
+        <div class="muted">Create a session and invite friends.</div>
+      </div>
+      <div class="auth">
+        <span id="auth-username" class="pill" style="display:none;"></span>
+        <button id="auth-login" class="btn">Login with Google</button>
+        <button id="auth-logout" class="btn" style="display:none;">Logout</button>
+      </div>
     </header>
 
     <div class="columns">
-      <!-- FRIENDS PANEL (username-based) -->
-      <section class="card">
-        <h2 style="margin:0 0 10px 0;font-size:18px">Friends</h2>
-        <div id="friends-panel"></div>
-        <div class="muted" style="margin-top:8px">Add friends by <strong>username</strong>. No friend codes.</div>
-      </section>
-
-      <!-- PLAY OPTIONS -->
+      <!-- LEFT: Create Session -->
       <section class="card grid">
-        <div class="row">
-          <button class="btn primary" onclick="Router.to('partyselect.html')">Singleplayer: New Run</button>
-          <button class="btn" onclick="Router.to('lobby.html')">Multiplayer</button>
-        </div>
         <div class="two">
           <div>
-            <label for="playerName">Player name</label>
-            <input id="playerName" type="text" placeholder="Ponix" oninput="Session.setName(this.value)">
+            <label for="session-visibility">Session visibility</label>
+            <select id="session-visibility">
+              <option value="private">Private</option>
+              <option value="friends" selected>Friends only</option>
+              <option value="public">Public</option>
+            </select>
           </div>
-          <div>
-            <label for="lastRoom">Last room</label>
-            <input id="lastRoom" type="text" placeholder="Auto-saved…" oninput="Session.setRoomCode(this.value)">
+          <div style="display:flex;align-items:flex-end;">
+            <button id="create-session-btn" class="btn primary">Create Session</button>
           </div>
         </div>
-        <div class="row">
-          <button class="btn" onclick="Session.mockFill()">Quick-fill demo</button>
-          <button class="btn" onclick="localStorage.clear();alert('Cleared localStorage for ElemenTails');">Clear saved</button>
+        <p class="muted">Friends can join directly from your banner in their list when visibility allows.</p>
+      </section>
+
+      <!-- RIGHT rail: My banner then Friends vertical -->
+      <section class="right-rail">
+        <div id="banner-card" class="banner-card">
+          <div id="banner-bg" class="banner-bg"></div>
+          <div class="banner-body">
+            <div>
+              <div id="banner-title" class="banner-title">@Player</div>
+              <div class="muted">Your public profile banner</div>
+            </div>
+            <button id="edit-profile-btn" class="btn">Edit Profile</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin:0 0 10px 0;font-size:18px">Friends</h2>
+          <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
+            <input id="et-friend-input" type="text" placeholder="Enter username" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff">
+            <button id="et-friend-add" class="btn">Add</button>
+          </div>
+          <div id="et-friends-status" class="muted" style="margin:2px 0 8px 0"></div>
+          <div id="friends-col" class="friends-col"></div>
         </div>
       </section>
     </div>
   </div>
 
-  <!-- existing scripts -->
+  <!-- Existing project scripts -->
   <script src="source/state/router.js"></script>
   <script src="source/state/session.js"></script>
-
-  <!-- new: friends state + UI helper -->
-  <script src="source/state/friends.js"></script>
-  <script src="source/components/FriendsUsernameUI.js"></script>
-
-  <script>
-    // Hydrate inputs from saved session
-    document.getElementById('playerName').value = Session.getName() || '';
-    document.getElementById('lastRoom').value = Session.getRoomCode() || '';
-    // FriendsUsernameUI auto-mounts itself into #friends-panel on DOMContentLoaded
-  </script>
 </body>
 </html>

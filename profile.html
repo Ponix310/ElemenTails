@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ElemenTails — Edit Profile</title>
+  <style>
+    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
+    html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
+    .wrap{max-width:960px;margin:32px auto;padding:0 16px;}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    h1{margin:0;font-size:28px}
+    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
+    .btn.primary{background:var(--accent);color:#06241e}
+    .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
+    .grid{display:grid;gap:14px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    label{display:block;font-size:13px;margin-bottom:6px;color:#9aa4b2}
+    input[type=text]{padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff}
+    .choices{display:grid;grid-template-columns:repeat(6, minmax(90px,1fr));gap:10px}
+    .choice{aspect-ratio:3/2;border-radius:10px;overflow:hidden;border:2px solid transparent;cursor:pointer;background-size:cover;background-position:center}
+    .choice.active{border-color:var(--accent)}
+    .pill{background:#0f1220;border:1px solid #2a3147;border-radius:999px;padding:6px 10px;font-size:14px}
+    .muted{color:#9aa4b2;font-size:12px}
+  </style>
+
+  <!-- Firebase v12 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
+      authDomain: "elementails.firebaseapp.com",
+      projectId: "elementails",
+      storageBucket: "elementails.firebasestorage.app",
+      messagingSenderId: "497100635124",
+      appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const PORTRAITS = ['archer','assassin','barbearian','bard','battlemage','berserker','cleric','druid','lancer','monk','myrmidon','ninja','paladin','reaper','samurai','summoner','warrior','wizard'];
+    const portraitUrl = key => `images/class-portraits/${key}.png`;
+
+    const $ = sel => document.querySelector(sel);
+    let me = null; let currentPortrait = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      $('#back').addEventListener('click', () => {
+        if (window.Router && Router.to) Router.to('mainmenu.html');
+        else location.href='mainmenu.html';
+      });
+      $('#save-username').addEventListener('click', claimUsername);
+      onAuthStateChanged(auth, async (user) => {
+        if(!user) { await signInWithPopup(auth, new GoogleAuthProvider()); return; }
+        me = user;
+        $('#who').textContent = user.displayName || user.email || user.uid.slice(0,6);
+        await loadBanner();
+        renderChoices();
+        await loadCurrentUsername();
+      });
+    });
+
+    async function loadBanner(){
+      const p = await getDoc(doc(db,'publicProfiles', me.uid));
+      currentPortrait = (p.exists() && p.data().portrait) ? p.data().portrait : null;
+      $('#current-portrait').style.backgroundImage = currentPortrait ? `url('${portraitUrl(currentPortrait)}')` : '';
+      $('#current-portrait').style.background = currentPortrait ? '' : '#0f1220';
+    }
+
+    function renderChoices(){
+      const grid = $('#choices'); grid.innerHTML='';
+      PORTRAITS.forEach(key => {
+        const div = document.createElement('div'); div.className='choice';
+        div.style.backgroundImage = `url('${portraitUrl(key)}')`;
+        if (key===currentPortrait) div.classList.add('active');
+        div.title = key;
+        div.onclick = async () => {
+          try {
+            await setDoc(doc(db,'publicProfiles', me.uid), { uid: me.uid, portrait: key }, { merge:true });
+            currentPortrait = key;
+            [...grid.children].forEach(el=>el.classList.remove('active')); div.classList.add('active');
+            $('#current-portrait').style.backgroundImage = `url('${portraitUrl(key)}')`;
+          } catch(e) { alert('Failed to save banner (check /publicProfiles rules).'); }
+        };
+        grid.appendChild(div);
+      });
+    }
+
+    async function loadCurrentUsername(){
+      const u = await getDoc(doc(db,'users', me.uid));
+      const name = u.exists() && u.data().username ? u.data().username : (me.displayName || '');
+      $('#username').value = name || '';
+    }
+
+    async function claimUsername(){
+      const raw = ($('#username').value || '').trim();
+      if (!raw) { alert('Enter a username'); return; }
+      const value = raw.replace(/\s+/g,''); // no spaces
+      const lower = value.toLowerCase();
+      try {
+        // claim if free (your rules allow create if not exists)
+        const ref = doc(db,'usernames', lower);
+        const snap = await getDoc(ref);
+        if (snap.exists()) { alert('That username is taken.'); return; }
+        await setDoc(ref, { uid: me.uid, at: Date.now() });
+        await setDoc(doc(db,'users', me.uid), { username: value, usernameLower: lower }, { merge:true });
+        alert('Username saved.');
+      } catch(e) { alert('Could not save username.'); }
+    }
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Edit Profile</h1>
+      <button id="back" class="btn">← Back</button>
+    </header>
+
+    <section class="card grid">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="muted">Signed in as</div>
+          <div class="pill" id="who">…</div>
+        </div>
+        <div>
+          <div class="muted">Current banner</div>
+          <div id="current-portrait" style="width:180px;aspect-ratio:3/2;border-radius:12px;border:1px solid #2a3147;background:#0f1220"></div>
+        </div>
+      </div>
+
+      <div>
+        <label>Choose your Class Portrait</label>
+        <div id="choices" class="choices"></div>
+        <div class="muted">Looks for images at <code>images/class-portraits/&lt;key&gt;.png</code>.</div>
+      </div>
+
+      <div>
+        <label for="username">Change username</label>
+        <div class="row">
+          <input id="username" type="text" placeholder="New username"/>
+          <button id="save-username" class="btn primary">Save username</button>
+        </div>
+        <div class="muted">Usernames must be unique. (We claim a name if it’s free.)</div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
