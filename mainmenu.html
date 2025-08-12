@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
-  <!-- Main Menu v4: banner top-right + vertical friends + 3:2 images + Edit Profile + Status Button logic -->
+  <!-- Main Menu v6: presence-only + dynamic session button + icon Remove -->
 
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
@@ -19,6 +19,7 @@
     .btn.primary{background:var(--accent);color:#06241e}
     .btn.ghost{background:#1e2433;color:#cbd5e1}
     .btn[disabled]{opacity:.55;cursor:not-allowed;filter:none}
+    .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;padding:0}
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
     .grid{display:grid;gap:12px}
     .row{display:flex;gap:10px;flex-wrap:wrap}
@@ -41,9 +42,9 @@
     .friend-thumb{width:140px; aspect-ratio:3/2; border-radius:10px; background-size:cover; background-position:center; opacity:1}
     .friend-main{display:flex;justify-content:space-between;align-items:center; gap:10px; flex:1}
     .friend-name{font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.6)}
-    .friend-pill{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #2a3147;background:#0f1220;color:#cbd5e1;margin-right:6px}
-    .friend-actions{display:flex;align-items:center;gap:8px}
-    .status-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer;font-weight:700;min-width:120px;text-align:center}
+    .friend-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .friend-pill{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #2a3147;background:#0f1220;color:#cbd5e1;margin-right:auto}
+    .status-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer;font-weight:700;min-width:128px;text-align:center}
     .status-join{background:var(--accent);color:#06241e}
     .status-disabled{background:#1e2433;color:#9aa4b2;cursor:not-allowed;opacity:.7}
   </style>
@@ -117,7 +118,7 @@
         else location.href = 'profile.html';
       });
 
-      // handle visibility changes to keep presence fresh
+      // presence freshness
       document.addEventListener('visibilitychange', () => {
         const me = auth.currentUser; if(!me) return;
         if (document.visibilityState === 'visible') upsertPresence('MainMenu');
@@ -151,7 +152,7 @@
       el.className = 'muted';
     }
 
-    // ---------- Lightweight Presence (Main Menu only) ----------
+    // ---------- Presence helpers ----------
     async function upsertPresence(screen){
       const me = auth.currentUser; if(!me) return;
       try {
@@ -164,14 +165,13 @@
         const p = await getDoc(doc(db,'presence', uid));
         if (!p.exists()) return { online:false };
         const data = p.data() || {};
-        // consider stale if last update older than ~5 minutes (no server clock here; we'll trust updatedAt to exist or fallback)
         return { online: !!data.online, screen: data.screen || null, updatedAt: data.updatedAt || null };
       } catch {
         return { online:false };
       }
     }
 
-    // ---------- Banner (top-right) ----------
+    // ---------- Banner ----------
     function fallbackGradient(uid){
       let h=0; for (let i=0;i<uid.length;i++) h=(h*31+uid.charCodeAt(i))>>>0;
       const a = h%360, b=(h>>8)%360;
@@ -191,7 +191,7 @@
       } catch { bg.style.background = fallbackGradient(me.uid); }
     }
 
-    // ---------- Friends vertical list with Status Button ----------
+    // ---------- Friends list ----------
     async function onAdd(){
       const me = auth.currentUser; if(!me){ setStatus('Sign in first.'); return; }
       const v = (document.getElementById('et-friend-input').value || '').trim();
@@ -227,19 +227,28 @@
       const name = document.createElement('div'); name.className='friend-name'; name.textContent = friend.username || friend.usernameLower || friend.id;
       const right = document.createElement('div'); right.className='friend-actions';
 
-      const pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent='Checking…';
+      // info pill
+      const pill = document.createElement('span'); pill.className='friend-pill'; pill.textContent='…';
 
-      // Status Button replaces "Join" button; label varies and may be enabled/disabled
-      const statusBtn = document.createElement('button'); statusBtn.className='status-btn status-disabled'; statusBtn.textContent='Checking…'; statusBtn.disabled=true;
+      // presence button
+      const presenceBtn = document.createElement('button'); presenceBtn.className='status-btn status-disabled'; presenceBtn.textContent='Checking…'; presenceBtn.disabled=true;
 
-      const rm   = document.createElement('button'); rm.className='btn ghost'; rm.textContent='Remove';
-
+      // icon remove button
+      const rm = document.createElement('button'); rm.className='btn ghost icon-btn'; rm.title='Remove';
+      rm.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="9"></circle>
+        <line x1="6.5" y1="6.5" x2="17.5" y2="17.5"></line>
+      </svg>`;
       rm.onclick = async () => {
         try{ await deleteDoc(doc(db, 'users', me.uid, 'friends', friend.id)); setStatus('Removed.'); }
         catch{ setStatus('Could not remove.'); }
       };
 
-      right.appendChild(pill); right.appendChild(statusBtn); right.appendChild(rm);
+      // assemble row
+      right.appendChild(pill);
+      right.appendChild(presenceBtn);
+      // session button will be appended conditionally below
+      right.appendChild(rm);
       main.appendChild(name); main.appendChild(right);
       row.appendChild(main);
       container.appendChild(row);
@@ -250,108 +259,88 @@
         else thumb.style.background = fallbackGradient(friend.id);
       })();
 
-      // Determine friend status and configure button
+      // Determine status & render session button only when needed
       (async () => {
         try {
-          // presence
           const presence = await readPresence(friend.id);
+          presenceBtn.textContent = presence.online ? 'Online' : 'Offline';
+          presenceBtn.className = 'status-btn status-disabled';
+          presenceBtn.disabled = true;
+          pill.textContent = presence.online && presence.screen==='MainMenu' ? 'Main Menu' : (presence.online ? 'Online' : 'Offline');
 
-          // latest rooms for friend
+          // Rooms check
           const q1 = query(collection(db,'rooms'), where('participantUids','array-contains', friend.id), orderBy('createdAt','desc'), limit(5));
           const ss = await getDocs(q1);
           let latest=null, joinable=null;
           ss.forEach(d=>{
             const r = d.data(); r.id=d.id;
-            // track first seen (most recent due to orderBy desc)
             if (!latest) latest=r;
-            // compute joinable for me based on visibility and locks
             if (r.visibility==='private') return;
             if (r.partyLocked){
               const party = Array.isArray(r.partyUids)?r.partyUids:[];
-              if (!party.includes(me.uid)) return; // locked party that doesn't include me
+              if (!party.includes(me.uid)) return;
             }
             if (!joinable) joinable=r;
           });
 
-          // Helper checks
           const isRunning = (room) => room && (room.status==='running' || room.status==='inGame');
           const isPartySelect = (room) => room && (room.status==='party' || room.status==='lobby' || room.status==='open');
           const partyCount = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
           const includesMe = (room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(me.uid) : false;
 
-          // Decide pill and button
+          // helper to add a session button once, before the remove icon
+          function ensureSessionBtn(label, enabled, onClick){
+            const sessionBtn = document.createElement('button');
+            sessionBtn.className = enabled ? 'status-btn status-join' : 'status-btn status-disabled';
+            sessionBtn.textContent = label;
+            sessionBtn.disabled = !enabled;
+            if (enabled && typeof onClick === 'function') sessionBtn.onclick = onClick;
+            // insert before remove icon to keep layout tidy
+            right.insertBefore(sessionBtn, rm);
+          }
+
           if (joinable) {
-            // Can join: either Party Select or a joinable running session that includes me (rejoin)
             if (isRunning(joinable)) {
               if (includesMe(joinable)) {
-                pill.textContent = 'Running • Joinable to you';
-                statusBtn.textContent = 'Rejoin Game';
-                statusBtn.className = 'status-btn status-join';
-                statusBtn.disabled = false;
-                statusBtn.onclick = () => {
+                ensureSessionBtn('Rejoin Game', true, () => {
                   if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
                   if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
                   else location.href = 'lobby.html?roomId='+joinable.id;
-                };
+                });
+                pill.textContent = 'Running • Your party';
               } else {
-                // Running but (unexpectedly) joinable; treat as In Game but disable
+                ensureSessionBtn('In Game', false);
                 pill.textContent = 'Running';
-                statusBtn.textContent = 'In Game';
-                statusBtn.className = 'status-btn status-disabled';
-                statusBtn.disabled = true;
               }
             } else if (isPartySelect(joinable)) {
-              pill.textContent = (joinable.status||'open') + ' • ' + (joinable.visibility||'friends');
               const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
-              statusBtn.textContent = 'In Party Select';
-              statusBtn.className = roomHasRoom ? 'status-btn status-join' : 'status-btn status-disabled';
-              statusBtn.disabled = !roomHasRoom;
-              statusBtn.onclick = () => {
+              ensureSessionBtn('In Party Select', roomHasRoom, () => {
                 if (window.Session && Session.setRoomCode) Session.setRoomCode(joinable.id);
                 if (window.Router && Router.to) Router.to('lobby.html?roomId='+joinable.id);
                 else location.href = 'lobby.html?roomId='+joinable.id;
-              };
+              });
+              pill.textContent = (joinable.status||'open') + ' • ' + (joinable.visibility||'friends');
             } else {
+              ensureSessionBtn('In Game', false);
               pill.textContent = 'Active';
-              statusBtn.textContent = 'In Game';
-              statusBtn.className = 'status-btn status-disabled';
-              statusBtn.disabled = true;
             }
           } else if (latest && isRunning(latest)) {
-            // Friend is in a game you can't join
-            pill.textContent = 'Running';
-            statusBtn.textContent = includesMe(latest) ? 'Rejoin Game' : 'In Game';
             if (includesMe(latest)) {
-              statusBtn.className = 'status-btn status-join';
-              statusBtn.disabled = false;
-              statusBtn.onclick = () => {
+              ensureSessionBtn('Rejoin Game', true, () => {
                 if (window.Session && Session.setRoomCode) Session.setRoomCode(latest.id);
                 if (window.Router && Router.to) Router.to('lobby.html?roomId='+latest.id);
                 else location.href = 'lobby.html?roomId='+latest.id;
-              };
+              });
+              pill.textContent = 'Running • Your party';
             } else {
-              statusBtn.className = 'status-btn status-disabled';
-              statusBtn.disabled = true;
-            }
-          } else {
-            // No room paths: rely on presence (Main Menu)
-            if (presence.online && presence.screen === 'MainMenu') {
-              pill.textContent = 'No session';
-              statusBtn.textContent = 'Online';
-              statusBtn.className = 'status-btn status-disabled';
-              statusBtn.disabled = true;
-            } else {
-              pill.textContent = 'No session';
-              statusBtn.textContent = 'Offline';
-              statusBtn.className = 'status-btn status-disabled';
-              statusBtn.disabled = true;
+              ensureSessionBtn('In Game', false);
+              pill.textContent = 'Running';
             }
           }
+          // else: no session button added (no session) — as requested
         } catch (e) {
-          pill.textContent='No session';
-          statusBtn.textContent='Offline';
-          statusBtn.className='status-btn status-disabled';
-          statusBtn.disabled=true;
+          presenceBtn.textContent = 'Offline';
+          presenceBtn.className = 'status-btn status-disabled';
         }
       })();
     }
