@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
 
-  <!-- Self-contained dark theme styles (no external CSS needed) -->
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
@@ -40,23 +39,184 @@
     .et-friends-item { display:flex; align-items:center; justify-content:space-between; background:#0f1220; border:1px solid #2a3147; border-radius:10px; padding:8px 10px }
   </style>
 
-  <!-- Firebase compat SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase Web v12 (modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-  <!-- Initialize Firebase -->
-  <script>
+    // EXACT config you provided
     const firebaseConfig = {
-      apiKey: "AIzaSyBa1ybMDvNjKE7CJOXPiOevhiK1FI77ds",
+      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
       authDomain: "elementails.firebaseapp.com",
       projectId: "elementails",
-      storageBucket: "elementails.appspot.com",
+      storageBucket: "elementails.firebasestorage.app",
       messagingSenderId: "497100635124",
-      appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
+      appId: "1:497100635124:web:aeeb25ead96b84751e57a1",
+      measurementId: "G-H7ZXWH59GS"
     };
-    if (!window.firebaseApp) { window.firebaseApp = firebase.initializeApp(firebaseConfig); }
-    window.db = firebase.firestore();
+
+    // Init
+    const app = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ---- Auth UI wiring ----
+    const loginBtn = document.addEventListener('DOMContentLoaded', () => {
+      const loginBtn = document.getElementById('auth-login');
+      const logoutBtn = document.getElementById('auth-logout');
+      const namePill = document.getElementById('auth-username');
+
+      loginBtn.addEventListener('click', async () => {
+        try {
+          const provider = new GoogleAuthProvider();
+          await signInWithPopup(auth, provider);
+        } catch (e) {
+          console.error(e);
+          alert(e.code || 'Login failed');
+        }
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        try { await signOut(auth); }
+        catch (e) { console.error(e); }
+      });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          // prefer ElemenTails username
+          let display = user.displayName || '(user)';
+          try {
+            const uDoc = await getDoc(doc(db, 'users', user.uid));
+            if (uDoc.exists() && uDoc.data().username) display = uDoc.data().username;
+          } catch {}
+          namePill.textContent = '@' + display;
+          namePill.style.display = 'inline-block';
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-block';
+          refreshFriends();
+        } else {
+          namePill.style.display = 'none';
+          loginBtn.style.display = 'inline-block';
+          logoutBtn.style.display = 'none';
+          document.getElementById('et-friends-list').innerHTML = '<div class="et-muted">(none yet)</div>';
+          setStatus('Sign in first.', false);
+          stopFriendsWatch();
+        }
+      });
+
+      // ---- Friends logic (modular) ----
+      const statusEl = document.getElementById('et-friends-status');
+      const listEl = document.getElementById('et-friends-list');
+      const inputEl = document.getElementById('et-friend-input');
+      const addBtn  = document.getElementById('et-friend-add');
+      let unsubFriends = null;
+
+      function setStatus(msg, ok=null){
+        statusEl.textContent = msg || '';
+        statusEl.className = 'et-friends-status ' + (ok===true ? 'et-ok' : ok===false ? 'et-err' : 'et-muted');
+      }
+      function needAuth(){
+        const u = auth.currentUser;
+        if(!u){ setStatus('Sign in first.', false); return null; }
+        return u;
+      }
+      function stopFriendsWatch(){
+        if (typeof unsubFriends === 'function') { try { unsubFriends(); } catch {} }
+        unsubFriends = null;
+      }
+
+      addBtn.addEventListener('click', onAdd);
+      inputEl.addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
+
+      async function onAdd(){
+        const me = needAuth(); if(!me) return;
+        const v = (inputEl.value || '').trim();
+        if(!v){ setStatus('Type a username.', false); return; }
+
+        addBtn.disabled = true; setStatus('Searching…');
+
+        try{
+          const uLower = v.toLowerCase();
+          const claimRef = doc(db, 'usernames', uLower);
+          const claim = await getDoc(claimRef);
+          if(!claim.exists()){ setStatus('User not found.', false); addBtn.disabled=false; return; }
+          const friendUid = claim.data() && claim.data().uid;
+          if(!friendUid){ setStatus('User not found.', false); addBtn.disabled=false; return; }
+          if(friendUid === me.uid){ setStatus('That’s you 🙂', false); addBtn.disabled=false; return; }
+
+          const prof = await getDoc(doc(db, 'users', friendUid));
+          const username = prof.exists() ? (prof.data().username || v) : v;
+
+          const myFriendRef = doc(db, 'users', me.uid, 'friends', friendUid);
+          const existing = await getDoc(myFriendRef);
+          if(existing.exists()){ setStatus('Already in your friends.', true); addBtn.disabled=false; return; }
+
+          await setDoc(myFriendRef, {
+            uid: friendUid,
+            username,
+            usernameLower: uLower,
+            addedAt: (await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js')).serverTimestamp()
+          });
+          inputEl.value='';
+          setStatus('Friend added ✔', true);
+        }catch(e){
+          console.error(e);
+          setStatus(e.code || 'Could not add friend.', false);
+        }finally{
+          addBtn.disabled=false;
+        }
+      }
+
+      function renderFriends(items){
+        listEl.innerHTML = '';
+        if(!items || !items.length){
+          listEl.innerHTML = '<div class="et-muted">(none yet)</div>';
+          return;
+        }
+        for(const it of items){
+          const row = document.createElement('div'); row.className='et-friends-item';
+          const name = document.createElement('span'); name.textContent = it.username || it.usernameLower || it.id;
+          const rm = document.createElement('button'); rm.className='et-friends-btn secondary'; rm.textContent='Remove';
+          rm.onclick = async () => {
+            const me = needAuth(); if(!me) return;
+            try{
+              await deleteDoc(doc(db, 'users', me.uid, 'friends', it.id));
+              setStatus('Removed.', true);
+            }catch(err){ console.error(err); setStatus(err.code || 'Could not remove.', false); }
+          };
+          const right = document.createElement('div'); right.appendChild(rm);
+          row.append(name, right);
+          listEl.appendChild(row);
+        }
+      }
+
+      function refreshFriends(){
+        stopFriendsWatch();
+        const me = auth.currentUser;
+        if(!me){ return; }
+        const friendsCol = collection(db, 'users', me.uid, 'friends');
+        const q = query(friendsCol, orderBy('usernameLower'));
+        unsubFriends = onSnapshot(q, (snap) => {
+          const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderFriends(items);
+          setStatus('Ready.', true);
+        }, (err) => {
+          console.error(err);
+          setStatus(err.code || 'Could not load friends.', false);
+        });
+      }
+
+      // Seed SP/MP fields from saved session (best effort)
+      document.getElementById('playerName').value = (window.Session && Session.getName && Session.getName()) || '';
+      document.getElementById('lastRoom').value  = (window.Session && Session.getRoomCode && Session.getRoomCode()) || '';
+    });
   </script>
 </head>
 <body>
@@ -112,151 +272,8 @@
     </div>
   </div>
 
-  <!-- Your existing scripts -->
+  <!-- Existing project scripts (router/session) -->
   <script src="source/state/router.js"></script>
   <script src="source/state/session.js"></script>
-
-  <!-- Login/Logout wiring + Friends logic (production) -->
-  <script>
-    // ---- Auth UI wiring ----
-    const loginBtn = document.getElementById('auth-login');
-    const logoutBtn = document.getElementById('auth-logout');
-    const namePill = document.getElementById('auth-username');
-
-    loginBtn.addEventListener('click', async () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try { await firebase.auth().signInWithPopup(provider); }
-      catch (e) { console.error(e); alert('Login failed'); }
-    });
-    logoutBtn.addEventListener('click', async () => {
-      try { await firebase.auth().signOut(); }
-      catch (e) { console.error(e); }
-    });
-
-    firebase.auth().onAuthStateChanged(async (user) => {
-      if (user) {
-        // Pull ElemenTails username if set; fallback to Google name
-        let display = user.displayName || '(user)';
-        try {
-          const doc = await firebase.firestore().collection('users').doc(user.uid).get();
-          if (doc.exists && doc.data().username) display = doc.data().username;
-        } catch {}
-        namePill.textContent = '@' + display;
-        namePill.style.display = 'inline-block';
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-        refreshFriends();
-      } else {
-        namePill.style.display = 'none';
-        loginBtn.style.display = 'inline-block';
-        logoutBtn.style.display = 'none';
-        // Clear friends area to signed-out state
-        document.getElementById('et-friends-list').innerHTML = '<div class="et-muted">(none yet)</div>';
-        setStatus('Sign in first.', false);
-      }
-    });
-
-    // ---- Friends logic (matches Firestore rules you published) ----
-    const statusEl = document.getElementById('et-friends-status');
-    const listEl = document.getElementById('et-friends-list');
-    const inputEl = document.getElementById('et-friend-input');
-    const addBtn  = document.getElementById('et-friend-add');
-    let unsubFriends = null;
-
-    function setStatus(msg, ok=null){
-      statusEl.textContent = msg || '';
-      statusEl.className = 'et-friends-status ' + (ok===true ? 'et-ok' : ok===false ? 'et-err' : 'et-muted');
-    }
-    function needAuth(){
-      const u = firebase.auth().currentUser;
-      if(!u){ setStatus('Sign in first.', false); return null; }
-      return u;
-    }
-
-    addBtn.addEventListener('click', onAdd);
-    inputEl.addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
-
-    async function onAdd(){
-      const me = needAuth(); if(!me) return;
-      const v = (inputEl.value || '').trim();
-      if(!v){ setStatus('Type a username.', false); return; }
-
-      addBtn.disabled = true; setStatus('Searching…');
-
-      try{
-        const uLower = v.toLowerCase();
-        const claim = await firebase.firestore().collection('usernames').doc(uLower).get();
-        if(!claim.exists){ setStatus('User not found.', false); addBtn.disabled=false; return; }
-        const friendUid = claim.data() && claim.data().uid;
-        if(!friendUid){ setStatus('User not found.', false); addBtn.disabled=false; return; }
-        if(friendUid === me.uid){ setStatus('That’s you 🙂', false); addBtn.disabled=false; return; }
-
-        const prof = await firebase.firestore().collection('users').doc(friendUid).get();
-        const username = prof.exists ? (prof.data().username || v) : v;
-
-        const ref = firebase.firestore().collection('users').doc(me.uid).collection('friends').doc(friendUid);
-        const snap = await ref.get();
-        if(snap.exists){ setStatus('Already in your friends.', true); addBtn.disabled=false; return; }
-
-        await ref.set({
-          uid: friendUid,
-          username: username,
-          usernameLower: uLower,
-          addedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        inputEl.value='';
-        setStatus('Friend added ✔', true);
-      }catch(e){
-        console.error(e);
-        setStatus('Could not add friend.', false);
-      }finally{
-        addBtn.disabled=false;
-      }
-    }
-
-    function renderFriends(items){
-      listEl.innerHTML = '';
-      if(!items || !items.length){
-        listEl.innerHTML = '<div class="et-muted">(none yet)</div>';
-        return;
-      }
-      for(const it of items){
-        const row = document.createElement('div'); row.className='et-friends-item';
-        const name = document.createElement('span'); name.textContent = it.username || it.usernameLower || it.id;
-        const rm = document.createElement('button'); rm.className='et-friends-btn secondary'; rm.textContent='Remove';
-        rm.onclick = async () => {
-          const me = needAuth(); if(!me) return;
-          try{
-            await firebase.firestore().collection('users').doc(me.uid).collection('friends').doc(it.id).delete();
-            setStatus('Removed.', true);
-          }catch(err){ console.error(err); setStatus('Could not remove.', false); }
-        };
-        const right = document.createElement('div'); right.appendChild(rm);
-        row.append(name, right);
-        listEl.appendChild(row);
-      }
-    }
-
-    function refreshFriends(){
-      if(unsubFriends){ try{unsubFriends();}catch{} unsubFriends=null; }
-      const me = firebase.auth().currentUser;
-      if(!me){ return; }
-      unsubFriends = firebase.firestore().collection('users').doc(me.uid).collection('friends')
-        .orderBy('usernameLower')
-        .onSnapshot(s => {
-          const items = s.docs.map(d => Object.assign({id:d.id}, d.data()));
-          renderFriends(items);
-          setStatus('Ready.', true);
-        }, err => {
-          console.error(err); setStatus('Could not load friends.', false);
-        });
-    }
-
-    // Seed SP/MP fields from saved session (your existing behavior)
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('playerName').value = (window.Session && Session.getName && Session.getName()) || '';
-      document.getElementById('lastRoom').value  = (window.Session && Session.getRoomCode && Session.getRoomCode()) || '';
-    });
-  </script>
 </body>
 </html>
