@@ -62,26 +62,9 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, onSnapshot, serverTimestamp,
-      where, getDocs, addDoc, limit, setLogLevel
+      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp,
+      where, getDocs, addDoc, limit
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
-    // TEMP logging to surface Firestore issues while stabilizing
-    try { setLogLevel && setLogLevel('debug'); } catch {}
-
-// Toggle to quickly isolate presence-related writes
-const ENABLE_PRESENCE = false;
-
-    const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
-
-    function showNet(state) {
-      const el = document.getElementById('et-friends-status');
-      if (!el) return;
-      el.textContent = state ? '' : 'You are offline — actions will be retried when back online.';
-    }
-    window.addEventListener('online',  () => showNet(true));
-    window.addEventListener('offline', () => showNet(false));
-    showNet(navigator.onLine);
 
     const firebaseConfig = {
       apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
@@ -127,7 +110,7 @@ const ENABLE_PRESENCE = false;
           namePill.style.display = 'inline-block';
           loginBtn.style.display = 'none';
           logoutBtn.style.display = 'inline-block';
-          if (ENABLE_PRESENCE) await upsertPresence('MainMenu');
+          await upsertPresence('MainMenu');
           renderMyBanner();
           refreshFriends();
         } else {
@@ -157,23 +140,22 @@ const ENABLE_PRESENCE = false;
       window.addEventListener('beforeunload', async () => {
         const me = auth.currentUser; if(!me) return;
         try {
-          if (ENABLE_PRESENCE) await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true });
+          await setDoc(doc(db,'presence', me.uid), { online:false, lastOnline: serverTimestamp() }, { merge:true });
         } catch {}
       });
     });
 
     async function createSession(visibility){
-      if (!navigator.onLine) { alert('You are offline. Check your connection and try again.'); return; }
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       try {
-        const ref = await addDoc(collection(db, 'rooms'), clean({
+        const ref = await addDoc(collection(db, 'rooms'), {
           hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'),
           partyLocked:false, participantUids:[me.uid], partyUids:[],
           createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-        }));
+        });
         if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
         routeToPartySelect(ref.id);
-      } catch (e) { console.error('createSession failed:', e.code, e.message, e); alert(e.message || 'Could not create session.'); }
+      } catch (e) { alert(e.message || 'Could not create session.'); }
     }
 
     function toggleLoadList(){
@@ -196,10 +178,7 @@ const ENABLE_PRESENCE = false;
           return;
         }
         const rows = [];
-        ss.forEach(docSnap => {
-          const r = docSnap.data(); r.id = docSnap.id;
-          rows.push(r);
-        });
+        ss.forEach(docSnap => { const r = docSnap.data(); r.id = docSnap.id; rows.push(r); });
         rows.sort((a,b)=> (b?.createdAt?.seconds||0) - (a?.createdAt?.seconds||0));
         rows.forEach(r => {
           const row = document.createElement('div');
@@ -222,10 +201,7 @@ const ENABLE_PRESENCE = false;
           </svg>`;
           delBtn.onclick = async () => {
             if (!confirm('Delete this save? This cannot be undone.')) return;
-            try{
-              await deleteDoc(doc(db,'rooms', r.id));
-              row.remove();
-            }catch{ alert('Failed to delete save.'); }
+            try{ await deleteDoc(doc(db,'rooms', r.id)); row.remove(); }catch{ alert('Failed to delete save.'); }
           };
 
           right.appendChild(loadBtn);
@@ -241,12 +217,10 @@ const ENABLE_PRESENCE = false;
 
     // ---------- Presence helpers ----------
     async function upsertPresence(screen){
-      if (!ENABLE_PRESENCE) return;
-      if (!navigator.onLine) return;
       const me = auth.currentUser; if(!me) return;
       try {
-        await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen, updatedAt: serverTimestamp() }), { merge:true });
-      } catch (e) { console.error('presence upsert failed:', e.code, e.message, e); }
+        await setDoc(doc(db,'presence', me.uid), { online:true, screen, updatedAt: serverTimestamp() }, { merge:true });
+      } catch {}
     }
 
     async function readPresence(uid){
@@ -306,7 +280,7 @@ const ENABLE_PRESENCE = false;
         const myRef = doc(db, 'users', me.uid, 'friends', friendUid);
         const exists = await getDoc(myRef);
         if(exists.exists()){ setStatus('Already in your friends.'); return; }
-        await setDoc(myRef, clean({ uid: friendUid, username: v, usernameLower: uLower, addedAt: serverTimestamp() }));
+        await setDoc(myRef, { uid: friendUid, username: v, usernameLower: uLower, addedAt: serverTimestamp() });
         document.getElementById('et-friend-input').value='';
         setStatus('Friend added ✔');
       }catch(e){ setStatus('Could not add friend.'); }
@@ -354,7 +328,6 @@ const ENABLE_PRESENCE = false;
       })();
 
       (async () => {
-        if (!ENABLE_PRESENCE) { presenceBtn.textContent = 'Offline'; presenceBtn.className='status-btn status-disabled'; return; }
         try {
           const presence = await readPresence(friend.id);
           presenceBtn.textContent = presence.online ? 'Online' : 'Offline';
@@ -411,7 +384,6 @@ const ENABLE_PRESENCE = false;
             }
           }
         } catch (e) {
-          console.error('friend presence/rooms lookup failed:', e?.code, e?.message, e);
           presenceBtn.textContent = 'Offline';
           presenceBtn.className = 'status-btn status-disabled';
         }
@@ -423,13 +395,13 @@ const ENABLE_PRESENCE = false;
       if (unsub) try{unsub();}catch{}
       const me = auth.currentUser; if(!me) return;
       const list = document.getElementById('friends-col');
-      const q = query(collection(db,'users', me.uid, 'friends'));
+      const q = query(collection(db,'users', me.uid, 'friends'), orderBy('usernameLower'));
       unsub = onSnapshot(q, (snap)=>{
         list.innerHTML = '';
         const items = snap.docs.map(d=>({id:d.id, ...d.data()}));
         if(!items.length) list.innerHTML = '<div class="muted">(no friends yet)</div>';
         items.forEach(it => renderFriendRow(list, it, me));
-      }, (err)=> { console.error('friends snapshot error:', err?.code, err?.message, err); setStatus('Could not load friends.'); });
+      }, ()=> setStatus('Could not load friends.'));
     }
   </script>
 </head>

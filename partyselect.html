@@ -106,8 +106,7 @@
       state.isHost = !!(state.me && state.room.hostUid === state.me.uid);
       $('#vis').textContent   = state.room.visibility || 'friends';
       $('#status').textContent= state.room.status || 'open';
-      $('#host').textContent  = state.room.hostUid ? (state.room.hostUid.slice(0,6)+'…') : '(unknown)';
-      if (state.room.partyLocked) {
+            if (state.room.partyLocked) {
         $('#banner').textContent = 'Party is locked.';
         $('#lock').disabled = true;
       }
