@@ -70,7 +70,7 @@
     try { setLogLevel && setLogLevel('debug'); } catch {}
 
 // Toggle to quickly isolate presence-related writes
-const ENABLE_PRESENCE = true;
+const ENABLE_PRESENCE = false;
 
     const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
 
