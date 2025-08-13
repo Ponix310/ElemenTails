@@ -69,6 +69,9 @@
     // TEMP logging to surface Firestore issues while stabilizing
     try { setLogLevel && setLogLevel('debug'); } catch {}
 
+// Toggle to quickly isolate presence-related writes
+const ENABLE_PRESENCE = true;
+
     const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
 
     function showNet(state) {
@@ -124,7 +127,7 @@
           namePill.style.display = 'inline-block';
           loginBtn.style.display = 'none';
           logoutBtn.style.display = 'inline-block';
-          await upsertPresence('MainMenu');
+          if (ENABLE_PRESENCE) await upsertPresence('MainMenu');
           renderMyBanner();
           refreshFriends();
         } else {
@@ -154,7 +157,7 @@
       window.addEventListener('beforeunload', async () => {
         const me = auth.currentUser; if(!me) return;
         try {
-          await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true });
+          if (ENABLE_PRESENCE) await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true });
         } catch {}
       });
     });
@@ -238,6 +241,7 @@
 
     // ---------- Presence helpers ----------
     async function upsertPresence(screen){
+      if (!ENABLE_PRESENCE) return;
       if (!navigator.onLine) return;
       const me = auth.currentUser; if(!me) return;
       try {
@@ -350,6 +354,7 @@
       })();
 
       (async () => {
+        if (!ENABLE_PRESENCE) { presenceBtn.textContent = 'Offline'; presenceBtn.className='status-btn status-disabled'; return; }
         try {
           const presence = await readPresence(friend.id);
           presenceBtn.textContent = presence.online ? 'Online' : 'Offline';
@@ -406,6 +411,7 @@
             }
           }
         } catch (e) {
+          console.error('friend presence/rooms lookup failed:', e?.code, e?.message, e);
           presenceBtn.textContent = 'Offline';
           presenceBtn.className = 'status-btn status-disabled';
         }
@@ -423,7 +429,7 @@
         const items = snap.docs.map(d=>({id:d.id, ...d.data()}));
         if(!items.length) list.innerHTML = '<div class="muted">(no friends yet)</div>';
         items.forEach(it => renderFriendRow(list, it, me));
-      }, ()=> setStatus('Could not load friends.'));
+      }, (err)=> { console.error('friends snapshot error:', err?.code, err?.message, err); setStatus('Could not load friends.'); });
     }
   </script>
 </head>
