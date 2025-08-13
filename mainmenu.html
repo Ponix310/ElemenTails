@@ -80,6 +80,13 @@
     const db = getFirestore(app);
     const portraitUrl = key => `images/class-portraits/${key}.png`;
 
+    // helpers
+    const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
+    const isRunning   = (room) => room && (room.status==='running' || room.status==='inGame');
+    const isParty     = (room) => room && (room.status==='party' || room.status==='lobby' || room.status==='open');
+    const partyCount  = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
+    const includesMe  = (uid, room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(uid) : false;
+
     // ---------- Navigation ----------
     function routeToPartySelect(roomId){
       const url = `partyselect.html?roomId=${roomId}`;
@@ -125,7 +132,7 @@
     // ---------- Left actions ----------
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('tile-single')?.addEventListener('click', ()=> createSession('private'));
-      document.getElementById('tile-multi')?.addEventListener('click', ()=> createSession('friends')); // friends-joinable
+      document.getElementById('tile-multi')?.addEventListener('click', ()=> createSession('friends'));
       document.getElementById('btn-load')?.addEventListener('click', toggleLoadList);
 
       document.getElementById('edit-profile-btn').addEventListener('click', () => {
@@ -140,7 +147,7 @@
       window.addEventListener('beforeunload', async () => {
         const me = auth.currentUser; if(!me) return;
         try {
-          await setDoc(doc(db,'presence', me.uid), { online:false, lastOnline: serverTimestamp() }, { merge:true });
+          await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true });
         } catch {}
       });
     });
@@ -148,11 +155,11 @@
     async function createSession(visibility){
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       try {
-        const ref = await addDoc(collection(db, 'rooms'), {
+        const ref = await addDoc(collection(db, 'rooms'), clean({
           hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'),
           partyLocked:false, participantUids:[me.uid], partyUids:[],
           createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-        });
+        }));
         if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
         routeToPartySelect(ref.id);
       } catch (e) { alert(e.message || 'Could not create session.'); }
@@ -219,19 +226,8 @@
     async function upsertPresence(screen){
       const me = auth.currentUser; if(!me) return;
       try {
-        await setDoc(doc(db,'presence', me.uid), { online:true, screen, updatedAt: serverTimestamp() }, { merge:true });
+        await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen, updatedAt: serverTimestamp() }), { merge:true });
       } catch {}
-    }
-
-    async function readPresence(uid){
-      try {
-        const p = await getDoc(doc(db,'presence', uid));
-        if (!p.exists()) return { online:false };
-        const data = p.data() || {};
-        return { online: !!data.online, screen: data.screen || null, updatedAt: data.updatedAt || null };
-      } catch {
-        return { online:false };
-      }
     }
 
     // ---------- Banner ----------
@@ -254,7 +250,7 @@
       } catch { bg.style.background = fallbackGradient(me.uid); }
     }
 
-    // ---------- Friends list ----------
+    // ---------- Friends list (realtime presence + session gating) ----------
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('et-friend-add').addEventListener('click', onAdd);
       document.getElementById('et-friend-input').addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
@@ -280,7 +276,7 @@
         const myRef = doc(db, 'users', me.uid, 'friends', friendUid);
         const exists = await getDoc(myRef);
         if(exists.exists()){ setStatus('Already in your friends.'); return; }
-        await setDoc(myRef, { uid: friendUid, username: v, usernameLower: uLower, addedAt: serverTimestamp() });
+        await setDoc(myRef, clean({ uid: friendUid, username: v, usernameLower: uLower, addedAt: serverTimestamp() }));
         document.getElementById('et-friend-input').value='';
         setStatus('Friend added ✔');
       }catch(e){ setStatus('Could not add friend.'); }
@@ -321,82 +317,86 @@
       row.appendChild(content);
       container.appendChild(row);
 
+      // portrait
       (async () => {
         const key = await fetchPortrait(friend.id);
         if (key) bg.style.backgroundImage = `url('${portraitUrl(key)}')`;
         else bg.style.background = fallbackGradient(friend.id);
       })();
 
-      (async () => {
-        try {
-          const presence = await readPresence(friend.id);
-          presenceBtn.textContent = presence.online ? 'Online' : 'Offline';
-          presenceBtn.className = 'status-btn status-disabled';
-          presenceBtn.disabled = true;
+      // realtime presence + session gating
+      let currentPresence = { online:false, screen:null };
 
-          const q1 = query(collection(db,'rooms'), where('participantUids','array-contains', friend.id), limit(5));
-          const ss = await getDocs(q1);
-          const rooms = [];
-          ss.forEach(d=>{ const r = d.data(); r.id=d.id; rooms.push(r); });
-          rooms.sort((a,b)=> (b?.createdAt?.seconds||0) - (a?.createdAt?.seconds||0));
-          let latest = rooms[0] || null, joinable = null;
-          for (const r of rooms){
-            if (r.visibility==='private') continue;
-            if (r.partyLocked){
-              const party = Array.isArray(r.partyUids)?r.partyUids:[];
-              if (!party.includes(me.uid)) continue;
-            }
-            joinable = r; break;
+      async function refreshFriendSession() {
+        const q1 = query(collection(db,'rooms'),
+                         where('participantUids','array-contains', friend.id),
+                         limit(5));
+        const ss = await getDocs(q1);
+
+        // clear old session buttons
+        [...right.querySelectorAll('.status-btn.status-join')].forEach(el => el.remove());
+
+        const rooms = [];
+        ss.forEach(d => { const r = d.data(); r.id = d.id; rooms.push(r); });
+        rooms.sort((a,b)=> (b?.updatedAt?.seconds||b?.createdAt?.seconds||0) - (a?.updatedAt?.seconds||a?.createdAt?.seconds||0)).reverse();
+        const latest = rooms[0] || null;
+
+        const joinable = rooms.find(r => {
+          if (r.visibility === 'private') return false;
+          if (r.partyLocked) {
+            const party = Array.isArray(r.partyUids) ? r.partyUids : [];
+            if (!party.includes(me.uid)) return false;
           }
+          // Only show "Party Select" if they're actually on that screen now
+          if (isParty(r) && currentPresence.screen !== 'PartySelect') return false;
+          return true;
+        }) || null;
 
-          const isRunning = (room) => room && (room.status==='running' || room.status==='inGame');
-          const isPartySelect = (room) => room && (room.status==='party' || room.status==='lobby' || room.status==='open');
-          const partyCount = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
-          const includesMe = (room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(me.uid) : false;
-
-          function addSessionBtn(label, enabled, onClick){
-            const sessionBtn = document.createElement('button');
-            sessionBtn.className = enabled ? 'status-btn status-join' : 'status-btn status-disabled';
-            sessionBtn.textContent = label;
-            sessionBtn.disabled = !enabled;
-            if (enabled && typeof onClick === 'function') sessionBtn.onclick = onClick;
-            right.insertBefore(sessionBtn, rm);
-          }
-
-          if (joinable) {
-            if (isRunning(joinable)) {
-              if (includesMe(joinable)) {
-                addSessionBtn('Rejoin Game', true, () => routeToPartySelect(joinable.id));
-              } else {
-                addSessionBtn('In Game', false);
-              }
-            } else if (isPartySelect(joinable)) {
-              const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
-              addSessionBtn('In Party Select', roomHasRoom, () => routeToPartySelect(joinable.id));
-            } else {
-              addSessionBtn('In Game', false);
-            }
-          } else if (latest && isRunning(latest)) {
-            if (includesMe(latest)) {
-              addSessionBtn('Rejoin Game', true, () => routeToPartySelect(latest.id));
-            } else {
-              addSessionBtn('In Game', false);
-            }
-          }
-        } catch (e) {
-          presenceBtn.textContent = 'Offline';
-          presenceBtn.className = 'status-btn status-disabled';
+        function addSessionBtn(label, enabled, onClick){
+          const sessionBtn = document.createElement('button');
+          sessionBtn.className = enabled ? 'status-btn status-join' : 'status-btn status-disabled';
+          sessionBtn.textContent = label;
+          sessionBtn.disabled = !enabled;
+          if (enabled && typeof onClick === 'function') sessionBtn.onclick = onClick;
+          right.insertBefore(sessionBtn, rm);
         }
-      })();
+
+        if (joinable) {
+          if (isRunning(joinable)) {
+            if (includesMe(me.uid, joinable)) addSessionBtn('Rejoin Game', true, () => routeToPartySelect(joinable.id));
+            else addSessionBtn('In Game', false);
+          } else if (isParty(joinable)) {
+            const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
+            addSessionBtn('In Party Select', roomHasRoom, () => routeToPartySelect(joinable.id));
+          }
+        } else if (latest && isRunning(latest)) {
+          if (includesMe(me.uid, latest)) addSessionBtn('Rejoin Game', true, () => routeToPartySelect(latest.id));
+          else addSessionBtn('In Game', false);
+        }
+      }
+
+      const presRef = doc(db,'presence', friend.id);
+      const unsubPresence = onSnapshot(presRef, async (snap) => {
+        const p = snap.exists() ? snap.data() : {};
+        currentPresence = { online: !!p.online, screen: p.screen || null };
+        presenceBtn.textContent = currentPresence.online ? 'Online' : 'Offline';
+        presenceBtn.className   = 'status-btn status-disabled';
+        try { await refreshFriendSession(); } catch {}
+      });
+
+      row._unsubPresence = unsubPresence;
+      refreshFriendSession().catch(()=>{});
     }
 
-    let unsub=null;
+    let unsubFriends=null;
     function refreshFriends(){
-      if (unsub) try{unsub();}catch{}
+      if (unsubFriends) try{unsubFriends();}catch{}
       const me = auth.currentUser; if(!me) return;
       const list = document.getElementById('friends-col');
       const q = query(collection(db,'users', me.uid, 'friends'), orderBy('usernameLower'));
-      unsub = onSnapshot(q, (snap)=>{
+      unsubFriends = onSnapshot(q, (snap)=>{
+        // cleanup old per-row listeners
+        list.querySelectorAll('.friend-tile').forEach(el => { try{ el._unsubPresence && el._unsubPresence(); }catch{} });
         list.innerHTML = '';
         const items = snap.docs.map(d=>({id:d.id, ...d.data()}));
         if(!items.length) list.innerHTML = '<div class="muted">(no friends yet)</div>';
@@ -461,7 +461,6 @@
     </div>
   </div>
 
-  <!-- Existing project scripts -->
   <script src="source/state/router.js"></script>
   <script src="source/state/session.js"></script>
 </body>
