@@ -12,11 +12,17 @@
     h1{margin:0;font-size:26px}
     .btn{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;background:#1e2433;color:#fff}
     .btn.primary{background:var(--accent);color:#06241e}
+    .btn.ghost{background:#1e2433;color:#cbd5e1}
+    .btn.warn{background:#8b1e2f}
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
     .muted{color:#9aa4b2}
-    .row{display:flex;gap:10px;align-items:center}
-    ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .grid{display:grid;gap:10px}
+    .slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .slot{border:1px solid #2a3147;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;background:#0f1220;min-height:64px}
     .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#1e2433}
+    .right{display:flex;gap:8px;align-items:center}
+    @media (max-width:640px){ .slots{grid-template-columns:1fr} }
   </style>
 
   <script type="module">
@@ -65,35 +71,128 @@
 
     async function mount(){
       if (!roomId) { location.href='mainmenu.html'; return; }
-      // ensure I'm in participants
+
+      // Initial capacity + lock gate before adding
       try {
-        await updateDoc(doc(db,'rooms', roomId), clean({
+        const ref = doc(db,'rooms', roomId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) { location.href='mainmenu.html'; return; }
+        const r = snap.data();
+        const maxParty = r.maxParty || 4;
+        const locked = !!r.partyLocked;
+        const party = Array.isArray(r.partyUids) ? r.partyUids : [];
+        if (!party.includes(me.uid)) {
+          if (locked) { alert('Party is locked.'); location.href='mainmenu.html'; return; }
+          if (party.length >= maxParty) { alert('Party is full.'); location.href='mainmenu.html'; return; }
+        }
+        // Add me to participants/party
+        await updateDoc(ref, clean({
           updatedAt: serverTimestamp(),
           participantUids: arrayUnion(me.uid),
-          partyUids: arrayUnion(me.uid)  // auto-join party on landing
+          partyUids: arrayUnion(me.uid)
         }));
       } catch {}
 
-      const backBtn = document.getElementById('btn-back');
-      backBtn.addEventListener('click', leaveAndBack);
+      // Buttons
+      document.getElementById('btn-back').addEventListener('click', leaveAndBack);
+      document.getElementById('btn-copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(roomId); alert('Room code copied'); } catch {}
+      });
+      document.getElementById('btn-ready').addEventListener('click', toggleReady);
+      document.getElementById('btn-start').addEventListener('click', startGame);
+      document.getElementById('btn-lock').addEventListener('click', toggleLock);
 
+      // Room listener
       const ref = doc(db,'rooms', roomId);
       unsubRoom = onSnapshot(ref, (snap) => {
         if (!snap.exists()) { location.href='mainmenu.html'; return; }
         const r = snap.data();
+
+        // header
         setText('rid', roomId.slice(0,6)+'…');
         setText('vis', r.visibility || 'friends');
         setText('status', r.status || 'open');
 
-        const list = document.getElementById('party');
-        list.innerHTML = '';
+        // build slots
         const party = Array.isArray(r.partyUids) ? r.partyUids : [];
-        if (!party.length) list.innerHTML = '<li class="muted">No players yet.</li>';
-        for (const uid of party){
-          const li = document.createElement('li'); li.textContent = uid === r.hostUid ? `👑 ${uid}` : uid;
-          list.appendChild(li);
+        const ready = Array.isArray(r.readyUids) ? r.readyUids : [];
+        const isHost = r.hostUid === me.uid;
+        const myReady = ready.includes(me.uid);
+        const maxParty = r.maxParty || 4;
+
+        // buttons state
+        document.getElementById('btn-ready').textContent = myReady ? 'Unready' : 'Ready';
+        document.getElementById('btn-lock').textContent  = r.partyLocked ? 'Unlock Party' : 'Lock Party';
+        document.getElementById('btn-lock').disabled     = !isHost;
+        document.getElementById('btn-start').disabled    = !(party.length >= 1 && ready.length === party.length && (!r.partyLocked || isHost));
+        document.getElementById('host-ind').style.display = isHost ? 'inline' : 'none';
+
+        const list = document.getElementById('slots');
+        list.innerHTML = '';
+        for (let i=0;i<maxParty;i++){
+          const uid = party[i] || null;
+          const slot = document.createElement('div'); slot.className='slot';
+          const left = document.createElement('div');
+          const right = document.createElement('div'); right.className='right';
+
+          if (uid){
+            left.innerHTML = `<div style="font-weight:700">${uid === r.hostUid ? '👑 ' : ''}${uid}</div>
+                              <div class="muted">${ready.includes(uid) ? 'Ready' : 'Not ready'}</div>`;
+            if (isHost && uid !== r.hostUid){
+              const kick = document.createElement('button'); kick.className='btn warn'; kick.textContent='Kick';
+              kick.onclick = async () => {
+                try {
+                  await updateDoc(ref, clean({
+                    partyUids: arrayRemove(uid),
+                    readyUids: arrayRemove(uid),
+                    updatedAt: serverTimestamp()
+                  }));
+                } catch {}
+              };
+              right.appendChild(kick);
+            }
+          } else {
+            left.innerHTML = `<div class="muted">Open Slot</div>`;
+          }
+
+          slot.appendChild(left); slot.appendChild(right);
+          list.appendChild(slot);
         }
       });
+    }
+
+    async function toggleReady(){
+      try {
+        const ref = doc(db,'rooms', roomId);
+        const snap = await getDoc(ref); if (!snap.exists()) return;
+        const r = snap.data();
+        const ready = Array.isArray(r.readyUids) ? r.readyUids : [];
+        const isReady = ready.includes(me.uid);
+        await updateDoc(ref, clean({
+          readyUids: isReady ? arrayRemove(me.uid) : arrayUnion(me.uid),
+          updatedAt: serverTimestamp()
+        }));
+      } catch {}
+    }
+
+    async function toggleLock(){
+      try {
+        const ref = doc(db,'rooms', roomId);
+        const snap = await getDoc(ref); if (!snap.exists()) return;
+        const r = snap.data(); if (r.hostUid !== me.uid) return;
+        await updateDoc(ref, clean({ partyLocked: !r.partyLocked, updatedAt: serverTimestamp() }));
+      } catch {}
+    }
+
+    async function startGame(){
+      try {
+        const ref = doc(db,'rooms', roomId);
+        await updateDoc(ref, clean({ status:'running', startedAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+        // Try to route to a game shell if present; otherwise just notify
+        if (window.Router && Router.to) Router.to('gameshell.html?roomId='+roomId);
+        else if (location.origin) location.href = 'gameshell.html?roomId='+roomId;
+        else alert('Game started! (stub)');
+      } catch {}
     }
 
     async function leaveAndBack(){
@@ -103,11 +202,11 @@
         if (snap.exists()){
           const r = snap.data();
           if (r.hostUid === me.uid) {
-            // host closes room so it doesn't look joinable
+            // host closes room
             await updateDoc(ref, clean({ status:'closed', updatedAt: serverTimestamp() }));
           }
-          // leave party
-          await updateDoc(ref, clean({ partyUids: arrayRemove(me.uid), updatedAt: serverTimestamp() }));
+          // remove me from party and ready
+          await updateDoc(ref, clean({ partyUids: arrayRemove(me.uid), readyUids: arrayRemove(me.uid), updatedAt: serverTimestamp() }));
         }
       } catch {}
       try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'MainMenu', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
@@ -121,7 +220,7 @@
         if (snap.exists()){
           const r = snap.data();
           if (r.hostUid === me.uid) await updateDoc(ref, clean({ status:'closed', updatedAt: serverTimestamp() }));
-          await updateDoc(ref, clean({ partyUids: arrayRemove(me.uid), updatedAt: serverTimestamp() }));
+          await updateDoc(ref, clean({ partyUids: arrayRemove(me.uid), readyUids: arrayRemove(me.uid), updatedAt: serverTimestamp() }));
         }
       } catch {}
       try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'MainMenu', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
@@ -132,14 +231,21 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>Party Select</h1>
-      <button id="btn-back" class="btn">Back</button>
+      <h1>Party Select <span id="host-ind" style="display:none" class="pill">Host</span></h1>
+      <div class="row">
+        <button id="btn-copy" class="btn ghost">Copy Code</button>
+        <button id="btn-back" class="btn">Back</button>
+      </div>
     </header>
 
-    <section class="card">
+    <section class="card grid" style="gap:12px">
       <div class="muted">Room <span id="rid">…</span> • <span id="vis">…</span> • <span id="status">…</span></div>
-      <h3 style="margin:12px 0 6px 0;">Party</h3>
-      <ul id="party"></ul>
+      <div id="slots" class="slots"></div>
+      <div class="row">
+        <button id="btn-ready" class="btn primary">Ready</button>
+        <button id="btn-lock" class="btn">Lock Party</button>
+        <button id="btn-start" class="btn primary">Start Game</button>
+      </div>
     </section>
   </div>
 </body>
