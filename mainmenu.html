@@ -155,11 +155,7 @@
     async function createSession(visibility){
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       try {
-        const ref = await addDoc(collection(db, 'rooms'), clean({
-          hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'),
-          partyLocked:false, participantUids:[me.uid], partyUids:[],
-          createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-        }));
+        const ref = await addDoc(collection(db, 'rooms'), clean({ hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'), partyLocked:false, maxParty:4, participantUids:[me.uid], partyUids:[me.uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
         if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
         routeToPartySelect(ref.id);
       } catch (e) { alert(e.message || 'Could not create session.'); }
@@ -366,8 +362,8 @@
             if (includesMe(me.uid, joinable)) addSessionBtn('Rejoin Game', true, () => routeToPartySelect(joinable.id));
             else addSessionBtn('In Game', false);
           } else if (isParty(joinable)) {
-            const roomHasRoom = partyCount(joinable) < 4 && !joinable.partyLocked;
-            addSessionBtn('In Party Select', roomHasRoom, () => routeToPartySelect(joinable.id));
+            const canJoin = partyCount(joinable) < 4 && !joinable.partyLocked;
+            addSessionBtn(canJoin ? 'Join Game' : 'In Party Select', canJoin, () => routeToPartySelect(joinable.id));
           }
         } else if (latest && isRunning(latest)) {
           if (includesMe(me.uid, latest)) addSessionBtn('Rejoin Game', true, () => routeToPartySelect(latest.id));
