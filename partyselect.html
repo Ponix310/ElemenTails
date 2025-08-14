@@ -47,6 +47,23 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // username cache and lookup
+    const nameCache = new Map();
+    async function getDisplayName(uid){
+      if (nameCache.has(uid)) return nameCache.get(uid);
+      try{
+        const snap = await getDoc(doc(db,'users', uid));
+        let name = null;
+        if (snap.exists()) {
+          const d = snap.data();
+          name = d && (d.username || d.displayName || d.name) || null;
+        }
+        if (!name) name = uid; // fallback to uid
+        nameCache.set(uid, name);
+        return name;
+      }catch{ nameCache.set(uid, uid); return uid; }
+    }
+
     // helpers
     const $ = (sel) => document.querySelector(sel);
     const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
