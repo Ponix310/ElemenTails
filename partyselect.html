@@ -7,7 +7,7 @@
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:980px;margin:32px auto;padding:0 16px;}
+    .wrap{max-width:1080px;margin:32px auto;padding:0 16px;}
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
     h1{margin:0;font-size:26px}
     .btn{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;background:#1e2433;color:#fff}
@@ -17,12 +17,18 @@
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
     .muted{color:#9aa4b2}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .grid{display:grid;gap:10px}
+    .grid{display:grid;gap:12px}
+    .columns{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    @media (max-width:900px){ .columns{grid-template-columns:1fr} }
     .slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     .slot{border:1px solid #2a3147;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;background:#0f1220;min-height:64px}
     .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#1e2433}
     .right{display:flex;gap:8px;align-items:center}
-    @media (max-width:640px){ .slots{grid-template-columns:1fr} }
+    .weapons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .weapon{border:1px solid #2a3147;border-radius:10px;padding:10px;text-align:center;background:#0f1220}
+    .classes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .class{border:1px solid #2a3147;border-radius:10px;padding:10px;text-align:center;background:#0f1220;cursor:pointer;user-select:none}
+    .class.selected{outline:2px solid var(--accent); background:#0f1f1a}
   </style>
 
   <script type="module">
@@ -47,26 +53,16 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // username cache and lookup
-    const nameCache = new Map();
-    async function getDisplayName(uid){
-      if (nameCache.has(uid)) return nameCache.get(uid);
-      try{
-        const snap = await getDoc(doc(db,'users', uid));
-        let name = null;
-        if (snap.exists()) {
-          const d = snap.data();
-          name = d && (d.username || d.displayName || d.name) || null;
-        }
-        if (!name) name = uid; // fallback to uid
-        nameCache.set(uid, name);
-        return name;
-      }catch{ nameCache.set(uid, uid); return uid; }
-    }
-
     // helpers
     const $ = (sel) => document.querySelector(sel);
     const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
+    const ALL_CLASSES = ['Adept','Knight','Rogue','Ranger','Monk','Geomancer','Stormcaller','Pyromancer'];
+    const ALL_WEAPONS = ['Sword','Bow','Staff','Daggers','Hammer','Spear','Axe','Crossbow'];
+    const choose4 = (arr) => {
+      const a = [...arr]; const out = [];
+      for (let i=0;i<4;i++){ const j = Math.floor(Math.random()*a.length); out.push(a.splice(j,1)[0]); }
+      return out;
+    };
 
     const params = new URLSearchParams(location.search);
     const roomId = params.get('roomId');
@@ -78,7 +74,6 @@
       if (!user) { location.href = 'mainmenu.html'; return; }
       me = user;
 
-      // mark presence as PartySelect
       try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'PartySelect', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
 
       mount();
@@ -89,7 +84,7 @@
     async function mount(){
       if (!roomId) { location.href='mainmenu.html'; return; }
 
-      // Initial capacity + lock gate before adding
+      // capacity + lock check and ensure I'm in party
       try {
         const ref = doc(db,'rooms', roomId);
         const snap = await getDoc(ref);
@@ -101,6 +96,13 @@
         if (!party.includes(me.uid)) {
           if (locked) { alert('Party is locked.'); location.href='mainmenu.html'; return; }
           if (party.length >= maxParty) { alert('Party is full.'); location.href='mainmenu.html'; return; }
+        }
+        // Initialize weapons/classes if missing (host only)
+        if (r.hostUid === me.uid) {
+          const patch = {};
+          if (!Array.isArray(r.drawnWeapons) || r.drawnWeapons.length !== 4) patch.drawnWeapons = choose4(ALL_WEAPONS);
+          if (!Array.isArray(r.selectedClasses)) patch.selectedClasses = [];
+          if (Object.keys(patch).length) await updateDoc(ref, clean({ ...patch, updatedAt: serverTimestamp() }));
         }
         // Add me to participants/party
         await updateDoc(ref, clean({
@@ -118,6 +120,7 @@
       document.getElementById('btn-ready').addEventListener('click', toggleReady);
       document.getElementById('btn-start').addEventListener('click', startGame);
       document.getElementById('btn-lock').addEventListener('click', toggleLock);
+      document.getElementById('btn-reroll').addEventListener('click', rerollWeapons);
 
       // Room listener
       const ref = doc(db,'rooms', roomId);
@@ -130,7 +133,6 @@
         setText('vis', r.visibility || 'friends');
         setText('status', r.status || 'open');
 
-        // build slots
         const party = Array.isArray(r.partyUids) ? r.partyUids : [];
         const ready = Array.isArray(r.readyUids) ? r.readyUids : [];
         const isHost = r.hostUid === me.uid;
@@ -141,9 +143,13 @@
         document.getElementById('btn-ready').textContent = myReady ? 'Unready' : 'Ready';
         document.getElementById('btn-lock').textContent  = r.partyLocked ? 'Unlock Party' : 'Lock Party';
         document.getElementById('btn-lock').disabled     = !isHost;
-        document.getElementById('btn-start').disabled    = !(party.length >= 1 && ready.length === party.length && (!r.partyLocked || isHost));
-        document.getElementById('host-ind').style.display = isHost ? 'inline' : 'none';
+        document.getElementById('btn-reroll').disabled   = !isHost;
+        const classesCount = Array.isArray(r.selectedClasses) ? r.selectedClasses.length : 0;
+        setText('classesCount', classesCount);
+        setText('classesNeed', 4);
+        document.getElementById('btn-start').disabled    = !(party.length >= 1 && ready.length === party.length && classesCount === 4);
 
+        // party slots
         const list = document.getElementById('slots');
         list.innerHTML = '';
         for (let i=0;i<maxParty;i++){
@@ -175,7 +181,54 @@
           slot.appendChild(left); slot.appendChild(right);
           list.appendChild(slot);
         }
+
+        // weapons
+        const weapons = Array.isArray(r.drawnWeapons) ? r.drawnWeapons : [];
+        const wWrap = document.getElementById('weapons'); wWrap.innerHTML='';
+        if (weapons.length !== 4) {
+          wWrap.innerHTML = '<div class="muted">Drawing weapons…</div>';
+        } else {
+          for (const w of weapons){
+            const div = document.createElement('div'); div.className='weapon'; div.textContent = w;
+            wWrap.appendChild(div);
+          }
+        }
+
+        // classes
+        const selected = new Set(Array.isArray(r.selectedClasses) ? r.selectedClasses : []);
+        const cWrap = document.getElementById('classes'); cWrap.innerHTML='';
+        for (const c of ALL_CLASSES){
+          const b = document.createElement('div');
+          b.className = 'class' + (selected.has(c) ? ' selected' : '');
+          b.textContent = c;
+          b.onclick = async () => {
+            try {
+              const ref = doc(db,'rooms', roomId);
+              const snap = await getDoc(ref);
+              if (!snap.exists()) return;
+              const rr = snap.data();
+              const chosen = new Set(Array.isArray(rr.selectedClasses) ? rr.selectedClasses : []);
+              if (chosen.has(c)) {
+                await updateDoc(ref, clean({ selectedClasses: arrayRemove(c), updatedAt: serverTimestamp() }));
+              } else {
+                if (chosen.size >= 4) return; // cap at 4
+                await updateDoc(ref, clean({ selectedClasses: arrayUnion(c), updatedAt: serverTimestamp() }));
+              }
+            } catch {}
+          };
+          cWrap.appendChild(b);
+        }
       });
+    }
+
+    async function rerollWeapons(){
+      try {
+        const ref = doc(db,'rooms', roomId);
+        const snap = await getDoc(ref); if (!snap.exists()) return;
+        const r = snap.data(); if (r.hostUid !== me.uid) return;
+        const newDraw = choose4(ALL_WEAPONS);
+        await updateDoc(ref, clean({ drawnWeapons: newDraw, updatedAt: serverTimestamp() }));
+      } catch {}
     }
 
     async function toggleReady(){
@@ -205,7 +258,6 @@
       try {
         const ref = doc(db,'rooms', roomId);
         await updateDoc(ref, clean({ status:'running', startedAt: serverTimestamp(), updatedAt: serverTimestamp() }));
-        // Try to route to a game shell if present; otherwise just notify
         if (window.Router && Router.to) Router.to('gameshell.html?roomId='+roomId);
         else if (location.origin) location.href = 'gameshell.html?roomId='+roomId;
         else alert('Game started! (stub)');
@@ -219,10 +271,8 @@
         if (snap.exists()){
           const r = snap.data();
           if (r.hostUid === me.uid) {
-            // host closes room
             await updateDoc(ref, clean({ status:'closed', updatedAt: serverTimestamp() }));
           }
-          // remove me from party and ready
           await updateDoc(ref, clean({ partyUids: arrayRemove(me.uid), readyUids: arrayRemove(me.uid), updatedAt: serverTimestamp() }));
         }
       } catch {}
@@ -248,20 +298,37 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>Party Select <span id="host-ind" style="display:none" class="pill">Host</span></h1>
+      <h1>Party Select</h1>
       <div class="row">
         <button id="btn-copy" class="btn ghost">Copy Code</button>
         <button id="btn-back" class="btn">Back</button>
       </div>
     </header>
 
-    <section class="card grid" style="gap:12px">
-      <div class="muted">Room <span id="rid">…</span> • <span id="vis">…</span> • <span id="status">…</span></div>
-      <div id="slots" class="slots"></div>
-      <div class="row">
-        <button id="btn-ready" class="btn primary">Ready</button>
-        <button id="btn-lock" class="btn">Lock Party</button>
-        <button id="btn-start" class="btn primary">Start Game</button>
+    <section class="grid">
+      <div class="card">
+        <div class="muted">Room <span id="rid">…</span> • <span id="vis">…</span> • <span id="status">…</span></div>
+        <div id="slots" class="slots" style="margin-top:10px"></div>
+        <div class="row" style="margin-top:8px">
+          <button id="btn-ready" class="btn primary">Ready</button>
+          <button id="btn-lock" class="btn">Lock Party</button>
+          <button id="btn-start" class="btn primary">Start Game</button>
+          <div class="muted">Classes selected: <span id="classesCount">0</span>/ <span id="classesNeed">4</span></div>
+        </div>
+      </div>
+
+      <div class="columns">
+        <div class="card">
+          <h3 style="margin:0 0 8px 0">Classes (pick 4 of 8)</h3>
+          <div id="classes" class="classes"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <h3 style="margin:0">Weapons</h3>
+            <button id="btn-reroll" class="btn">Reroll</button>
+          </div>
+          <div id="weapons" class="weapons" style="margin-top:8px"></div>
+        </div>
       </div>
     </section>
   </div>
