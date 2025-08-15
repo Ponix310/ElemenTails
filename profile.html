@@ -83,13 +83,12 @@
     async function onType(){
       const v = $('#newname').value.trim();
       const l = lower(v);
-      // Load current/last to decide enable
-      let currentLower = '', lastLower = '';
+      // Load current to decide enable
+      let currentLower = '';
       try{
         const u = await getDoc(doc(db,'users', me.uid));
         const d = u.exists() ? u.data() : {};
         currentLower = (d.usernameLower || '').toLowerCase();
-        lastLower = (d.lastUsernameLower || '').toLowerCase();
       }catch{}
       const unchanged = l === currentLower;
 
@@ -125,6 +124,7 @@
 
       try {
         await runTransaction(db, async (tx) => {
+          // ---- READS (all before any writes) ----
           const userSnap = await tx.get(userRef);
           const u = userSnap.exists() ? userSnap.data() : {};
           const currentLower = (u.usernameLower || '').toLowerCase();
@@ -132,35 +132,40 @@
 
           if (newLower === currentLower) return; // nothing to do
 
-          // new must be unclaimed or owned by me
           const newSnap = await tx.get(newClaim);
+
+          let prevRef = null, prevSnap = null;
+          if (prevLast && prevLast !== newLower) {
+            prevRef = doc(db,'usernames', prevLast);
+            prevSnap = await tx.get(prevRef);
+          }
+
+          let currRef = null, currSnap = null;
+          if (currentLower && currentLower !== newLower) {
+            currRef = doc(db,'usernames', currentLower);
+            currSnap = await tx.get(currRef);
+          }
+
+          // ---- VALIDATE based on reads ----
           if (newSnap.exists() && newSnap.data().uid !== me.uid) {
             throw new Error('That username is taken.');
           }
 
-          // Ensure I own the new name
+          // ---- WRITES (after all reads) ----
+          // 1) Claim new
           tx.set(newClaim, { uid: me.uid });
 
-          // Delete the previous "last" (free it up) if it exists and isn't the new name
-          if (prevLast && prevLast !== newLower) {
-            const prevRef = doc(db,'usernames', prevLast);
-            const prevSnap = await tx.get(prevRef);
-            if (prevSnap.exists() && prevSnap.data().uid === me.uid) {
-              tx.delete(prevRef);
-            }
+          // 2) Free previous-last (not equal to new) if owned by me
+          if (prevRef && prevSnap && prevSnap.exists() && prevSnap.data().uid === me.uid) {
+            tx.delete(prevRef);
           }
 
-          // Keep the current name reserved as the new "last":
-          // Ensure a claim doc exists for currentLower if we are changing away from it.
-          if (currentLower && currentLower !== newLower) {
-            const currRef = doc(db,'usernames', currentLower);
-            const currSnap = await tx.get(currRef);
-            if (!currSnap.exists()) {
-              tx.set(currRef, { uid: me.uid });
-            }
+          // 3) Ensure current name remains claimed (becomes the new "last")
+          if (currRef && (!currSnap || !currSnap.exists())) {
+            tx.set(currRef, { uid: me.uid });
           }
 
-          // Update my profile with new + last
+          // 4) Update profile
           tx.set(userRef, {
             username: newRaw,
             usernameLower: newLower,
