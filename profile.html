@@ -1,34 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ElemenTails — Edit Profile</title>
+  <title>ElemenTails — Profile (One‑step rollback)</title>
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:960px;margin:32px auto;padding:0 16px;}
+    .wrap{max-width:720px;margin:32px auto;padding:0 16px;}
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    h1{margin:0;font-size:28px}
-    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
-    .btn.primary{background:var(--accent);color:#06241e}
+    h1{margin:0;font-size:26px}
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
-    .grid{display:grid;gap:14px}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    label{display:block;font-size:13px;margin-bottom:6px;color:#9aa4b2}
-    input[type=text]{padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff}
-    .choices{display:grid;grid-template-columns:repeat(6, minmax(90px,1fr));gap:10px}
-    .choice{aspect-ratio:3/2;border-radius:10px;overflow:hidden;border:2px solid transparent;cursor:pointer;background-size:cover;background-position:center}
-    .choice.active{border-color:var(--accent)}
-    .pill{background:#0f1220;border:1px solid #2a3147;border-radius:999px;padding:6px 10px;font-size:14px}
-    .muted{color:#9aa4b2;font-size:12px}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .muted{color:#9aa4b2}
+    .btn{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;background:#1e2433;color:#fff}
+    .btn.primary{background:var(--accent);color:#06241e}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    input[type="text"]{flex:1;padding:12px;border-radius:12px;border:1px solid #2a3147;background:#0f1220;color:#fff;min-width:220px}
+    .status{margin-top:8px;font-size:14px}
+    .ok{color:#20c997} .err{color:#ff6b6b}
+    small{color:#9aa4b2}
   </style>
 
-  <!-- Firebase v12 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, runTransaction, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
@@ -38,114 +37,172 @@
       messagingSenderId: "497100635124",
       appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
     };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const PORTRAITS = ['archer','assassin','barbearian','bard','battlemage','berserker','cleric','druid','lancer','monk','myrmidon','ninja','paladin','reaper','samurai','summoner','warrior','wizard'];
-    const portraitUrl = key => `images/class-portraits/${key}.png`;
+    const $ = s => document.querySelector(s);
+    const lower = s => (s || '').toLowerCase();
+    const valid = s => /^[a-z0-9_]{3,20}$/.test(s);
 
-    const $ = sel => document.querySelector(sel);
-    let me = null; let currentPortrait = null;
+    let me = null;
 
-    document.addEventListener('DOMContentLoaded', () => {
-      $('#back').addEventListener('click', () => {
-        if (window.Router && Router.to) Router.to('mainmenu.html');
-        else location.href='mainmenu.html';
-      });
-      $('#save-username').addEventListener('click', claimUsername);
-      onAuthStateChanged(auth, async (user) => {
-        if(!user) { await signInWithPopup(auth, new GoogleAuthProvider()); return; }
-        me = user;
-        $('#who').textContent = user.displayName || user.email || user.uid.slice(0,6);
-        await loadBanner();
-        renderChoices();
-        await loadCurrentUsername();
-      });
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { location.href = 'mainmenu.html'; return; }
+      me = user;
+      await loadProfile();
+      bind();
     });
 
-    async function loadBanner(){
-      const p = await getDoc(doc(db,'publicProfiles', me.uid));
-      currentPortrait = (p.exists() && p.data().portrait) ? p.data().portrait : null;
-      $('#current-portrait').style.backgroundImage = currentPortrait ? `url('${portraitUrl(currentPortrait)}')` : '';
-      $('#current-portrait').style.background = currentPortrait ? '' : '#0f1220';
-    }
-
-    function renderChoices(){
-      const grid = $('#choices'); grid.innerHTML='';
-      PORTRAITS.forEach(key => {
-        const div = document.createElement('div'); div.className='choice';
-        div.style.backgroundImage = `url('${portraitUrl(key)}')`;
-        if (key===currentPortrait) div.classList.add('active');
-        div.title = key;
-        div.onclick = async () => {
-          try {
-            await setDoc(doc(db,'publicProfiles', me.uid), { uid: me.uid, portrait: key }, { merge:true });
-            currentPortrait = key;
-            [...grid.children].forEach(el=>el.classList.remove('active')); div.classList.add('active');
-            $('#current-portrait').style.backgroundImage = `url('${portraitUrl(key)}')`;
-          } catch(e) { alert('Failed to save banner (check /publicProfiles rules).'); }
-        };
-        grid.appendChild(div);
-      });
-    }
-
-    async function loadCurrentUsername(){
-      const u = await getDoc(doc(db,'users', me.uid));
-      const name = u.exists() && u.data().username ? u.data().username : (me.displayName || '');
-      $('#username').value = name || '';
-    }
-
-    async function claimUsername(){
-      const raw = ($('#username').value || '').trim();
-      if (!raw) { alert('Enter a username'); return; }
-      const value = raw.replace(/\s+/g,''); // no spaces
-      const lower = value.toLowerCase();
+    async function loadProfile(){
       try {
-        // claim if free (your rules allow create if not exists)
-        const ref = doc(db,'usernames', lower);
+        const snap = await getDoc(doc(db,'users', me.uid));
+        if (snap.exists()){
+          const d = snap.data();
+          $('#current').textContent = d.username || '(none)';
+          $('#prev').textContent = d.lastUsernameLower || '(none)';
+          $('#newname').value = d.username || '';
+        }
+      } catch(e) {
+        setStatus('Could not load profile', true);
+      }
+    }
+
+    function setStatus(msg, isErr=false){
+      const el = $('#status'); el.textContent = msg || '';
+      el.className = 'status ' + (isErr ? 'err' : 'ok');
+    }
+
+    function bind(){
+      $('#save').addEventListener('click', save);
+      $('#newname').addEventListener('input', onType);
+      onType();
+    }
+
+    async function onType(){
+      const v = $('#newname').value.trim();
+      const l = lower(v);
+      // Load current/last to decide enable
+      let currentLower = '', lastLower = '';
+      try{
+        const u = await getDoc(doc(db,'users', me.uid));
+        const d = u.exists() ? u.data() : {};
+        currentLower = (d.usernameLower || '').toLowerCase();
+        lastLower = (d.lastUsernameLower || '').toLowerCase();
+      }catch{}
+      const unchanged = l === currentLower;
+
+      $('#save').disabled = !valid(l) || unchanged;
+      if (!valid(l)) { setStatus('Use 3–20 lowercase letters, numbers, underscore.', true); return; }
+
+      try {
+        const ref = doc(db,'usernames', l);
         const snap = await getDoc(ref);
-        if (snap.exists()) { alert('That username is taken.'); return; }
-        await setDoc(ref, { uid: me.uid, at: Date.now() });
-        await setDoc(doc(db,'users', me.uid), { username: value, usernameLower: lower }, { merge:true });
-        alert('Username saved.');
-      } catch(e) { alert('Could not save username.'); }
+        if (!snap.exists()){
+          setStatus('Available');
+        } else if (snap.data().uid === me.uid) {
+          setStatus('You already own this name — you can switch to it.');
+        } else {
+          setStatus('That username is taken.', true);
+          $('#save').disabled = true;
+        }
+      } catch {
+        setStatus('Could not check availability.', true);
+      }
+    }
+
+    async function save(){
+      const newRaw = $('#newname').value.trim();
+      const newLower = lower(newRaw);
+      if (!valid(newLower)) { setStatus('Invalid username.', true); return; }
+
+      $('#save').disabled = true;
+      setStatus('Saving…');
+
+      const userRef = doc(db,'users', me.uid);
+      const newClaim = doc(db,'usernames', newLower);
+
+      try {
+        await runTransaction(db, async (tx) => {
+          const userSnap = await tx.get(userRef);
+          const u = userSnap.exists() ? userSnap.data() : {};
+          const currentLower = (u.usernameLower || '').toLowerCase();
+          const prevLast = (u.lastUsernameLower || '').toLowerCase();
+
+          if (newLower === currentLower) return; // nothing to do
+
+          // new must be unclaimed or owned by me
+          const newSnap = await tx.get(newClaim);
+          if (newSnap.exists() && newSnap.data().uid !== me.uid) {
+            throw new Error('That username is taken.');
+          }
+
+          // Ensure I own the new name
+          tx.set(newClaim, { uid: me.uid });
+
+          // Delete the previous "last" (free it up) if it exists and isn't the new name
+          if (prevLast && prevLast !== newLower) {
+            const prevRef = doc(db,'usernames', prevLast);
+            const prevSnap = await tx.get(prevRef);
+            if (prevSnap.exists() && prevSnap.data().uid === me.uid) {
+              tx.delete(prevRef);
+            }
+          }
+
+          // Keep the current name reserved as the new "last":
+          // Ensure a claim doc exists for currentLower if we are changing away from it.
+          if (currentLower && currentLower !== newLower) {
+            const currRef = doc(db,'usernames', currentLower);
+            const currSnap = await tx.get(currRef);
+            if (!currSnap.exists()) {
+              tx.set(currRef, { uid: me.uid });
+            }
+          }
+
+          // Update my profile with new + last
+          tx.set(userRef, {
+            username: newRaw,
+            usernameLower: newLower,
+            lastUsernameLower: currentLower || null,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        });
+
+        await loadProfile();
+        setStatus('Saved.');
+      } catch (e) {
+        setStatus(e.message || 'Failed to save.', true);
+      } finally {
+        $('#save').disabled = false;
+      }
     }
   </script>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Edit Profile</h1>
-      <button id="back" class="btn">← Back</button>
+      <h1>Profile</h1>
+      <a href="mainmenu.html" class="btn">Back to Main Menu</a>
     </header>
 
-    <section class="card grid">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <div class="muted">Signed in as</div>
-          <div class="pill" id="who">…</div>
-        </div>
-        <div>
-          <div class="muted">Current banner</div>
-          <div id="current-portrait" style="width:180px;aspect-ratio:3/2;border-radius:12px;border:1px solid #2a3147;background:#0f1220"></div>
-        </div>
+    <section class="card">
+      <div class="row">
+        <div style="min-width:140px">Current username</div>
+        <div id="current" class="muted">…</div>
       </div>
 
-      <div>
-        <label>Choose your Class Portrait</label>
-        <div id="choices" class="choices"></div>
-        <div class="muted">Looks for images at <code>images/class-portraits/&lt;key&gt;.png</code>.</div>
+      <div class="row">
+        <div style="min-width:140px">Previous username</div>
+        <div id="prev" class="muted">…</div>
       </div>
+      <small class="muted">You can always switch back to your previous username. Older ones are freed for others.</small>
 
-      <div>
-        <label for="username">Change username</label>
-        <div class="row">
-          <input id="username" type="text" placeholder="New username"/>
-          <button id="save-username" class="btn primary">Save username</button>
-        </div>
-        <div class="muted">Usernames must be unique. (We claim a name if it’s free.)</div>
+      <div class="row" style="margin-top:12px">
+        <input id="newname" type="text" placeholder="new_username (lowercase, 3–20)"/>
+        <button id="save" class="btn primary" disabled>Save</button>
       </div>
+      <div id="status" class="status muted"></div>
     </section>
   </div>
 </body>
