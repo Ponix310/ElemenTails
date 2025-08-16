@@ -154,20 +154,20 @@
   const img = (src, alt='') => { const i = new Image(); i.src = src; i.alt = alt; return i; };
   const shuffle = (arr) => arr.map(v => [Math.random(), v]).sort((a,b)=>a[0]-b[0]).map(([,v])=>v);
 
-  // ---------- Mode & players (no locking; banner only)
+  // ---------- URL/Room
+  const URL_QS = new URLSearchParams(location.search);
+  const ROOM_ID = URL_QS.get('roomId') || null;
+  const LS_KEY  = `ET_ps_v2:${ROOM_ID || 'standalone'}`;
+
+  // ---------- Mode & players (banner only; do not persist mode)
   function resolveMode(){
     const url = new URL(window.location.href);
     const qp = (url.searchParams.get('mode') || '').toLowerCase();
     if (['single','sp'].includes(qp)) return 'single';
     if (['multi','mp','multiplayer'].includes(qp)) return 'multi';
     const et = (localStorage.getItem('ET_mode') || '').toLowerCase();
-    if (et) return et;
-    // legacy keys
-    const g = (localStorage.getItem('gameMode') || '').toLowerCase();
-    const m = (localStorage.getItem('mode') || '').toLowerCase();
-    const im = (localStorage.getItem('isMultiplayer') || localStorage.getItem('multiplayer') || '').toString().toLowerCase();
-    if (g==='single' || m==='single') return 'single';
-    if (['multi','multiplayer'].includes(g) || ['multi','multiplayer'].includes(m) || ['1','true','yes'].includes(im)) return 'multi';
+    if (['multi','multiplayer','friends','public'].includes(et)) return 'multi';
+    if (['single','sp','solo','private'].includes(et)) return 'single';
     return 'single';
   }
   function resolveNames(){
@@ -215,23 +215,24 @@
     { id:'wizard',     name:'Wizard',     hero:'frog',   weapon:'staff',        portrait:'images/class-portraits/wizard.png' },
   ];
 
-  // ---------- State
+  // ---------- State (mode is NOT persisted)
   const state = {
-    mode: resolveMode(),                // 'single' | 'multi' (banner only)
-    names: resolveNames(),              // 4 labels
-    drawn: [],                          // 4 weapon ids
-    slots: [null, null, null, null],    // class ids by slot
+    mode: 'single',                    // banner only
+    names: resolveNames(),             // 4 labels
+    drawn: [],                         // 4 weapon ids
+    slots: [null, null, null, null],   // class ids by slot
   };
-  const LS_KEY = 'ET_partyselect_v3';
 
-  function persist(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  function persist(){
+    const payload = { names: state.names, drawn: state.drawn, slots: state.slots };
+    localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  }
   function restore(){
     try{
       const raw = localStorage.getItem(LS_KEY);
       if(!raw) return false;
       const d = JSON.parse(raw);
       if (!d) return false;
-      state.mode = d.mode || state.mode;
       state.names = Array.isArray(d.names) && d.names.length===4 ? d.names : state.names;
       state.drawn = Array.isArray(d.drawn) ? d.drawn : state.drawn;
       state.slots = Array.isArray(d.slots) && d.slots.length===4 ? d.slots : state.slots;
@@ -345,7 +346,12 @@
 
   // ---------- Init
   (function init(){
+    // Always resolve mode fresh on entry
+    state.mode = resolveMode();
+
+    // Try to restore for THIS roomId; if nothing, draw fresh weapons
     if (!restore()){ drawWeapons(); persist(); }
+
     render();
   })();
   </script>
