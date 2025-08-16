@@ -52,8 +52,9 @@
     .seat.open .muted{font-size:14px}
 
     /* Top pick order (4 blank squares that fill) */
-    .order-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:14px}
+    .order-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:4px}
     .order-cap{font-weight:800;text-align:center;margin-bottom:6px}
+    .order-name{min-height:22px;text-align:center;font-weight:800;margin:0 0 6px 0}
     .order-slot{
       position:relative; aspect-ratio:4/3; border:8px solid var(--frame); border-radius:12px; background:#0a0f1e;
       overflow:hidden;
@@ -118,6 +119,7 @@
             <div class="order-cap" id="cap-2"></div>
             <div class="order-cap" id="cap-3"></div>
           </div>
+          <div id="orderNames" class="order-grid"></div>
           <div id="order" class="order-grid">
             <div class="order-slot"></div>
             <div class="order-slot"></div>
@@ -182,9 +184,13 @@
     };
 
     // ---- utils ----
+    // Saved roomId fallback
+    function saveRoomId(id){ try{ localStorage.setItem('lastRoomId', id); }catch{} }
+    function getSavedRoomId(){ try{ return localStorage.getItem('lastRoomId'); }catch{ return null; } }
+
     const $ = s => document.querySelector(s);
     const params = new URLSearchParams(location.search);
-    const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode());
+    const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode()) || getSavedRoomId();
     function toast(m){ try{ alert(m); }catch{} }
 
     async function getUsername(uid){
@@ -357,18 +363,29 @@
 
     }
 
+    
     function renderOrder(){
-      const caps = ['cap-0','cap-1','cap-2','cap-3'].map(id=>document.getElementById(id));
       const grid = $('#order'); if(!grid) return;
+      const nameGrid = $('#orderNames'); if(nameGrid) nameGrid.innerHTML='';
       // Clear
       Array.from(grid.children).forEach(el=>{ el.innerHTML=''; el.style.background=''; el.classList.remove('filled'); });
-      caps.forEach(el=>{ if(el) el.textContent=''; });
 
       const chosen = state.players.filter(p=>p.hero && p.weapon).sort((a,b)=>{
         const ta=a.pickAt?.seconds||0, tb=b.pickAt?.seconds||0;
         if(ta!==tb) return ta-tb;
         return (a.updatedAt?.seconds||0)-(b.updatedAt?.seconds||0);
       }).slice(0,4);
+
+      // Names row
+      if(nameGrid){
+        for(let i=0;i<4;i++){
+          const n = document.createElement('div');
+          n.className='order-name';
+          const p = chosen[i];
+          n.textContent = p ? (p.name || p.id.slice(0,6)) : '';
+          nameGrid.appendChild(n);
+        }
+      }
 
       chosen.forEach((p,idx)=>{
         const slot = grid.children[idx];
@@ -379,8 +396,9 @@
         const tag = document.createElement('div'); tag.className='tag'; tag.textContent='@'+(p.name||p.id.slice(0,6));
         slot.appendChild(tag);
         slot.classList.add('filled');
-        if(caps[idx]) caps[idx].textContent = (p.name||p.id.slice(0,6));
       });
+    }
+
     }
 
     function renderSeats(){
@@ -488,16 +506,32 @@
       try{ navigator.clipboard.writeText(roomId); $('#copy-tip').textContent='Copied!'; setTimeout(()=> $('#copy-tip').textContent='Click to copy',1200); }catch{}
     }
 
+    
     // ---- boot ----
     document.addEventListener('DOMContentLoaded', ()=>{
-      if(!roomId){ $('#banner').textContent='Missing roomId'; return; }
-      $('#rid').textContent = roomId;
+      if(roomId){ saveRoomId(roomId); }
+      if(!roomId){ $('#banner').textContent='Missing roomId'; }
+      $('#rid').textContent = roomId || '…';
       $('#copy-code').addEventListener('click', copyCode);
       $('#ready').addEventListener('click', toggleReady);
       $('#lock').addEventListener('click', lockAndStart);
 
-      $('#login').addEventListener('click', async ()=>{ try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ toast(e.code||'Login failed'); } });
-      $('#logout').addEventListener('click', async ()=>{ try{ await signOut(auth); }catch{} });
+      async function doLogin(){
+        try{
+          await signInWithPopup(auth, new GoogleAuthProvider());
+        }catch(e){
+          // Fallback to redirect in case popups are blocked
+          try{
+            const { signInWithRedirect } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
+            await signInWithRedirect(auth, new GoogleAuthProvider());
+          }catch(e2){
+            toast(e2.code || e2.message || 'Login failed');
+          }
+        }
+      }
+
+      $('#login').addEventListener('click', doLogin);
+      $('#logout').addEventListener('click', async ()=>{ try{ await signOut(auth); }catch(e){ toast('Logout error'); } });
 
       onAuthStateChanged(auth, async (user)=>{
         if(!user){
@@ -514,6 +548,6 @@
         await mount();
       });
     });
-  </script>
+</script>
 </body>
 </html>
