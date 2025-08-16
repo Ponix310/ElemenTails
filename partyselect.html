@@ -14,98 +14,90 @@
       --radius: 16px;
       --gap: 18px;
       --box-border: 2px solid rgba(255,255,255,.06);
-      --accent: #fbbf24;
       --ok: #22c55e;
       --warn: #f59e0b;
-      --danger: #ef4444;
+      --pick: #34d399;
     }
     * { box-sizing: border-box; }
-    html, body {
-      height: 100%;
-      background: radial-gradient(1200px 1200px at 10% 10%, #111927 0%, #0b0f15 60%, #070a0f 100%);
-      color: var(--text);
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
-    }
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 20px clamp(16px, 4vw, 40px);
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      backdrop-filter: blur(6px);
-      position: sticky; top: 0; z-index: 10;
-      background: linear-gradient(180deg, rgba(20,25,34,.9), rgba(20,25,34,.65));
-    }
-    header .title { display: flex; gap: 14px; align-items: baseline; }
-    header .title h1 { margin: 0; font-size: clamp(18px, 2.2vw, 26px); letter-spacing: .4px; }
-    header .title .sub { color: var(--muted); font-size: clamp(12px, 1.4vw, 14px); }
-    header .actions { display: flex; gap: 10px; }
-    .btn {
-      appearance: none; background: #1b2431; border: 1px solid rgba(255,255,255,.08);
-      color: var(--text); padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600;
-      box-shadow: var(--shadow); text-decoration: none;
-      transition: transform .06s ease;
-    }
-    .btn:active { transform: translateY(1px); }
-    .btn.primary { background: linear-gradient(180deg, #1e293b, #1b2431); border-color: rgba(250,204,21,.25); }
+    html, body { height: 100%; background: radial-gradient(1200px 1200px at 10% 10%, #111927 0%, #0b0f15 60%, #070a0f 100%);
+      color: var(--text); margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; }
+    header { display:flex; align-items:center; justify-content:space-between; padding: 20px clamp(16px, 4vw, 40px);
+      border-bottom: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(6px); position: sticky; top: 0; z-index: 10;
+      background: linear-gradient(180deg, rgba(20,25,34,.9), rgba(20,25,34,.65)); }
+    header .title{ display:flex; gap:14px; align-items:baseline; }
+    header .title h1{ margin:0; font-size: clamp(18px, 2.2vw, 26px); letter-spacing:.4px; }
+    header .title .sub{ color:var(--muted); font-size: clamp(12px, 1.4vw, 14px); }
+    header .actions{ display:flex; gap:10px; }
+    .btn{ appearance:none; background:#1b2431; border:1px solid rgba(255,255,255,.08); color:var(--text); padding:10px 14px;
+      border-radius:10px; cursor:pointer; font-weight:600; box-shadow:var(--shadow); text-decoration:none; transition:transform .06s ease; }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{ background: linear-gradient(180deg, #1e293b, #1b2431); border-color: rgba(250,204,21,.25); }
     .btn[disabled]{ opacity:.5; cursor:not-allowed; }
-    .page { padding: 16px clamp(16px, 4vw, 40px) 40px; max-width: 1500px; margin: 0 auto; }
+    .page{ padding:16px clamp(16px, 4vw, 40px) 40px; max-width:1500px; margin:0 auto; }
 
-    .modeNotice{
-      margin: 8px 0 18px; padding: 10px 14px; border-radius: 12px;
-      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
-      display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted);
-    }
-    .pill{ padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; border: 1px solid rgba(255,255,255,.12); }
-    .pill.ok{ background: rgba(34,197,94,.15); color: #bbf7d0; border-color: rgba(34,197,94,.25); }
-    .pill.warn{ background: rgba(245,158,11,.18); color: #fde68a; border-color: rgba(245,158,11,.25); }
+    .modeNotice{ margin: 8px 0 18px; padding: 10px 14px; border-radius: 12px;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); display:flex; align-items:center; gap:10px;
+      font-size:14px; color:var(--muted); }
+    .pill{ padding:2px 8px; border-radius:999px; font-weight:700; font-size:12px; border:1px solid rgba(255,255,255,.12); }
+    .pill.ok{ background: rgba(34,197,94,.15); color:#bbf7d0; border-color:rgba(34,197,94,.25); }
+    .pill.warn{ background: rgba(245,158,11,.18); color:#fde68a; border-color:rgba(245,158,11,.25); }
 
-    .grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: auto; gap: var(--gap); }
-    .col-name { text-align: center; font-weight: 800; font-size: clamp(16px, 1.8vw, 22px); letter-spacing: .3px; padding: 6px 0 2px; color: var(--text); text-shadow: 0 2px 14px rgba(0,0,0,.6); }
+    .grid { display:grid; grid-template-columns: repeat(4,1fr); grid-auto-rows:auto; gap: var(--gap); }
+    .frame{ position:relative; overflow:hidden; border-radius:var(--radius); background: linear-gradient(160deg, var(--panel), var(--panel-2));
+      border: var(--box-border); box-shadow: var(--shadow); min-height: 160px; display:flex; align-items:center; justify-content:center; isolation:isolate; }
+    .frame.large{ min-height: clamp(160px, 18vw, 240px); }
+    .frame.icon{ min-height: clamp(90px, 10vw, 130px); padding:8px; }
+    .frame.option{ min-height: clamp(140px, 16vw, 220px); }
+    .frame img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .frame.icon img{ width:auto; height:80%; object-fit:contain; padding:6px; filter: drop-shadow(0 4px 18px rgba(0,0,0,.35)); }
+    .label-top{ position:absolute; top:8px; left:10px; background: rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+      color:var(--text); padding:4px 8px; border-radius:8px; font-size:12px; z-index:3; }
+    .label-bottom{ position:absolute; bottom:8px; right:10px; background: rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+      color:var(--text); padding:4px 8px; border-radius:8px; font-size:12px; z-index:3; }
 
-    .frame {
-      position: relative; overflow: hidden; border-radius: var(--radius);
-      background: linear-gradient(160deg, var(--panel), var(--panel-2));
-      border: var(--box-border); box-shadow: var(--shadow);
-      min-height: 160px; display: flex; align-items: center; justify-content: center; isolation: isolate;
-    }
-    .frame.large { min-height: clamp(160px, 18vw, 240px); }
-    .frame.icon  { min-height: clamp(90px, 10vw, 130px); padding: 8px; cursor: pointer; }
-    .frame.option { min-height: clamp(140px, 16vw, 220px); }
-    .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .frame.icon img { width: auto; height: 80%; object-fit: contain; padding: 6px; filter: drop-shadow(0 4px 18px rgba(0,0,0,.35)); }
-    .label-top { position: absolute; top: 8px; left: 10px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.12); color: var(--text); padding: 4px 8px; border-radius: 8px; font-size: 12px; z-index: 3; }
+    .disabled{ opacity:.45; filter:grayscale(.8); pointer-events:none; }
+    .selected{ outline: 3px solid var(--pick); box-shadow: 0 0 0 3px rgba(52,211,153,.15) inset, var(--shadow); }
+    .picked-badge{ position:absolute; bottom:8px; left:10px; background: rgba(52,211,153,.18); color:#d1fae5;
+      border:1px solid rgba(52,211,153,.35); padding:4px 8px; border-radius:8px; font-size:12px; z-index:3; }
 
-    .hint { text-align:center; color: var(--muted); font-size: 13px; margin-top: 6px; grid-column: 1/-1; }
+    .hint{ text-align:center; color:var(--muted); font-size:13px; margin-top:6px; grid-column:1/-1; }
 
-    /* Modal */
-    .modal-backdrop{
-      position: fixed; inset: 0; background: rgba(0,0,0,.55);
-      display: none; align-items: center; justify-content: center; z-index: 50;
-    }
-    .modal{ width: min(820px, 94vw); background: #121821; border: 1px solid rgba(255,255,255,.1);
-      border-radius: 16px; box-shadow: var(--shadow); padding: 16px; }
-    .modal h3{ margin: 0 0 10px; font-size: 18px; }
-    .choice-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
-    .choice{
-      background: linear-gradient(160deg, var(--panel), var(--panel-2));
-      border: var(--box-border); border-radius: 12px; padding: 10px; text-align:center; cursor: pointer;
-      position: relative; overflow: hidden; min-height: 160px;
-    }
-    .choice img{ width: 100%; height: 110px; object-fit: contain; display:block; filter: drop-shadow(0 4px 14px rgba(0,0,0,.35)); }
-    .choice .name{ display:block; margin-top: 6px; font-weight: 700; font-size: 13px; }
-    .choice.taken{ opacity:.45; filter: grayscale(1); cursor: not-allowed; }
-    .modal .row{ display:flex; justify-content:flex-end; gap:10px; margin-top: 12px; }
-    .hidden{ display:none !important; }
-
-    @media (max-width: 980px) { .grid { grid-template-columns: repeat(2, 1fr); } .choice-grid{ grid-template-columns: repeat(2,1fr);} }
-    @media (max-width: 560px) { header .actions { display: none; } .grid { grid-template-columns: 1fr; } .choice-grid{ grid-template-columns: 1fr; } }
+    @media (max-width:980px){ .grid{ grid-template-columns: repeat(2,1fr);} }
+    @media (max-width:560px){ header .actions{ display:none;} .grid{ grid-template-columns:1fr;} }
   </style>
+
+  <!-- Firebase helpers (optional: only used when roomId is present) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
+      authDomain: "elementails.firebaseapp.com",
+      projectId: "elementails",
+      storageBucket: "elementails.firebasestorage.app",
+      messagingSenderId: "497100635124",
+      appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window._et_fetchRoom = async (roomId) => {
+      try { const s = await getDoc(doc(db,'rooms', roomId)); return s.exists() ? s.data() : null; } catch { return null; }
+    };
+    window._et_fetchUsername = async (uid) => {
+      try { const u = await getDoc(doc(db,'users', uid)); if (u.exists() && u.data().username) return u.data().username; } catch {}
+      try { const p = await getDoc(doc(db,'publicProfiles', uid)); if (p.exists() && (p.data().username || p.data().displayName)) return p.data().username || p.data().displayName; } catch {}
+      return uid?.slice?.(0,6) || 'Player';
+    };
+  </script>
 </head>
 <body>
   <header>
     <div class="title">
       <h1>Party Select</h1>
-      <span class="sub">4 unique heroes required. Classes limited to the 4 drawn weapons.</span>
+      <span class="sub">Pick 4 unique heroes. Classes limited to the 4 drawn weapons.</span>
     </div>
     <div class="actions">
       <a class="btn" href="mainmenu.html">Back</a>
@@ -119,70 +111,46 @@
       <span id="modeText">Loading…</span>
     </div>
 
-    <!-- Column titles (dynamic names or Slot 1..4) -->
-    <section class="grid" id="names-row" aria-label="player-names"></section>
+    <section class="grid" id="row-picked" aria-label="picked-classes"></section>
+    <section class="grid" id="row-weapons" aria-label="drawn-weapons"></section>
+    <section class="grid" id="row-choices-a" aria-label="choices-top"></section>
+    <section class="grid" id="row-choices-b" aria-label="choices-bottom"></section>
 
-    <!-- Row 1: Class portraits (updates when a class is chosen) -->
-    <section class="grid" id="row-hero" aria-label="class-portraits"></section>
-
-    <!-- Row 2: Weapon icons (shows chosen weapon for each slot; click to choose) -->
-    <section class="grid" id="row-icon" aria-label="weapon-icons"></section>
-
-    <!-- Optional note -->
-    <div class="hint">Click a slot’s icon to choose a class. In Single Player, you’ll fill all 4 slots yourself.</div>
-
-    <!-- Row 3 & 4: Placeholder "option" rows for future features -->
-    <section class="grid" id="row-opt-a" aria-label="option-row-a"></section>
-    <section class="grid" id="row-opt-b" aria-label="option-row-b"></section>
+    <div class="hint">Click one of the bottom tiles to claim a class. Click again to unclaim.</div>
   </main>
 
-  <!-- Modal chooser -->
-  <div id="chooser" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal">
-      <h3 id="chooserTitle">Choose a class</h3>
-      <div id="choiceGrid" class="choice-grid"></div>
-      <div class="row">
-        <button id="closeChooser" class="btn">Cancel</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-  // ---------- Helper utilities
+  // ---------- Helpers
   const $ = (sel, el=document) => el.querySelector(sel);
-  const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+  const el = (tag, cls) => { const n = document.createElement(tag); if(cls) n.className = cls; return n; };
   const img = (src, alt='') => { const i = new Image(); i.src = src; i.alt = alt; return i; };
   const shuffle = (arr) => arr.map(v => [Math.random(), v]).sort((a,b)=>a[0]-b[0]).map(([,v])=>v);
 
-  // ---------- Mode & players (no locking; banner only)
+  // ---------- URL / Storage keys
+  const URL_QS = new URLSearchParams(location.search);
+  const ROOM_ID = URL_QS.get('roomId') || null;
+  const STORAGE_VERSION = 'v4'; // bump to avoid stale local state
+  const LS_KEY  = `ET_ps_${STORAGE_VERSION}:${ROOM_ID || 'standalone'}`;
+
+  // ---------- Mode & player labels
   function resolveMode(){
-    const url = new URL(window.location.href);
-    const qp = (url.searchParams.get('mode') || '').toLowerCase();
+    const qp = (URL_QS.get('mode') || '').toLowerCase();
     if (['single','sp'].includes(qp)) return 'single';
     if (['multi','mp','multiplayer'].includes(qp)) return 'multi';
     const et = (localStorage.getItem('ET_mode') || '').toLowerCase();
-    if (et) return et;
-    // legacy keys
-    const g = (localStorage.getItem('gameMode') || '').toLowerCase();
-    const m = (localStorage.getItem('mode') || '').toLowerCase();
-    const im = (localStorage.getItem('isMultiplayer') || localStorage.getItem('multiplayer') || '').toString().toLowerCase();
-    if (g==='single' || m==='single') return 'single';
-    if (['multi','multiplayer'].includes(g) || ['multi','multiplayer'].includes(m) || ['1','true','yes'].includes(im)) return 'multi';
+    if (['multi','multiplayer','friends','public'].includes(et)) return 'multi';
+    if (['single','sp','solo','private'].includes(et)) return 'single';
     return 'single';
   }
   function resolveNames(){
     try{
       const arr = JSON.parse(localStorage.getItem('ET_players') || '[]');
-      if (Array.isArray(arr) && arr.length){
-        const labels = [];
-        for (let i=0;i<4;i++) labels.push(arr[i] || `Slot ${i+1}`);
-        return labels;
-      }
+      if (Array.isArray(arr) && arr.length) return arr.slice(0,4).concat(['Slot 3','Slot 4']).slice(0,4);
     }catch(_){}
     return ['Slot 1','Slot 2','Slot 3','Slot 4'];
   }
 
-  // ---------- Assets (canonical filenames)
+  // ---------- Assets
   const WEAPONS = [
     { id: 'bow',          name: 'Bow',           icon: 'images/weapons/bow.png' },
     { id: 'daggers',      name: 'Daggers',       icon: 'images/weapons/daggers.png' },
@@ -215,138 +183,147 @@
     { id:'wizard',     name:'Wizard',     hero:'frog',   weapon:'staff',        portrait:'images/class-portraits/wizard.png' },
   ];
 
+  const byWeapon = (w) => CLASSES.filter(c => c.weapon === w);
+  const weapon = (id) => WEAPONS.find(w => w.id === id);
+  const clazz  = (id) => CLASSES.find(c => c.id === id);
+
   // ---------- State
   const state = {
-    mode: resolveMode(),                // 'single' | 'multi' (banner only)
-    names: resolveNames(),              // 4 labels
-    drawn: [],                          // 4 weapon ids
-    slots: [null, null, null, null],    // class ids by slot
+    mode: 'single',
+    names: resolveNames(),
+    drawn: [],                 // 4 weapon ids
+    picks: [],                 // ordered picks: [{classId, weaponId, playerName}]
   };
-  const LS_KEY = 'ET_partyselect_v3';
 
-  function persist(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  function persist(){ localStorage.setItem(LS_KEY, JSON.stringify({ names: state.names, drawn: state.drawn, picks: state.picks })); }
   function restore(){
     try{
-      const raw = localStorage.getItem(LS_KEY);
-      if(!raw) return false;
-      const d = JSON.parse(raw);
-      if (!d) return false;
-      state.mode = d.mode || state.mode;
-      state.names = Array.isArray(d.names) && d.names.length===4 ? d.names : state.names;
-      state.drawn = Array.isArray(d.drawn) ? d.drawn : state.drawn;
-      state.slots = Array.isArray(d.slots) && d.slots.length===4 ? d.slots : state.slots;
+      const raw = localStorage.getItem(LS_KEY); if(!raw) return false;
+      const d = JSON.parse(raw) || {};
+      if (Array.isArray(d.names) && d.names.length) state.names = d.names;
+      if (Array.isArray(d.drawn) && d.drawn.length === 4) state.drawn = d.drawn;
+      if (Array.isArray(d.picks)) state.picks = d.picks.filter(p => p && p.classId && p.weaponId && p.playerName);
       return true;
     }catch(_){ return false; }
   }
 
-  function drawWeapons(){
-    state.drawn = shuffle([...WEAPONS]).slice(0,4).map(w=>w.id);
-  }
-  function weaponById(id){ return WEAPONS.find(w=>w.id===id); }
-  function classById(id){ return CLASSES.find(c=>c.id===id); }
-  function heroTaken(hero){ return state.slots.some(cid => cid && classById(cid)?.hero === hero); }
-  function allowedClasses(){ return CLASSES.filter(c => state.drawn.includes(c.weapon) && !heroTaken(c.hero)); }
+  const pickedIndex = (classId) => state.picks.findIndex(p => p.classId === classId);
+  const heroTaken   = (hero) => state.picks.some(p => clazz(p.classId)?.hero === hero);
+  const weaponTaken = (wId)  => state.picks.some(p => p.weaponId === wId);
+  const alreadyPicked = (classId) => pickedIndex(classId) !== -1;
 
-  // ---------- Render
+  function canPick(classId, columnIndex){
+    if (state.picks.length >= 4) return false;
+    const c = clazz(classId); if (!c) return false;
+    if (alreadyPicked(classId)) return false;
+    if (heroTaken(c.hero)) return false;
+    const wId = state.drawn[columnIndex];
+    if (weaponTaken(wId)) return false;
+    return c.weapon === wId;
+  }
+  function unpick(classId){
+    const idx = pickedIndex(classId);
+    if (idx === -1) return;
+    state.picks.splice(idx, 1);
+    persist(); render();
+  }
+  function doPick(classId, columnIndex){
+    if (!canPick(classId, columnIndex)) return;
+    const turn = state.picks.length % Math.max(1, state.names.length);
+    const playerName = state.names[turn] || `Slot ${turn+1}`;
+    state.picks.push({ classId, weaponId: state.drawn[columnIndex], playerName });
+    persist(); render();
+  }
+  function drawWeapons(){ state.drawn = shuffle([...WEAPONS]).slice(0,4).map(w=>w.id); }
+
+  // ---------- Rendering
   function renderBanner(){
     const pill = $('#modePill'); const text = $('#modeText');
-    if (state.mode === 'multi'){
-      pill.textContent = 'Multiplayer'; pill.className = 'pill ok';
-      text.textContent = 'Friends may join until all 4 slots are filled.';
-    } else {
-      pill.textContent = 'Single Player'; pill.className = 'pill warn';
-      text.textContent = 'Lobby locked to other players. You will fill all 4 slots.';
-    }
+    if (state.mode === 'multi'){ pill.textContent='Single Player'/* fallback until we wire live mode */; pill.className='pill ok'; text.textContent='Friends may join until 4 picks are made.'; }
+    else { pill.textContent='Single Player'; pill.className='pill warn'; text.textContent='Lobby locked. You will fill all 4 slots.'; }
   }
-  function renderButtons(){
-    const start = $('#startBtn');
-    const ready = state.slots.every(Boolean);
-    start.disabled = !ready;
-    start.title = ready ? '' : 'Choose 4 classes to begin';
-  }
+  function renderButtons(){ $('#startBtn').disabled = state.picks.length !== 4; }
+  function clearRow(id){ const r=$(id); if(r) r.innerHTML=''; }
+
   function render(){
-    renderBanner();
-    const rows = {
-      names: $('#names-row'),
-      hero:  $('#row-hero'),
-      icon:  $('#row-icon'),
-      optA:  $('#row-opt-a'),
-      optB:  $('#row-opt-b'),
-    };
-    for (const k in rows) rows[k].innerHTML = '';
+    renderBanner(); renderButtons();
+    clearRow('#row-picked'); clearRow('#row-weapons'); clearRow('#row-choices-a'); clearRow('#row-choices-b');
 
+    // Row 1: ordered picks with player names
     for (let i=0;i<4;i++){
-      // names
-      const nm = el('div','col-name'); nm.textContent = state.names[i]; rows.names.appendChild(nm);
-
-      // portrait
-      const heroBox = el('div','frame large');
-      const cid = state.slots[i];
-      if (cid){
-        const c = classById(cid);
-        heroBox.appendChild(img(c.portrait, c.name));
-        const tag = el('div','label-top'); tag.textContent = c.name; heroBox.appendChild(tag);
+      const box = el('div','frame large');
+      const p = state.picks[i];
+      if (p){
+        const c = clazz(p.classId);
+        box.appendChild(img(c.portrait, c.name));
+        const tag1 = el('div','label-top'); tag1.textContent = c.name; box.appendChild(tag1);
+        const tag2 = el('div','label-bottom'); tag2.textContent = p.playerName; box.appendChild(tag2);
       } else {
-        const ph = el('div'); ph.style.opacity=.5; ph.style.fontSize='14px'; ph.textContent='— choose a class —'; heroBox.appendChild(ph);
+        const ph = el('div'); ph.style.opacity=.55; ph.style.fontSize='14px'; ph.textContent='— choose a class —'; box.appendChild(ph);
       }
-      rows.hero.appendChild(heroBox);
-
-      // icon clicker
-      const icon = el('div','frame icon');
-      if (cid){
-        const w = weaponById(classById(cid).weapon);
-        icon.appendChild(img(w.icon, w.name));
-        icon.title = 'Change class';
-      } else {
-        const t = el('div'); t.style.opacity=.65; t.style.fontSize='13px'; t.textContent='Click to choose'; icon.appendChild(t);
-        icon.title = 'Choose class';
-      }
-      icon.addEventListener('click', () => openChooser(i));
-      rows.icon.appendChild(icon);
-
-      // faded placeholders
-      for (const r of ['optA','optB']){
-        const box = el('div','frame option'); rows[r].appendChild(box);
-      }
+      $('#row-picked').appendChild(box);
     }
-    renderButtons();
-  }
 
-  // ---------- Modal
-  let choosingIndex = null;
-  function openChooser(idx){
-    choosingIndex = idx;
-    const options = allowedClasses();
-    const bg = $('#chooser'); const grid = $('#choiceGrid');
-    grid.innerHTML='';
-
-    $('#chooserTitle').textContent = `Choose a class (Weapons drawn: ${state.drawn.map(w=>weaponById(w).name).join(', ')})`;
-
-    // Allowed classes (clickable)
-    options.forEach(c => {
-      const cell = el('div','choice'); cell.appendChild(img(c.portrait,c.name));
-      const nm = el('span','name'); nm.textContent = `${c.name} — ${weaponById(c.weapon).name}`; cell.appendChild(nm);
-      cell.addEventListener('click', () => { state.slots[choosingIndex] = c.id; persist(); closeChooser(); render(); });
-      grid.appendChild(cell);
+    // Row 2: drawn weapons (static)
+    state.drawn.forEach((wId) => {
+      const w = weapon(wId); const b = el('div','frame icon'); b.appendChild(img(w.icon, w.name));
+      $('#row-weapons').appendChild(b);
     });
 
-    // Disallowed (shown greyed for clarity)
-    CLASSES.filter(c => !options.includes(c)).forEach(c => {
-      const cell = el('div','choice taken'); cell.appendChild(img(c.portrait,c.name));
-      const nm = el('span','name'); nm.textContent = c.name; cell.appendChild(nm);
-      grid.appendChild(cell);
-    });
+    // Rows 3 & 4: two choices per column
+    state.drawn.forEach((wId, col) => {
+      const pair = byWeapon(wId);
+      const build = (c, rowId) => {
+        const tile = el('div','frame option');
+        tile.appendChild(img(c.portrait, c.name));
+        const tLab = el('div','label-top'); tLab.textContent = c.name; tile.appendChild(tLab);
 
-    bg.style.display='flex'; bg.setAttribute('aria-hidden','false');
+        const isPicked = alreadyPicked(c.id);
+        const legal = canPick(c.id, col);
+
+        if (isPicked){
+          const who = state.picks[pickedIndex(c.id)]?.playerName || 'Picked';
+          const badge = el('div','picked-badge'); badge.textContent = `Picked by ${who}`; tile.appendChild(badge);
+          tile.classList.add('selected'); tile.addEventListener('click', () => unpick(c.id));
+        } else if (legal){
+          tile.style.cursor = 'pointer'; tile.addEventListener('click', () => doPick(c.id, col));
+        } else {
+          tile.classList.add('disabled');
+        }
+        $(rowId).appendChild(tile);
+      };
+      build(pair[0], '#row-choices-a');
+      build(pair[1], '#row-choices-b');
+    });
   }
-  function closeChooser(){ const bg=$('#chooser'); bg.style.display='none'; bg.setAttribute('aria-hidden','true'); choosingIndex=null; }
-  $('#closeChooser').addEventListener('click', closeChooser);
-  $('#chooser').addEventListener('click', e=>{ if(e.target.id==='chooser') closeChooser(); });
+
+  // ---------- Room-based player names (if roomId is present)
+  async function tryPopulateNamesFromRoom(){
+    if (!ROOM_ID || typeof window._et_fetchRoom !== 'function') return;
+    const room = await window._et_fetchRoom(ROOM_ID); if (!room) return;
+    const uids = Array.isArray(room.partyUids) && room.partyUids.length ? room.partyUids
+              : Array.isArray(room.participantUids) && room.participantUids.length ? room.participantUids
+              : (room.hostUid ? [room.hostUid] : []);
+    if (!uids.length) return;
+    const names = [];
+    for (const uid of uids.slice(0,4)){
+      // eslint-disable-next-line no-await-in-loop
+      const name = (typeof window._et_fetchUsername === 'function') ? (await window._et_fetchUsername(uid)) : (uid?.slice?.(0,6)||'Player');
+      names.push(name);
+    }
+    while (names.length < 4) names.push(`Slot ${names.length+1}`);
+    state.names = names; persist(); render();
+  }
 
   // ---------- Init
   (function init(){
-    if (!restore()){ drawWeapons(); persist(); }
+    state.mode = resolveMode();
+    state.names = resolveNames();
+    // If no saved state for v4, draw fresh
+    const restored = restore();
+    if (!restored){ drawWeapons(); persist(); }
     render();
+    tryPopulateNamesFromRoom();
   })();
   </script>
 </body>
