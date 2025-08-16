@@ -67,6 +67,39 @@
     @media (max-width:980px){ .grid{ grid-template-columns: repeat(2,1fr);} }
     @media (max-width:560px){ header .actions{ display:none;} .grid{ grid-template-columns:1fr;} }
   </style>
+  <!-- Firebase (for pulling player usernames when roomId is present) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
+      authDomain: "elementails.firebaseapp.com",
+      projectId: "elementails",
+      storageBucket: "elementails.firebasestorage.app",
+      messagingSenderId: "497100635124",
+      appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Expose minimal Firestore helpers to the page scope
+    window._et_fetchRoom = async (roomId) => {
+      try { const s = await getDoc(doc(db,'rooms', roomId)); return s.exists() ? s.data() : null; } catch { return null; }
+    };
+    window._et_fetchUsername = async (uid) => {
+      try {
+        const u = await getDoc(doc(db,'users', uid));
+        if (u.exists() && u.data().username) return u.data().username;
+      } catch {}
+      try {
+        const p = await getDoc(doc(db,'publicProfiles', uid));
+        if (p.exists() && (p.data().username || p.data().displayName)) return p.data().username || p.data().displayName;
+      } catch {}
+      return uid.slice(0,6);
+    };
+  </script>
 </head>
 <body>
   <header>
@@ -170,7 +203,7 @@
   // ---------- State
   const state = {
     mode: 'single',
-    names: resolveNames(),
+    names: resolveNames(),     // turn order display names (updated from room if available)
     drawn: [],                 // 4 weapon ids
     picks: [],                 // ordered picks: [{classId, weaponId, playerName}]
   };
@@ -253,7 +286,6 @@
     state.drawn.forEach((wId, col) => {
       const pair = byWeapon(wId);
 
-      // helper to build a choice tile
       const buildChoice = (c, targetRowId) => {
         const tile = el('div','frame option');
         tile.appendChild(img(c.portrait, c.name));
@@ -267,15 +299,13 @@
           const badge = el('div','picked-badge'); badge.textContent = `Picked by ${who}`;
           tile.appendChild(badge);
           tile.classList.add('selected');
-          // allow unclaim on click
           tile.addEventListener('click', () => unpick(c.id));
         } else if (legal){
           tile.style.cursor = 'pointer';
           tile.addEventListener('click', () => doPick(c.id, col));
         } else {
-          tile.classList.add('disabled'); // pointer-events:none prevents clicks
+          tile.classList.add('disabled');
         }
-
         $(targetRowId).appendChild(tile);
       };
 
@@ -284,12 +314,39 @@
     });
   }
 
+  // ---------- Room-based player names (if roomId is present)
+  async function tryPopulateNamesFromRoom(){
+    if (!ROOM_ID || typeof window._et_fetchRoom !== 'function') return;
+    const room = await window._et_fetchRoom(ROOM_ID);
+    if (!room) return;
+
+    // prefer partyUids, then participantUids, then hostUid
+    const uids = Array.isArray(room.partyUids) && room.partyUids.length ? room.partyUids
+              : Array.isArray(room.participantUids) && room.participantUids.length ? room.participantUids
+              : (room.hostUid ? [room.hostUid] : []);
+
+    if (!uids.length) return;
+    const names = [];
+    for (const uid of uids.slice(0,4)){
+      // eslint-disable-next-line no-await-in-loop
+      const name = (typeof window._et_fetchUsername === 'function') ? (await window._et_fetchUsername(uid)) : uid.slice(0,6);
+      names.push(name);
+    }
+    // If fewer than 4 players, pad with "Slot N"
+    while (names.length < 4) names.push(`Slot ${names.length+1}`);
+
+    state.names = names;
+    persist(); render();
+  }
+
   // ---------- Init
   (function init(){
     state.mode = resolveMode();
     state.names = resolveNames();
     if (!restore()){ drawWeapons(); persist(); }
     render();
+    // Try to replace Slot labels with actual usernames from Firestore
+    tryPopulateNamesFromRoom();
   })();
   </script>
 </body>
