@@ -4,35 +4,131 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Party Select</title>
-  <style>
-    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
-    html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:980px;margin:32px auto;padding:0 16px;}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    h1{margin:0;font-size:28px}
-    .pill{background:#0f1220;border:1px solid #2a3147;border-radius:999px;padding:6px 10px;font-size:14px}
-    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1e2433;color:#fff}
-    .btn:hover{filter:brightness(1.08)}
-    .btn.primary{background:var(--accent);color:#06241e}
-    .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
-    .grid{display:grid;gap:12px}
-    .muted{color:#9aa4b2}
-    .players{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width:800px){.players{grid-template-columns:1fr}}
-    .player{display:flex;align-items:center;justify-content:space-between;background:#0f1220;border:1px solid #2a3147;border-radius:10px;padding:10px 12px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .note{font-size:12px;color:#9aa4b2;margin-left:6px}
-  </style>
+  <meta name="screen" content="Party Select">
 
-  <!-- Firebase v12 (modular) -->
+  <style>
+    :root{
+      --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#e55353; --radius:14px;
+      --ink:#e9eef5; --ink-dim:#d7dde6;
+      --stroke:#2a3147; --tile:#0f1220;
+    }
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:1160px;margin:28px auto;padding:0 16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    h1{margin:0;font-size:28px;letter-spacing:.2px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{background:var(--tile);border:1px solid var(--stroke);border-radius:999px;padding:6px 10px;font-size:14px}
+    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:#1e2433;color:#fff}
+    .btn:hover{filter:brightness(1.08)}
+    .btn.primary{background:var(--accent);color:#07352c}
+    .btn.ghost{background:transparent;border:1px solid var(--stroke)}
+    .btn.warn{background:#512029}
+    .btn.small{padding:7px 10px;font-size:14px;border-radius:8px}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    .muted{color:var(--muted)}
+    .grid{display:grid;gap:14px}
+    .columns{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}
+    @media (max-width:1080px){ .columns{grid-template-columns:1fr} }
+
+    .card{background:var(--panel);padding:16px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .subhead{font-weight:800;margin:0 0 8px 0}
+
+    /* Seats */
+    .seats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:720px){ .seats{grid-template-columns:1fr} }
+    .seat{
+      position:relative;min-height:108px;border:1px solid var(--stroke);border-radius:12px;background:var(--tile);
+      padding:12px;display:flex;align-items:center;justify-content:space-between;overflow:hidden
+    }
+    .seat .meta{display:flex;flex-direction:column;gap:6px}
+    .seat .name{font-weight:800}
+    .seat .class{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f1220;border:1px solid var(--stroke);font-size:12px}
+    .status{font-size:13px}
+    .crown{display:inline-block;margin-right:6px}
+    .seat .actions{display:flex;gap:8px;align-items:center}
+    .seat.open{opacity:.8;justify-content:center;align-items:center}
+    .seat.open .muted{font-size:14px}
+
+    /* Draw + portraits */
+    .weapons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    @media (max-width:800px){ .weapons{grid-template-columns:repeat(2,1fr)} }
+    .weapon{background:var(--tile);border:1px solid var(--stroke);border-radius:12px;padding:10px;text-align:center;cursor:pointer}
+    .weapon.selected{outline:2px solid var(--accent)}
+
+    .class-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media (max-width:1000px){ .class-grid{grid-template-columns:repeat(2,1fr)} }
+    .portrait-btn{position:relative;border:1px solid var(--stroke);border-radius:12px;overflow:hidden;background:#0e1323;aspect-ratio:16/10;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35)}
+    .portrait-btn .img{position:absolute;inset:0;background-size:cover;background-position:center;filter:saturate(1.05) contrast(1.03)}
+    .portrait-btn .label{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.55);padding:6px 10px;border-radius:999px;font-weight:800}
+    .portrait-btn.claimed::after{content:attr(data-claimed);position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);border:1px solid var(--stroke);padding:4px 8px;border-radius:999px;font-size:12px}
+    .portrait-btn.disabled{filter:grayscale(1);opacity:.55;cursor:not-allowed}
+    .portrait-btn.me{outline:3px solid var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Party Select <span id="host-badge" class="pill" style="display:none;margin-left:8px;">Host</span></h1>
+        <div class="muted">
+          Room <span id="rid">…</span>
+          • <span id="vis">friends</span>
+          • <span id="status">party</span>
+          • Players: <span id="count">0</span>/4
+          • <button id="copy-code" class="btn ghost small" style="margin-left:6px">Copy code</button>
+          <span id="copy-tip" class="muted" style="margin-left:4px;font-size:12px;">Click to copy</span>
+        </div>
+      </div>
+      <div class="row">
+        <span id="user" class="pill">(not signed in)</span>
+        <button id="login" class="btn">Login with Google</button>
+        <button id="logout" class="btn" style="display:none;">Logout</button>
+      </div>
+    </header>
+
+    <section id="missing" class="card" style="display:none;">
+      <h2 class="subhead">No room selected</h2>
+      <p class="muted">This page expects a <code>?roomId=XYZ</code> param or an ID saved by your Session code.</p>
+      <p><a href="mainmenu.html" class="btn">Back to Main Menu</a></p>
+    </section>
+
+    <section id="content" class="columns">
+      <div class="card">
+        <h3 class="subhead">Players</h3>
+        <div id="seats" class="seats"></div>
+        <div class="row" style="margin-top:12px;">
+          <button id="ready" class="btn">Ready</button>
+          <button id="lock"  class="btn primary" disabled>Lock party & start</button>
+          <span class="muted">Host can start when everyone is Ready and each player selected a unique hero. Party limit 4.</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3 class="subhead">Weapon Draw</h3>
+          <div id="weapons" class="weapons"></div>
+          <div class="muted">Draw is generated once by the Host: 4 of the 9 weapons (Rules Bible).</div>
+        </div>
+        <div class="card">
+          <h3 class="subhead">Available Classes</h3>
+          <div class="muted" style="margin-bottom:6px">Click a portrait to claim that class. A claimed tile shows the player name.</div>
+          <div id="classes" class="class-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="banner" class="muted" style="margin-top:10px;"></div>
+  </div>
+
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp
+      getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, runTransaction, deleteField
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    // ---- config (same working project as main menu) ----
+    // ---- Firebase config ----
     const firebaseConfig = {
       apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
       authDomain: "elementails.firebaseapp.com",
@@ -41,14 +137,57 @@
       messagingSenderId: "497100635124",
       appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
     };
-
-    const app  = initializeApp(firebaseConfig);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
+    // ---- Rules Bible constants ----
+    const PARTY_LIMIT = 4;
+    const WEAPON_HEROES = {
+      "Knuckles": ["Fox","Frog"],
+      "Tome": ["Fox","Rabbit"],
+      "Daggers": ["Fox","Wolf"],
+      "Staff": ["Frog","Rabbit"],
+      "Spear": ["Frog","Bear"],
+      "Bow": ["Rabbit","Raven"],
+      "Katana": ["Raven","Wolf"],
+      "Greataxe": ["Raven","Bear"],
+      "Sword & Shield": ["Wolf","Bear"]
+    };
+    const CLASS_NAME = {
+      "Fox|Knuckles": "Monk", "Fox|Tome": "Summoner", "Fox|Daggers": "Assassin",
+      "Frog|Staff": "Wizard", "Frog|Knuckles": "Berserker", "Frog|Spear": "Myrmidon",
+      "Rabbit|Tome": "Cleric", "Rabbit|Staff": "Druid", "Rabbit|Bow": "Bard",
+      "Raven|Bow": "Archer", "Raven|Katana": "Battlemage", "Raven|Greataxe": "Reaper",
+      "Wolf|Daggers": "Ninja", "Wolf|Katana": "Samurai", "Wolf|Sword & Shield": "Paladin",
+      "Bear|Spear": "Lancer", "Bear|Greataxe": "Barbearian", "Bear|Sword & Shield": "Warrior"
+    };
+
     // ---- utils ----
+    const $ = s => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode());
+    function toast(m){ try{ alert(m); }catch{} }
+
+    async function getUsername(uid){
+      try{
+        const u = await getDoc(doc(db,'users', uid));
+        if (u.exists() && u.data().username) return u.data().username;
+      }catch{}
+      return null;
+    }
+
+    function uniqueHeroesOk(players){
+      const used = new Set();
+      for(const p of players){
+        if(!p.hero) return false;
+        if(used.has(p.hero)) return false;
+        used.add(p.hero);
+      }
+      return true;
+    }
+
     function portraitKey(hero, weapon){
-      // e.g., "Fox|Sword & Shield" -> "fox-sword-shield"
       return `${hero}-${weapon}`.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
     }
     function portraitUrlFor(hero, weapon){
@@ -61,182 +200,82 @@
       return `linear-gradient(135deg, hsl(${a} 50% 18%), hsl(${b} 50% 22%))`;
     }
 
-    const $ = sel => document.querySelector(sel);
-    const params = new URLSearchParams(location.search);
-    const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode());
+    const state = { me:null, room:null, players:[], isHost:false, selectedWeapon:null };
 
-    // ---- UI refs ----
-    const state = {
-      room: null,
-      players: [],
-      me: null,
-      unsubPlayers: null,
-      isHost: false
-    };
-
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!roomId) {
-        $('#missing').style.display = 'block';
-        $('#content').style.display = 'none';
-        return;
-      }
+    // ---- mount & listeners ----
+    async function mount(){
+      if(!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
       $('#rid').textContent = roomId;
 
-      // auth wiring
-      $('#login').addEventListener('click', async () => {
-        try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-        catch (e) { alert(e.code || 'Login failed'); }
-      });
-      $('#logout').addEventListener('click', async () => { try { await signOut(auth); } catch {} });
+      // room snapshot
+      onSnapshot(doc(db,'rooms', roomId), async (snap)=>{
+        if(!snap.exists()){ $('#banner').textContent='Room not found.'; return; }
+        state.room = { id:snap.id, ...snap.data() };
+        state.isHost = !!(state.me && state.room.hostUid === state.me.uid);
+        $('#vis').textContent = state.room.visibility || 'friends';
+        $('#status').textContent = state.room.status || 'party';
+        $('#host-badge').style.display = state.isHost ? 'inline-block' : 'none';
 
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          $('#user').textContent = '(not signed in)';
-          $('#login').style.display = 'inline-block';
-          $('#logout').style.display = 'none';
-          return;
+        // Ensure draw once (host only)
+        if(state.isHost && !Array.isArray(state.room.draw)){
+          await runTransaction(db, async tx => {
+            const rref = doc(db,'rooms', roomId);
+            const rdoc = await tx.get(rref);
+            if(!rdoc.exists()) return;
+            if(Array.isArray(rdoc.data().draw)) return;
+            const all = Object.keys(WEAPON_HEROES);
+            const shuffled = all.slice().sort(()=>Math.random()-0.5);
+            tx.update(rref, { draw: shuffled.slice(0,4), status:'party', updatedAt: serverTimestamp() });
+          });
         }
-        state.me = user;
-        $('#user').textContent = '@' + (user.displayName || user.email || user.uid.slice(0,6));
-        $('#login').style.display = 'none';
-        $('#logout').style.display = 'inline-block';
-        await mount();
+
+        renderDraw();
+        renderSeats();
+        renderControls();
       });
 
-      $('#ready').addEventListener('click', toggleReady);
-      $('#lock').addEventListener('click', lockAndStart);
-    });
-
-    async function mount(){
-      // load room
-      const rdoc = await getDoc(doc(db, 'rooms', roomId));
-      if (!rdoc.exists()) {
-        $('#missing').style.display = 'block';
-        $('#missing h2').textContent = 'Room not found';
-        $('#content').style.display = 'none';
-        return;
-      }
-      state.room = { id: rdoc.id, ...rdoc.data() };
-      state.isHost = !!(state.me && state.room.hostUid === state.me.uid);
-      $('#vis').textContent   = state.room.visibility || 'friends';
-      $('#status').textContent= state.room.status || 'open';
-      $('#host').textContent  = state.room.hostUid ? (state.room.hostUid.slice(0,6)+'…') : '(unknown)';
-      if (state.room.partyLocked) {
-        $('#banner').textContent = 'Party is locked.';
-        $('#lock').disabled = true;
-      }
-
-      // ensure my player doc exists
-      const myRef = doc(db, 'rooms', roomId, 'players', state.me.uid);
-      await setDoc(myRef, {
-        uid: state.me.uid,
-        name: state.me.displayName || state.me.email || state.me.uid,
-        ready: false,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      // subscribe to players
-      if (state.unsubPlayers) try{ state.unsubPlayers(); }catch{}
-      state.unsubPlayers = onSnapshot(collection(db, 'rooms', roomId, 'players'), (snap) => {
-        state.players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderPlayers();
+      // players
+      onSnapshot(collection(db,'rooms', roomId, 'players'), async (snap)=>{
+        state.players = [];
+        for(const d of snap.docs){
+          const p={ id:d.id, ...d.data() };
+          if(!p.name) p.name = (await getUsername(p.id)) || p.displayName || p.id.slice(0,6);
+          state.players.push(p);
+        }
+        $('#count').textContent = String(state.players.length);
+        renderSeats();
+        renderControls();
       });
+
+      // me → upsert name
+      const myName = (await getUsername(state.me.uid)) || (state.me.displayName || state.me.email || state.me.uid.slice(0,6));
+      await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { name: myName, updatedAt: serverTimestamp() }, { merge:true });
     }
 
-    function renderPlayers(){
-      const list = $('#players');
-      list.innerHTML = '';
-      let allReady = state.players.length > 0;
-      for (const p of state.players) {
+    function renderDraw(){
+      const grid = $('#weapons'); if(!grid) return;
+      grid.innerHTML='';
+      const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
+      if(!drawn.length){ grid.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
+
+      drawn.forEach(w=>{
         const div = document.createElement('div');
-        div.className = 'player';
-        const left = document.createElement('div');
-        left.textContent = p.name || p.id;
-        const right = document.createElement('div');
-        right.textContent = p.ready ? '✅ Ready' : '⏳ Not ready';
-        list.appendChild(div);
-        div.append(left, right);
-        if (!p.ready) allReady = false;
-      }
-      // ready button label for me
-      const meDoc = state.players.find(x => x.id === (state.me && state.me.uid));
-      $('#ready').textContent = (meDoc && meDoc.ready) ? 'Unready' : 'Ready';
-      // host can lock when all ready
-      $('#lock').disabled = !(state.isHost && allReady && !state.room.partyLocked);
+        div.className = 'weapon' + (state.selectedWeapon===w ? ' selected' : '');
+        div.textContent = w;
+        div.onclick = ()=>{ state.selectedWeapon=w; renderDraw(); renderClasses(); };
+        grid.appendChild(div);
+      });
+      if(!state.selectedWeapon && drawn.length){ state.selectedWeapon=drawn[0]; renderDraw(); renderClasses(); }
     }
 
-    async function toggleReady(){
-      if (!state.me) return;
-      const myRef = doc(db, 'rooms', roomId, 'players', state.me.uid);
-      const cur = state.players.find(x => x.id === state.me.uid);
-      const next = !(cur && cur.ready);
-      try {
-        await setDoc(myRef, { ready: next, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (e) { alert('Could not update ready.'); }
-    }
-
-    async function lockAndStart(){
-      if (!state.isHost) return;
-      const partyUids = state.players.map(p => p.id);
-      try {
-        await updateDoc(doc(db, 'rooms', roomId), {
-          partyLocked: true,
-          partyUids,
-          status: 'locked',
-          updatedAt: serverTimestamp()
-        });
-        $('#banner').textContent = 'Party locked — starting run…';
-        // Route to your run/map screen
-        const target = 'run.html?roomId=' + roomId;
-        if (window.Router && Router.to) Router.to(target);
-        else location.href = target;
-      } catch (e) { alert('Could not lock/start.'); }
-    }
-  </script>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Party Select</h1>
-        <div class="muted">Room <span id="rid">…</span> • <span id="vis">…</span> • <span id="status">…</span></div>
-      </div>
-      <div class="row">
-        <span id="user" class="pill">(not signed in)</span>
-        <button id="login" class="btn">Login with Google</button>
-        <button id="logout" class="btn" style="display:none;">Logout</button>
-      </div>
-    </header>
-
-    <section id="missing" class="card" style="display:none;">
-      <h2>No room selected</h2>
-      <p class="muted">This page expects a <code>?roomId=XYZ</code> param or an ID saved by your Session code.</p>
-      <p><a href="mainmenu.html" class="btn">Back to Main Menu</a></p>
-    </section>
-
-    <section id="content" class="grid">
-      <div id="banner" class="muted"></div>
-      <div class="card">
-        <h3 style="margin-top:0">Players</h3>
-        <div id="players" class="players"></div>
-        <div class="row" style="margin-top:12px;">
-          <button id="ready" class="btn">Ready</button>
-          <button id="lock"  class="btn primary" disabled>Lock party & start</button>
-          <span class="note">Host can start when everyone is Ready.</span>
-        </div>
-      </div>
-    </section>
-  </div>
-</body>
-</html>
     function renderClasses(){
       const wrap = $('#classes'); if(!wrap) return;
       wrap.innerHTML='';
       const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
       if(!drawn.length){ wrap.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
 
-      // Map of claimed classes -> player
-      const claims = new Map(); // key: "Hero|Weapon" -> {id,name,isMe}
+      // Map of claims
+      const claims = new Map(); // "Hero|Weapon" -> {id,name,isMe}
       for(const p of state.players){
         if(p.hero && p.weapon){
           const k = `${p.hero}|${p.weapon}`;
@@ -244,7 +283,6 @@
         }
       }
 
-      // Build eight tiles (2 per weapon)
       for(const w of drawn){
         const heroes = WEAPON_HEROES[w] || [];
         for(const h of heroes){
@@ -267,8 +305,6 @@
 
           btn.onclick = async () => {
             if(disabled) return;
-            const meDoc = state.players.find(p=>p.id===state.me?.uid);
-            // Toggle: if I already have this exact pick, unchoose; else choose.
             if(isMe){
               try{
                 await updateDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
@@ -289,3 +325,139 @@
       }
     }
 
+    function renderSeats(){
+      const grid = $('#seats'); if(!grid) return;
+      grid.innerHTML='';
+      const seats = [null,null,null,null];
+      state.players.slice(0,4).forEach((p,i)=> seats[i]=p);
+
+      for(let i=0;i<4;i++){
+        const p = seats[i];
+        const div = document.createElement('div');
+        div.className = 'seat' + (p ? '' : ' open');
+
+        if(!p){
+          div.innerHTML = '<div class="muted">Open Slot</div>';
+          grid.appendChild(div); continue;
+        }
+
+        const isMe = state.me && p.id===state.me.uid;
+        const crown = state.room?.hostUid===p.id ? '👑' : '';
+        const left = document.createElement('div');
+        left.className='meta';
+        left.innerHTML = `
+          <div class="name">${crown ? `<span class="crown">${crown}</span>` : ''}@${p.name||p.id.slice(0,6)}</div>
+          <div class="class">
+            ${p.className ? `<span class="badge">${p.className}</span>` : '<span class="badge">No class</span>'}
+            ${p.hero ? `<span class="badge">${p.hero}</span>` : ''}
+            ${p.weapon ? `<span class="badge">${p.weapon}</span>` : ''}
+          </div>
+          <div class="status muted">${p.ready ? '✅ Ready' : '⏳ Not ready'}</div>
+        `;
+
+        const right = document.createElement('div');
+        right.className='actions';
+
+        if(isMe){
+          const leave = document.createElement('button'); leave.className='btn ghost small'; leave.textContent='Unchoose';
+          leave.onclick = async ()=>{
+            try{
+              await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() });
+            }catch{ toast('Could not unchoose'); }
+          };
+          right.appendChild(leave);
+        }
+
+        if(state.isHost && !isMe){
+          const kick = document.createElement('button'); kick.className='btn warn small'; kick.textContent='Kick';
+          kick.onclick = async ()=>{
+            if(!confirm(`Remove @${p.name||p.id.slice(0,6)} from party?`)) return;
+            try{ await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() }); }
+            catch{ toast('Could not update'); }
+          };
+          right.appendChild(kick);
+        }
+
+        const container = document.createElement('div');
+        container.style.cssText='display:flex;align-items:center;justify-content:space-between;width:100%';
+        container.appendChild(left); container.appendChild(right);
+
+        div.appendChild(container);
+        grid.appendChild(div);
+      }
+
+      renderClasses();
+    }
+
+    function renderControls(){
+      const everyoneReady = state.players.length>0 && state.players.every(p=>p.className && p.ready);
+      const partyOk = state.players.length<=PARTY_LIMIT && uniqueHeroesOk(state.players.filter(p=>p.className));
+      $('#lock').disabled = !(state.isHost && Array.isArray(state.room?.draw) && state.room.draw.length===4 && everyoneReady && partyOk && !state.room?.partyLocked);
+
+      const meDoc = state.players.find(p=>p.id===state.me?.uid);
+      $('#ready').textContent = meDoc?.ready ? 'Unready' : 'Ready';
+    }
+
+    async function toggleReady(){
+      if(!state.me) return;
+      const meDoc = state.players.find(p=>p.id===state.me.uid);
+      const next = !(meDoc && meDoc.ready);
+      try{ await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { ready: next, updatedAt: serverTimestamp() }, { merge:true }); }
+      catch{ toast('Could not update ready'); }
+    }
+
+    async function lockAndStart(){
+      if(!state.isHost) return;
+      const heroes = new Set();
+      for(const p of state.players){
+        if(!p.className){ toast('All players must choose a class.'); return; }
+        if(heroes.has(p.hero)){ toast('Each hero can appear only once.'); return; }
+        heroes.add(p.hero);
+      }
+      if(state.players.length>PARTY_LIMIT){ toast('Party limit is 4.'); return; }
+
+      try{
+        await updateDoc(doc(db,'rooms', roomId), {
+          partyLocked:true,
+          partyUids: state.players.map(p=>p.id),
+          status:'running',
+          updatedAt: serverTimestamp()
+        });
+        const target = 'run.html?roomId='+roomId;
+        if(window.Router && Router.to) Router.to(target); else location.href = target;
+      }catch{ toast('Could not lock/start'); }
+    }
+
+    function copyCode(){
+      try{ navigator.clipboard.writeText(roomId); $('#copy-tip').textContent='Copied!'; setTimeout(()=> $('#copy-tip').textContent='Click to copy',1200); }catch{}
+    }
+
+    // ---- boot ----
+    document.addEventListener('DOMContentLoaded', ()=>{
+      if(!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
+      $('#rid').textContent = roomId;
+      $('#copy-code').addEventListener('click', copyCode);
+      $('#ready').addEventListener('click', toggleReady);
+      $('#lock').addEventListener('click', lockAndStart);
+
+      $('#login').addEventListener('click', async ()=>{ try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ toast(e.code||'Login failed'); } });
+      $('#logout').addEventListener('click', async ()=>{ try{ await signOut(auth); }catch{} });
+
+      onAuthStateChanged(auth, async (user)=>{
+        if(!user){
+          $('#user').textContent='(not signed in)';
+          $('#login').style.display='inline-block';
+          $('#logout').style.display='none';
+          return;
+        }
+        state.me = user;
+        const name = (await getUsername(user.uid)) || user.displayName || user.email || user.uid.slice(0,6);
+        $('#user').textContent='@'+name;
+        $('#login').style.display='none';
+        $('#logout').style.display='inline-block';
+        await mount();
+      });
+    });
+  </script>
+</body>
+</html>
