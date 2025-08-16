@@ -94,7 +94,7 @@
 
     // ---------- Navigation ----------
     function routeToPartySelect(roomId, mode){
-      // Normalize and persist mode if provided
+      // Normalize and persist mode if provided; do not touch auth/login flow
       try {
         if (mode !== undefined && mode !== null) {
           const m = String(mode).toLowerCase();
@@ -105,7 +105,10 @@
       const url = `partyselect.html?roomId=${roomId}`;
       if (window.Router && typeof Router.to === 'function') { Router.to(url); return; }
       window.location.href = url;
-    }`;
+    }
+      } catch {}
+      const url = `partyselect.html?roomId=${roomId}
+`;
       if (window.Router && typeof Router.to === 'function') { Router.to(url); return; }
       window.location.href = url;
     }
