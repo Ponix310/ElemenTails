@@ -259,6 +259,7 @@
     });
 
     // ---------- Friends panel (restored) ----------
+    
     async function refreshFriends(){
       const me = auth.currentUser; if(!me) return;
       const list = document.getElementById('friends-list');
@@ -267,6 +268,30 @@
         const qy = query(collection(db, `users/${me.uid}/friends`));
         const ss = await getDocs(qy);
         if (ss.empty){ list.innerHTML = '<div class="muted">(No friends yet)</div>'; return; }
+        // fetch only publicProfiles + presence (users/{uid} is private to owner)
+        for (const ds of ss.docs){
+          const fuid = ds.id;
+          const pSnap = await getDoc(doc(db,'publicProfiles', fuid));
+          const name = (pSnap.exists() && (pSnap.data().username || pSnap.data().displayName))
+                       ? (pSnap.data().username || pSnap.data().displayName)
+                       : fuid.slice(0,6);
+          const row = document.createElement('div'); row.className='friend';
+          const left = document.createElement('div'); left.textContent = '@'+name;
+          const right = document.createElement('div'); right.className='status'; right.innerHTML = '<span class="dot"></span><span class="muted">offline</span>';
+          const dot = right.querySelector('.dot'); const txt = right.querySelector('span + span');
+          onSnapshot(doc(db,'presence', fuid), (snap)=>{
+            const online = snap.exists() && snap.data().online;
+            dot.className = online ? 'dot online' : 'dot';
+            txt.textContent = online ? 'online' : 'offline';
+          });
+          row.appendChild(left); row.appendChild(right);
+          list.appendChild(row);
+        }
+      }catch(e){
+        list.innerHTML = `<div class="muted">Could not load friends: ${e.message||e.code}</div>`;
+      }
+    }
+
         // fetch profiles + presence
         for (const ds of ss.docs){
           const fuid = ds.id;
