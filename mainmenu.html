@@ -292,34 +292,8 @@
       }
     }
 
-        // fetch profiles + presence
-        for (const ds of ss.docs){
-          const fuid = ds.id;
-          const [uSnap, pSnap] = await Promise.all([
-            getDoc(doc(db,'users', fuid)),
-            getDoc(doc(db,'publicProfiles', fuid)),
-          ]);
-          const name = (uSnap.exists() && uSnap.data().username) ? uSnap.data().username
-                     : (pSnap.exists() && (pSnap.data().username || pSnap.data().displayName)) ? (pSnap.data().username || pSnap.data().displayName)
-                     : fuid.slice(0,6);
-          // presence live listener
-          const row = document.createElement('div'); row.className='friend';
-          const left = document.createElement('div'); left.textContent = '@'+name;
-          const right = document.createElement('div'); right.className='status'; right.innerHTML = '<span class="dot"></span><span class="muted">offline</span>';
-          const dot = right.querySelector('.dot'); const txt = right.querySelector('span + span');
-          onSnapshot(doc(db,'presence', fuid), (snap)=>{
-            const online = snap.exists() && snap.data().online;
-            dot.className = online ? 'dot online' : 'dot';
-            txt.textContent = online ? 'online' : 'offline';
-          });
-          row.appendChild(left); row.appendChild(right);
-          list.appendChild(row);
-        }
-      }catch(e){
-        list.innerHTML = `<div class="muted">Could not load friends: ${e.message||e.code}</div>`;
-      }
-    }
-  </script>
+        
+  </script></script>
 </head>
 <body>
   <header class="wrap">
@@ -336,9 +310,7 @@
 
   <main class="wrap">
     <section class="card">
-      <div class="tile-grid" style="margin-bottom:14px">
-        <div id="tile-single" class="action-tile primary"><span class="label">Create Singleplayer Game</span></div>
-        <div id="tile-multi" class="action-tile success"><span class="label">Create Multiplayer Game</span></div>
+      <div id="tile-multi" class="action-tile success"><span class="label">Create Multiplayer Game</span></div>
       </div>
 
       <h3 style="margin:6px 0 8px;font-size:16px;color:#e2e8f0">Your Save Slots</h3>
