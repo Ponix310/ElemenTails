@@ -1,527 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ElemenTails — Party Select</title>
-
   <style>
     :root{
-      --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#e55353; --radius:14px;
-      --ink:#e9eef5; --ink-dim:#d7dde6; --stroke:#2a3147; --tile:#0f1220; --frame:#000;
+      --bg: #0c0f13;
+      --panel: #141922;
+      --panel-2: #0f141c;
+      --text: #e9eef6;
+      --muted: #a9b2c2;
+      --accent: #fbbf24;
+      --shadow: 0 10px 30px rgba(0,0,0,.45);
+      --radius: 16px;
+      --gap: 18px;
+      --box-border: 2px solid rgba(255,255,255,.06);
     }
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
-      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-    .wrap{max-width:1160px;margin:28px auto;padding:0 16px}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-    h1{margin:0;font-size:28px;letter-spacing:.2px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .pill{background:var(--tile);border:1px solid var(--stroke);border-radius:999px;padding:6px 10px;font-size:14px}
-    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:#1e2433;color:#fff}
-    .btn:hover{filter:brightness(1.08)}
-    .btn.primary{background:var(--accent);color:#07352c}
-    .btn.ghost{background:transparent;border:1px solid var(--stroke)}
-    .btn.warn{background:#512029}
-    .btn.small{padding:7px 10px;font-size:14px;border-radius:8px}
-    .btn[disabled]{opacity:.6;cursor:not-allowed}
-    .muted{color:var(--muted)}
-    .grid{display:grid;gap:14px}
-    .columns{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}
-    @media (max-width:1080px){ .columns{grid-template-columns:1fr} }
-    .card{background:var(--panel);padding:16px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35)}
-    .subhead{font-weight:800;margin:0 0 8px 0}
-    .seats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width:720px){ .seats{grid-template-columns:1fr} }
-    .seat{position:relative;min-height:108px;border:1px solid var(--stroke);border-radius:12px;background:var(--tile);
-      padding:12px;display:flex;align-items:center;justify-content:space-between;overflow:hidden}
-    .seat .meta{display:flex;flex-direction:column;gap:6px}
-    .seat .name{font-weight:800}
-    .seat .class{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f1220;border:1px solid var(--stroke);font-size:12px}
-    .status{font-size:13px}
-    .crown{display:inline-block;margin-right:6px}
-    .seat .actions{display:flex;gap:8px;align-items:center}
-    .seat.open{opacity:.8;justify-content:center;align-items:center}
-    .seat.open .muted{font-size:14px}
-
-    /* Selection order row */
-    .order-names{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:0 0 6px 0}
-    .order-name{min-height:22px;text-align:center;font-weight:800}
-    .order-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px}
-    .order-slot{position:relative;aspect-ratio:4/3;border:8px solid var(--frame);border-radius:12px;background:#0a0f1e;overflow:hidden}
-    .order-slot .img{position:absolute;inset:0;background-size:cover;background-position:center;filter:contrast(1.02) saturate(1.05)}
-    .order-slot .tag{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:999px;font-size:12px;border:1px solid var(--stroke)}
-
-    /* Weapon icons row */
-    .wep-row{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;justify-items:center;margin:8px 0 12px}
-    .wep-icon{width:96px;height:96px;background-size:contain;background-repeat:no-repeat;background-position:center;
-      filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
-    @media (max-width:720px){ .wep-icon{width:72px;height:72px} }
-
-    /* Portrait grid (8) */
-    .class-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    @media (max-width:1000px){ .class-grid{grid-template-columns:repeat(2,1fr)} }
-    .portrait-btn{position:relative;border:1px solid var(--stroke);border-radius:12px;overflow:hidden;background:#0e1323;aspect-ratio:16/10;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35)}
-    .portrait-btn .img{position:absolute;inset:0;background-size:cover;background-position:center;filter:saturate(1.05) contrast(1.03)}
-    .portrait-btn .label{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.55);padding:6px 10px;border-radius:999px;font-weight:800}
-    .portrait-btn.claimed::after{content:attr(data-claimed);position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);border:1px solid var(--stroke);padding:4px 8px;border-radius:999px;font-size:12px}
-    .portrait-btn.disabled{filter:grayscale(1);opacity:.55;cursor:not-allowed}
-    .portrait-btn.me{outline:3px solid var(--accent)}
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: radial-gradient(1200px 1200px at 10% 10%, #111927 0%, #0b0f15 60%, #070a0f 100%);
+      color: var(--text);
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px clamp(16px, 4vw, 40px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(6px);
+      position: sticky;
+      top: 0; z-index: 10;
+      background: linear-gradient(180deg, rgba(20,25,34,.9), rgba(20,25,34,.65));
+    }
+    header .title { display: flex; gap: 14px; align-items: baseline; }
+    header .title h1 { margin: 0; font-size: clamp(18px, 2.2vw, 26px); letter-spacing: .4px; }
+    header .title .sub { color: var(--muted); font-size: clamp(12px, 1.4vw, 14px); }
+    header .actions { display: flex; gap: 10px; }
+    .btn {
+      appearance: none;
+      background: #1b2431;
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      text-decoration: none;
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, #1e293b, #1b2431);
+      border-color: rgba(250,204,21,.25);
+      outline: 0;
+    }
+    .btn.primary:focus-visible { box-shadow: 0 0 0 3px rgba(251,191,36,.35); }
+    .page { padding: 24px clamp(16px, 4vw, 40px) 40px; max-width: 1500px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: auto; gap: var(--gap); }
+    .col-name { text-align: center; font-weight: 800; font-size: clamp(16px, 1.8vw, 22px); letter-spacing: .3px; padding: 6px 0 2px; color: var(--text); text-shadow: 0 2px 14px rgba(0,0,0,.6); }
+    .frame {
+      position: relative; overflow: hidden; border-radius: var(--radius);
+      background: linear-gradient(160deg, var(--panel), var(--panel-2));
+      border: var(--box-border); box-shadow: var(--shadow);
+      min-height: 160px; display: flex; align-items: center; justify-content: center; isolation: isolate;
+    }
+    .frame.large { min-height: clamp(160px, 18vw, 240px); }
+    .frame.icon  { min-height: clamp(90px, 10vw, 130px); padding: 8px; }
+    .frame.option { min-height: clamp(140px, 16vw, 220px); }
+    .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .frame.icon img { width: auto; height: 80%; object-fit: contain; padding: 6px; filter: drop-shadow(0 4px 18px rgba(0,0,0,.35)); }
+    .inactive .overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,14,20,.55), rgba(10,14,20,.85)); z-index: 2; pointer-events: none; }
+    .inactive img { filter: grayscale(1) brightness(.7) contrast(.9); }
+    .label-top { position: absolute; top: 8px; left: 10px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.12); color: var(--text); padding: 4px 8px; border-radius: 8px; font-size: 12px; z-index: 3; }
+    @media (max-width: 980px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { header .actions { display: none; } .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Party Select <span id="host-badge" class="pill" style="display:none;margin-left:8px;">Host</span></h1>
-        <div class="muted">
-          Room <span id="rid">…</span> • <span id="vis">friends</span> • <span id="status">party</span> • Players: <span id="count">0</span>/4
-          • <button id="copy-code" class="btn ghost small" style="margin-left:6px">Copy code</button>
-          <span id="copy-tip" class="muted" style="margin-left:4px;font-size:12px;">Click to copy</span>
-        </div>
-      </div>
-      <div class="row">
-        <span id="user" class="pill">(not signed in)</span>
-        <button id="login" class="btn">Login with Google</button>
-        <button id="logout" class="btn" style="display:none;">Logout</button>
-      </div>
-    </header>
+  <header>
+    <div class="title">
+      <h1>Party Select</h1>
+      <span class="sub">Uses images from <code>/images/class-portraits</code> and <code>/images/weapons</code></span>
+    </div>
+    <div class="actions">
+      <a class="btn" href="mainmenu.html">Back</a>
+      <a class="btn primary" href="game.html">Start Run</a>
+    </div>
+  </header>
 
-    <section class="columns">
-      <div class="card">
-        <h3 class="subhead">Players</h3>
-        <div id="seats" class="seats"></div>
-        <div class="row" style="margin-top:12px;">
-          <button id="ready" class="btn">Ready</button>
-          <button id="lock"  class="btn primary" disabled>Lock party & start</button>
-          <span class="muted">Host can start when everyone is Ready and each player selected a unique hero. Party limit 4.</span>
-        </div>
-      </div>
+  <main class="page">
+    <section class="grid" id="names-row" aria-label="player-names"></section>
+    <section class="grid" id="row-hero" aria-label="hero-portraits"></section>
+    <section class="grid" id="row-icon" aria-label="weapon-icons"></section>
+    <section class="grid" id="row-opt-a" aria-label="option-row-a"></section>
+    <section class="grid" id="row-opt-b" aria-label="option-row-b"></section>
+  </main>
 
-      <div class="grid">
-        <div class="card">
-          <h3 class="subhead">Selection Order</h3>
-          <div id="orderCaps" class="order-names">
-            <div class="order-name"></div><div class="order-name"></div><div class="order-name"></div><div class="order-name"></div>
-          </div>
-          <div id="order" class="order-grid">
-            <div class="order-slot"></div><div class="order-slot"></div><div class="order-slot"></div><div class="order-slot"></div>
-          </div>
-          <div id="wepRow" class="wep-row"></div>
-        </div>
+  <script>
+  // These paths match your repo structure:
+  //   - Hero/class art:   images/class-portraits/<file>
+  //   - Weapon icons:     images/weapons/<file>
+  //
+  // Replace ONLY the filenames to match what's in your repo.
+  // (Keep the folder prefixes as-is.)
+  const columns = [
+    {
+      name: "Ponix",
+      hero: "images/class-portraits/ponix-hero.png",          // ← replace filename if needed
+      icon: "images/weapons/fire-fists.png",                  // ← replace filename if needed
+      optA: "images/class-portraits/ponix-alt-a.png",         // ← replace filename if needed
+      optB: "images/class-portraits/ponix-alt-b.png",         // ← replace filename if needed
+      inactive: { hero:false, icon:false, optA:true, optB:true }
+    },
+    {
+      name: "Dikken",
+      hero: "images/class-portraits/dikken-hero.png",
+      icon: "images/weapons/water-katana.png",
+      optA: "images/class-portraits/dikken-alt-a.png",
+      optB: "images/class-portraits/dikken-alt-b.png",
+      inactive: { hero:false, icon:false, optA:true, optB:true }
+    },
+    {
+      name: "Ponix",
+      hero: "images/class-portraits/ponix-hood-hero.png",
+      icon: "images/weapons/plant-book.png",
+      optA: "images/class-portraits/ponix-hood-alt-a.png",
+      optB: "images/class-portraits/ponix-hood-alt-b.png",
+      inactive: { hero:false, icon:false, optA:true, optB:true }
+    },
+    {
+      name: "Chewni",
+      hero: "images/class-portraits/chewni-hero.png",
+      icon: "images/weapons/lightning-daggers.png",
+      optA: "images/class-portraits/chewni-alt-a.png",
+      optB: "images/class-portraits/chewni-alt-b.png",
+      inactive: { hero:false, icon:false, optA:true, optB:true }
+    }
+  ];
 
-        <div class="card">
-          <h3 class="subhead">Available Classes</h3>
-          <div class="muted" style="margin-bottom:6px">Click a portrait to claim that class. Claimed tiles show the player name. Top squares fill in the order players select.</div>
-          <div id="classes" class="class-grid"></div>
-        </div>
-      </div>
-    </section>
+  // Basic renderer
+  const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+  const imgNode = (src, alt='') => { const i = new Image(); i.src = src; i.alt = alt; return i; };
 
-    <div id="banner" class="muted" style="margin-top:10px;"></div>
-  </div>
-
-  <script type="module">
-    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, runTransaction, deleteField } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
-    // Firebase config (prod)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
-      authDomain: "elementails.firebaseapp.com",
-      projectId: "elementails",
-      storageBucket: "elementails.firebasestorage.app",
-      messagingSenderId: "497100635124",
-      appId: "1:497100635124:web:aeeb25ead96b84751e57a1"
+  function render() {
+    const rows = {
+      names: document.getElementById('names-row'),
+      hero: document.getElementById('row-hero'),
+      icon: document.getElementById('row-icon'),
+      optA: document.getElementById('row-opt-a'),
+      optB: document.getElementById('row-opt-b'),
     };
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getFirestore(app);
+    for (const k of Object.keys(rows)) rows[k].innerHTML = '';
 
-    // --- Constants from Rules Bible ---
-    const PARTY_LIMIT = 4;
-    const WEAPON_HEROES = {
-      "Knuckles": ["Fox","Frog"],
-      "Tome": ["Fox","Rabbit"],
-      "Daggers": ["Fox","Wolf"],
-      "Staff": ["Frog","Rabbit"],
-      "Spear": ["Frog","Bear"],
-      "Bow": ["Rabbit","Raven"],
-      "Katana": ["Raven","Wolf"],
-      "Greataxe": ["Raven","Bear"],
-      "Sword & Shield": ["Wolf","Bear"]
-    };
-    const CLASS_NAME = {
-      "Fox|Knuckles": "Monk", "Fox|Tome": "Summoner", "Fox|Daggers": "Assassin",
-      "Frog|Staff": "Wizard", "Frog|Knuckles": "Berserker", "Frog|Spear": "Myrmidon",
-      "Rabbit|Tome": "Cleric", "Rabbit|Staff": "Druid", "Rabbit|Bow": "Bard",
-      "Raven|Bow": "Archer", "Raven|Katana": "Battlemage", "Raven|Greataxe": "Reaper",
-      "Wolf|Daggers": "Ninja", "Wolf|Katana": "Samurai", "Wolf|Sword & Shield": "Paladin",
-      "Bear|Spear": "Lancer", "Bear|Greataxe": "Barbearian", "Bear|Sword & Shield": "Warrior"
-    };
+    columns.forEach((c, idx) => {
+      const name = el('div', 'col-name'); name.textContent = c.name || `Player ${idx+1}`; rows.names.appendChild(name);
 
-    // --- Utils ---
-    const $ = (s) => document.querySelector(s);
-    const params = new URLSearchParams(location.search);
-    function saveRoomId(id){ try{ localStorage.setItem('lastRoomId', id); }catch(e){} }
-    function getSavedRoomId(){ try{ return localStorage.getItem('lastRoomId'); }catch(e){ return null; } }
-    const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode()) || getSavedRoomId();
+      const hero = el('div', 'frame large' + (c.inactive?.hero ? ' inactive' : ''));
+      hero.appendChild(imgNode(c.hero, `${c.name} — hero`)); hero.appendChild(el('div','overlay')); rows.hero.appendChild(hero);
 
-    function toast(msg){ try{ console.warn(msg); }catch(e){} }
+      const icon = el('div', 'frame icon' + (c.inactive?.icon ? ' inactive' : ''));
+      icon.appendChild(imgNode(c.icon, `${c.name} — icon`)); icon.appendChild(el('div','overlay')); rows.icon.appendChild(icon);
 
-    async function getUsername(uid){
-      try{
-        const u = await getDoc(doc(db,'users', uid));
-        if (u.exists() && u.data().username) return u.data().username;
-      }catch(e){}
-      return null;
-    }
+      const a = el('div', 'frame option' + (c.inactive?.optA ? ' inactive' : ''));
+      a.appendChild(imgNode(c.optA, `${c.name} — option A`)); a.appendChild(el('div','overlay')); rows.optA.appendChild(a);
 
-    function uniqueHeroesOk(players){
-      const used = new Set();
-      for(const p of players){
-        if(!p.hero) return false;
-        if(used.has(p.hero)) return false;
-        used.add(p.hero);
-      }
-      return true;
-    }
-    function slugify(t){ return (t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
-    function portraitUrl(hero, weapon){ return `images/class-portraits/${slugify(hero)}-${slugify(weapon)}.png`; }
-    function weaponIconUrl(w){ return `images/weapon-icons/${slugify(w)}.png`; }
-    function gradFrom(text){
-      let h=0; for(let i=0;i<text.length;i++){ h=(h*31 + text.charCodeAt(i))>>>0; }
-      const a=h%360,b=(h>>7)%360;
-      return `linear-gradient(135deg,hsl(${a} 50% 18%),hsl(${b} 50% 22%))`;
-    }
-
-    // --- State ---
-    const state = { me:null, room:null, players:[], isHost:false };
-
-    // --- Mount ---
-    async function mount(){
-      if(!roomId){ $('#banner').textContent='Missing roomId'; return; }
-      $('#rid').textContent = roomId;
-      saveRoomId(roomId);
-
-      // Room listener
-      onSnapshot(doc(db,'rooms', roomId), async (snap)=>{
-        if(!snap.exists()){ $('#banner').textContent='Room not found.'; return; }
-        state.room = { id:snap.id, ...snap.data() };
-        state.isHost = !!(state.me && state.room.hostUid === state.me.uid);
-        $('#vis').textContent = state.room.visibility || 'friends';
-        $('#status').textContent = state.room.status || 'party';
-        $('#host-badge').style.display = state.isHost ? 'inline-block' : 'none';
-
-        // Host generates draw once
-        if(state.isHost && !Array.isArray(state.room.draw)){
-          await runTransaction(db, async tx => {
-            const rref = doc(db,'rooms', roomId);
-            const rdoc = await tx.get(rref);
-            if(!rdoc.exists()) return;
-            if(Array.isArray(rdoc.data().draw)) return;
-            const all = Object.keys(WEAPON_HEROES);
-            const shuffled = all.slice().sort(()=>Math.random()-0.5);
-            tx.update(rref, { draw: shuffled.slice(0,4), status:'party', updatedAt: serverTimestamp() });
-          });
-        }
-
-        renderWeapons();
-        renderSeats();
-        renderClasses();
-        renderOrder();
-        renderControls();
-      });
-
-      // Players listener
-      onSnapshot(collection(db,'rooms', roomId, 'players'), async (snap)=>{
-        state.players = [];
-        for(const d of snap.docs){
-          const p = { id:d.id, ...d.data() };
-          if(!p.name) p.name = (await getUsername(p.id)) || p.displayName || p.id.slice(0,6);
-          state.players.push(p);
-        }
-        $('#count').textContent = String(state.players.length);
-        renderSeats();
-        renderClasses();
-        renderOrder();
-        renderControls();
-      });
-
-      // Ensure a player doc exists for me (name only)
-      const myName = (await getUsername(state.me.uid)) || state.me.displayName || state.me.email || state.me.uid.slice(0,6);
-      await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { name: myName, updatedAt: serverTimestamp() }, { merge:true });
-    }
-
-    // --- Renderers ---
-    function renderWeapons(){
-      const row = $('#wepRow'); if(!row) return;
-      row.innerHTML='';
-      const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
-      if(!drawn.length){
-        for(let i=0;i<4;i++){ const ph=document.createElement('div'); ph.className='wep-icon'; row.appendChild(ph); }
-        return;
-      }
-      for(const w of drawn){
-        const d=document.createElement('div');
-        d.className='wep-icon';
-        d.style.backgroundImage = `url('${weaponIconUrl(w)}')`;
-        row.appendChild(d);
-      }
-    }
-
-    function renderClasses(){
-      const wrap = $('#classes'); if(!wrap) return;
-      wrap.innerHTML='';
-      const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
-      if(!drawn.length){ wrap.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
-
-      const me = state.players.find(p=>p.id===state.me?.uid);
-
-      // Map used heroes/weapons by other players
-      const claims = new Map();
-      const usedHeroesOther = new Set();
-      const usedWeaponsOther = new Set();
-      for(const p of state.players){
-        if(p.hero && p.weapon){
-          const k = `${p.hero}|${p.weapon}`;
-          claims.set(k, { id:p.id, name:p.name||p.id.slice(0,6), isMe: state.me && p.id===state.me.uid });
-          if(!me || p.id !== me.id){
-            usedHeroesOther.add(p.hero);
-            usedWeaponsOther.add(p.weapon);
-          }
-        }
-      }
-
-      for(const w of drawn){
-        const heroes = WEAPON_HEROES[w] || [];
-        for(const h of heroes){
-          const k = `${h}|${w}`;
-          const claim = claims.get(k);
-          const takenByOther = !!(claim && !claim.isMe);
-          const isMe = !!(claim && claim.isMe);
-          const disabled = takenByOther || usedHeroesOther.has(h) || usedWeaponsOther.has(w);
-
-          const btn = document.createElement('div');
-          btn.className = 'portrait-btn' + (disabled? ' disabled' : '') + (isMe? ' me' : '');
-          btn.dataset.claimed = claim ? `Claimed by @${claim.isMe ? 'You' : claim.name}` : '';
-          const img = document.createElement('div'); img.className='img';
-          img.style.background = `${gradFrom(k)}, url('${portraitUrl(h, w)}') center/cover no-repeat`;
-          btn.appendChild(img);
-          const label = document.createElement('div'); label.className='label'; label.textContent = (CLASS_NAME[k] || `${h} + ${w}`);
-          btn.appendChild(label);
-
-          btn.onclick = async () => {
-            if(disabled) return;
-            if(isMe){
-              try{
-                await updateDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
-                  { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
-              }catch(e){ toast('Could not unchoose'); }
-              return;
-            }
-            try{
-              await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
-                { hero:h, weapon:w, className:(CLASS_NAME[k] || `${h} + ${w}`), pickAt: serverTimestamp(), ready:false, updatedAt: serverTimestamp() },
-                { merge:true });
-            }catch(e){ toast('Could not choose'); }
-          };
-
-          if(claim) btn.classList.add('claimed');
-          wrap.appendChild(btn);
-        }
-      }
-    }
-
-    function renderOrder(){
-      const grid = $('#order'); if(!grid) return;
-      const caps = $('#orderCaps'); if(caps) caps.innerHTML='';
-      Array.from(grid.children).forEach(el=>{ el.innerHTML=''; el.classList.remove('filled'); });
-
-      const chosen = state.players.filter(p=>p.hero && p.weapon).sort((a,b)=>{
-        const ta=a.pickAt?.seconds||0, tb=b.pickAt?.seconds||0;
-        if(ta!==tb) return ta-tb;
-        return (a.updatedAt?.seconds||0)-(b.updatedAt?.seconds||0);
-      }).slice(0,4);
-
-      // names row
-      if(caps){
-        for(let i=0;i<4;i++){
-          const n = document.createElement('div'); n.className='order-name';
-          const p = chosen[i];
-          n.textContent = p ? (p.name || p.id.slice(0,6)) : '';
-          caps.appendChild(n);
-        }
-      }
-
-      chosen.forEach((p,idx)=>{
-        const slot = grid.children[idx];
-        if(!slot) return;
-        const img = document.createElement('div'); img.className='img';
-        img.style.background = `${gradFrom(p.hero+'|'+p.weapon)}, url('${portraitUrl(p.hero,p.weapon)}') center/cover no-repeat`;
-        slot.appendChild(img);
-        const tag = document.createElement('div'); tag.className='tag'; tag.textContent='@'+(p.name||p.id.slice(0,6));
-        slot.appendChild(tag);
-        slot.classList.add('filled');
-      });
-    }
-
-    function renderSeats(){
-      const grid = $('#seats'); if(!grid) return;
-      grid.innerHTML='';
-      const seats = [null,null,null,null];
-      state.players.slice(0,4).forEach((p,i)=> seats[i]=p);
-
-      for(let i=0;i<4;i++){
-        const p = seats[i];
-        const div = document.createElement('div');
-        div.className = 'seat' + (p ? '' : ' open');
-
-        if(!p){
-          div.innerHTML = '<div class="muted">Open Slot</div>';
-          grid.appendChild(div);
-          continue;
-        }
-
-        const isMe = state.me && p.id===state.me.uid;
-        const crown = state.room?.hostUid===p.id ? '👑' : '';
-        const left = document.createElement('div');
-        left.className='meta';
-        left.innerHTML = `
-          <div class="name">${crown ? `<span class="crown">${crown}</span>` : ''}@${p.name||p.id.slice(0,6)}</div>
-          <div class="class">
-            ${p.className ? `<span class="badge">${p.className}</span>` : '<span class="badge">No class</span>'}
-            ${p.hero ? `<span class="badge">${p.hero}</span>` : ''}
-            ${p.weapon ? `<span class="badge">${p.weapon}</span>` : ''}
-          </div>
-          <div class="status muted">${p.ready ? '✅ Ready' : '⏳ Not ready'}</div>
-        `;
-
-        const right = document.createElement('div');
-        right.className='actions';
-
-        if(isMe){
-          const leave = document.createElement('button');
-          leave.className='btn ghost small';
-          leave.textContent='Unchoose';
-          leave.onclick = async ()=>{
-            try{
-              await updateDoc(doc(db,'rooms', roomId, 'players', p.id),
-                { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
-            }catch(e){ toast('Could not unchoose'); }
-          };
-          right.appendChild(leave);
-        }
-
-        if(state.isHost && !isMe){
-          const kick = document.createElement('button');
-          kick.className='btn warn small';
-          kick.textContent='Kick';
-          kick.onclick = async ()=>{
-            if(!confirm(`Remove @${p.name||p.id.slice(0,6)} from party?`)) return;
-            try{
-              await updateDoc(doc(db,'rooms', roomId, 'players', p.id),
-                { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
-            }catch(e){ toast('Could not update'); }
-          };
-          right.appendChild(kick);
-        }
-
-        const container = document.createElement('div');
-        container.style.cssText='display:flex;align-items:center;justify-content:space-between;width:100%';
-        container.appendChild(left);
-        container.appendChild(right);
-
-        div.appendChild(container);
-        grid.appendChild(div);
-      }
-    }
-
-    function renderControls(){
-      const everyoneReady = state.players.length>0 && state.players.every(p=>p.className && p.ready);
-      const partyOk = state.players.length<=PARTY_LIMIT && uniqueHeroesOk(state.players.filter(p=>p.className));
-      $('#lock').disabled = !(state.isHost && Array.isArray(state.room?.draw) && state.room.draw.length===4 && everyoneReady && partyOk && !state.room?.partyLocked);
-
-      const meDoc = state.players.find(p=>p.id===state.me?.uid);
-      $('#ready').textContent = meDoc?.ready ? 'Unready' : 'Ready';
-    }
-
-    async function toggleReady(){
-      if(!state.me) return;
-      const meDoc = state.players.find(p=>p.id===state.me.uid);
-      const next = !(meDoc && meDoc.ready);
-      try{
-        await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { ready: next, updatedAt: serverTimestamp() }, { merge:true });
-      }catch(e){ toast('Could not update ready'); }
-    }
-
-    async function lockAndStart(){
-      if(!state.isHost) return;
-      const heroes = new Set();
-      for(const p of state.players){
-        if(!p.className){ toast('All players must choose a class.'); return; }
-        if(heroes.has(p.hero)){ toast('Each hero can appear only once.'); return; }
-        heroes.add(p.hero);
-      }
-      if(state.players.length>PARTY_LIMIT){ toast('Party limit is 4.'); return; }
-
-      try{
-        await updateDoc(doc(db,'rooms', roomId), {
-          partyLocked:true,
-          partyUids: state.players.map(p=>p.id),
-          status:'running',
-          updatedAt: serverTimestamp()
-        });
-        const target = 'run.html?roomId='+roomId;
-        if(window.Router && Router.to){ Router.to(target); } else { location.href = target; }
-      }catch(e){ toast('Could not lock/start'); }
-    }
-
-    function copyCode(){
-      try{
-        navigator.clipboard.writeText(roomId||'');
-        $('#copy-tip').textContent='Copied!';
-        setTimeout(()=> $('#copy-tip').textContent='Click to copy', 1200);
-      }catch(e){}
-    }
-
-    // --- Boot ---
-    document.addEventListener('DOMContentLoaded', ()=>{
-      $('#rid').textContent = roomId || '…';
-      $('#copy-code').addEventListener('click', copyCode);
-      $('#ready').addEventListener('click', toggleReady);
-      $('#lock').addEventListener('click', lockAndStart);
-
-      async function doLogin(){
-        try{
-          await signInWithPopup(auth, new GoogleAuthProvider());
-        }catch(e){
-          try{
-            await signInWithRedirect(auth, new GoogleAuthProvider());
-          }catch(e2){
-            toast(e2.code || e2.message || 'Login failed');
-          }
-        }
-      }
-      $('#login').addEventListener('click', doLogin);
-      $('#logout').addEventListener('click', async ()=>{ try{ await signOut(auth); }catch(e){ toast('Logout error'); } });
-
-      onAuthStateChanged(auth, async (user)=>{
-        if(!user){
-          $('#user').textContent='(not signed in)';
-          $('#login').style.display='inline-block';
-          $('#logout').style.display='none';
-          return;
-        }
-        state.me = user;
-        const name = (await getUsername(user.uid)) || user.displayName || user.email || user.uid.slice(0,6);
-        $('#user').textContent='@'+name;
-        $('#login').style.display='none';
-        $('#logout').style.display='inline-block';
-        await mount();
-      });
+      const b = el('div', 'frame option' + (c.inactive?.optB ? ' inactive' : ''));
+      b.appendChild(imgNode(c.optB, `${c.name} — option B`)); b.appendChild(el('div','overlay')); rows.optB.appendChild(b);
     });
+  }
+  render();
   </script>
 </body>
 </html>
