@@ -4,16 +4,14 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Party Select</title>
-  <meta name="screen" content="Party Select">
 
   <style>
     :root{
       --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#e55353; --radius:14px;
-      --ink:#e9eef5; --ink-dim:#d7dde6;
-      --stroke:#2a3147; --tile:#0f1220;
-      --frame:#000;
+      --ink:#e9eef5; --ink-dim:#d7dde6; --stroke:#2a3147; --tile:#0f1220; --frame:#000;
     }
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
     .wrap{max-width:1160px;margin:28px auto;padding:0 16px}
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
     h1{margin:0;font-size:28px;letter-spacing:.2px}
@@ -30,17 +28,12 @@
     .grid{display:grid;gap:14px}
     .columns{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}
     @media (max-width:1080px){ .columns{grid-template-columns:1fr} }
-
     .card{background:var(--panel);padding:16px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35)}
     .subhead{font-weight:800;margin:0 0 8px 0}
-
-    /* Seats */
     .seats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width:720px){ .seats{grid-template-columns:1fr} }
-    .seat{
-      position:relative;min-height:108px;border:1px solid var(--stroke);border-radius:12px;background:var(--tile);
-      padding:12px;display:flex;align-items:center;justify-content:space-between;overflow:hidden
-    }
+    .seat{position:relative;min-height:108px;border:1px solid var(--stroke);border-radius:12px;background:var(--tile);
+      padding:12px;display:flex;align-items:center;justify-content:space-between;overflow:hidden}
     .seat .meta{display:flex;flex-direction:column;gap:6px}
     .seat .name{font-weight:800}
     .seat .class{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -51,23 +44,21 @@
     .seat.open{opacity:.8;justify-content:center;align-items:center}
     .seat.open .muted{font-size:14px}
 
-    /* Top pick order (4 blank squares that fill) */
-    .order-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:4px}
-    .order-cap{font-weight:800;text-align:center;margin-bottom:6px}
-    .order-name{min-height:22px;text-align:center;font-weight:800;margin:0 0 6px 0}
-    .order-slot{
-      position:relative; aspect-ratio:4/3; border:8px solid var(--frame); border-radius:12px; background:#0a0f1e;
-      overflow:hidden;
-    }
+    /* Selection order row */
+    .order-names{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:0 0 6px 0}
+    .order-name{min-height:22px;text-align:center;font-weight:800}
+    .order-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px}
+    .order-slot{position:relative;aspect-ratio:4/3;border:8px solid var(--frame);border-radius:12px;background:#0a0f1e;overflow:hidden}
     .order-slot .img{position:absolute;inset:0;background-size:cover;background-position:center;filter:contrast(1.02) saturate(1.05)}
     .order-slot .tag{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:999px;font-size:12px;border:1px solid var(--stroke)}
 
     /* Weapon icons row */
-    .wep-row{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;justify-items:center;margin:8px 0 10px}
-    .wep-icon{width:96px;height:96px;background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
+    .wep-row{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;justify-items:center;margin:8px 0 12px}
+    .wep-icon{width:96px;height:96px;background-size:contain;background-repeat:no-repeat;background-position:center;
+      filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
     @media (max-width:720px){ .wep-icon{width:72px;height:72px} }
 
-    /* Portrait grid (8 class buttons) */
+    /* Portrait grid (8) */
     .class-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     @media (max-width:1000px){ .class-grid{grid-template-columns:repeat(2,1fr)} }
     .portrait-btn{position:relative;border:1px solid var(--stroke);border-radius:12px;overflow:hidden;background:#0e1323;aspect-ratio:16/10;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35)}
@@ -84,10 +75,7 @@
       <div>
         <h1>Party Select <span id="host-badge" class="pill" style="display:none;margin-left:8px;">Host</span></h1>
         <div class="muted">
-          Room <span id="rid">…</span>
-          • <span id="vis">friends</span>
-          • <span id="status">party</span>
-          • Players: <span id="count">0</span>/4
+          Room <span id="rid">…</span> • <span id="vis">friends</span> • <span id="status">party</span> • Players: <span id="count">0</span>/4
           • <button id="copy-code" class="btn ghost small" style="margin-left:6px">Copy code</button>
           <span id="copy-tip" class="muted" style="margin-left:4px;font-size:12px;">Click to copy</span>
         </div>
@@ -113,20 +101,12 @@
       <div class="grid">
         <div class="card">
           <h3 class="subhead">Selection Order</h3>
-          <div id="orderCaps" class="order-grid">
-            <div class="order-cap" id="cap-0"></div>
-            <div class="order-cap" id="cap-1"></div>
-            <div class="order-cap" id="cap-2"></div>
-            <div class="order-cap" id="cap-3"></div>
+          <div id="orderCaps" class="order-names">
+            <div class="order-name"></div><div class="order-name"></div><div class="order-name"></div><div class="order-name"></div>
           </div>
-          <div id="orderNames" class="order-grid"></div>
           <div id="order" class="order-grid">
-            <div class="order-slot"></div>
-            <div class="order-slot"></div>
-            <div class="order-slot"></div>
-            <div class="order-slot"></div>
+            <div class="order-slot"></div><div class="order-slot"></div><div class="order-slot"></div><div class="order-slot"></div>
           </div>
-
           <div id="wepRow" class="wep-row"></div>
         </div>
 
@@ -143,12 +123,10 @@
 
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import {
-      getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, runTransaction, deleteField
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, runTransaction, deleteField } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    // ---- Firebase config ----
+    // Firebase config (prod)
     const firebaseConfig = {
       apiKey: "AIzaSyBaIjbM7dVNjKE7CJXPQOievhkiIF17rds",
       authDomain: "elementails.firebaseapp.com",
@@ -161,7 +139,7 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    // ---- Rules Bible constants ----
+    // --- Constants from Rules Bible ---
     const PARTY_LIMIT = 4;
     const WEAPON_HEROES = {
       "Knuckles": ["Fox","Frog"],
@@ -183,21 +161,20 @@
       "Bear|Spear": "Lancer", "Bear|Greataxe": "Barbearian", "Bear|Sword & Shield": "Warrior"
     };
 
-    // ---- utils ----
-    // Saved roomId fallback
-    function saveRoomId(id){ try{ localStorage.setItem('lastRoomId', id); }catch{} }
-    function getSavedRoomId(){ try{ return localStorage.getItem('lastRoomId'); }catch{ return null; } }
-
-    const $ = s => document.querySelector(s);
+    // --- Utils ---
+    const $ = (s) => document.querySelector(s);
     const params = new URLSearchParams(location.search);
+    function saveRoomId(id){ try{ localStorage.setItem('lastRoomId', id); }catch(e){} }
+    function getSavedRoomId(){ try{ return localStorage.getItem('lastRoomId'); }catch(e){ return null; } }
     const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode()) || getSavedRoomId();
-    function toast(m){ try{ alert(m); }catch{} }
+
+    function toast(msg){ try{ console.warn(msg); }catch(e){} }
 
     async function getUsername(uid){
       try{
         const u = await getDoc(doc(db,'users', uid));
         if (u.exists() && u.data().username) return u.data().username;
-      }catch{}
+      }catch(e){}
       return null;
     }
 
@@ -210,24 +187,25 @@
       }
       return true;
     }
-
-    function slugify(text){ return (text||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
-    function weaponIconUrl(w){ return `images/weapon-icons/${slugify(w)}.png`; }
+    function slugify(t){ return (t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
     function portraitUrl(hero, weapon){ return `images/class-portraits/${slugify(hero)}-${slugify(weapon)}.png`; }
+    function weaponIconUrl(w){ return `images/weapon-icons/${slugify(w)}.png`; }
     function gradFrom(text){
-      let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0;
+      let h=0; for(let i=0;i<text.length;i++){ h=(h*31 + text.charCodeAt(i))>>>0; }
       const a=h%360,b=(h>>7)%360;
-      return `linear-gradient(135deg, hsl(${a} 50% 18%), hsl(${b} 50% 22%))`;
+      return `linear-gradient(135deg,hsl(${a} 50% 18%),hsl(${b} 50% 22%))`;
     }
 
+    // --- State ---
     const state = { me:null, room:null, players:[], isHost:false };
 
-    // ---- mount & listeners ----
+    // --- Mount ---
     async function mount(){
       if(!roomId){ $('#banner').textContent='Missing roomId'; return; }
       $('#rid').textContent = roomId;
+      saveRoomId(roomId);
 
-      // room snapshot
+      // Room listener
       onSnapshot(doc(db,'rooms', roomId), async (snap)=>{
         if(!snap.exists()){ $('#banner').textContent='Room not found.'; return; }
         state.room = { id:snap.id, ...snap.data() };
@@ -236,7 +214,7 @@
         $('#status').textContent = state.room.status || 'party';
         $('#host-badge').style.display = state.isHost ? 'inline-block' : 'none';
 
-        // Ensure draw once (host only)
+        // Host generates draw once
         if(state.isHost && !Array.isArray(state.room.draw)){
           await runTransaction(db, async tx => {
             const rref = doc(db,'rooms', roomId);
@@ -256,11 +234,11 @@
         renderControls();
       });
 
-      // players
+      // Players listener
       onSnapshot(collection(db,'rooms', roomId, 'players'), async (snap)=>{
         state.players = [];
         for(const d of snap.docs){
-          const p={ id:d.id, ...d.data() };
+          const p = { id:d.id, ...d.data() };
           if(!p.name) p.name = (await getUsername(p.id)) || p.displayName || p.id.slice(0,6);
           state.players.push(p);
         }
@@ -271,11 +249,12 @@
         renderControls();
       });
 
-      // me → upsert name
-      const myName = (await getUsername(state.me.uid)) || (state.me.displayName || state.me.email || state.me.uid.slice(0,6));
+      // Ensure a player doc exists for me (name only)
+      const myName = (await getUsername(state.me.uid)) || state.me.displayName || state.me.email || state.me.uid.slice(0,6);
       await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { name: myName, updatedAt: serverTimestamp() }, { merge:true });
     }
 
+    // --- Renderers ---
     function renderWeapons(){
       const row = $('#wepRow'); if(!row) return;
       row.innerHTML='';
@@ -292,18 +271,16 @@
       }
     }
 
-    
     function renderClasses(){
       const wrap = $('#classes'); if(!wrap) return;
       wrap.innerHTML='';
       const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
       if(!drawn.length){ wrap.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
 
-      // Current player (for allowing them to move their own claim)
       const me = state.players.find(p=>p.id===state.me?.uid);
 
-      // Map of claims and fast lookups of "others" usage
-      const claims = new Map(); // "Hero|Weapon" -> {id,name,isMe}
+      // Map used heroes/weapons by other players
+      const claims = new Map();
       const usedHeroesOther = new Set();
       const usedWeaponsOther = new Set();
       for(const p of state.players){
@@ -323,19 +300,15 @@
           const k = `${h}|${w}`;
           const claim = claims.get(k);
           const takenByOther = !!(claim && !claim.isMe);
-
-          // Disable if: claimed by someone else, OR some other player already uses this hero, OR some other player already uses this weapon
-          const disabled = takenByOther || usedHeroesOther.has(h) || usedWeaponsOther.has(w);
           const isMe = !!(claim && claim.isMe);
+          const disabled = takenByOther || usedHeroesOther.has(h) || usedWeaponsOther.has(w);
 
           const btn = document.createElement('div');
           btn.className = 'portrait-btn' + (disabled? ' disabled' : '') + (isMe? ' me' : '');
           btn.dataset.claimed = claim ? `Claimed by @${claim.isMe ? 'You' : claim.name}` : '';
           const img = document.createElement('div'); img.className='img';
-          const url = portraitUrl(h, w);
-          img.style.background = `${gradFrom(k)}, url('${url}') center/cover no-repeat`;
+          img.style.background = `${gradFrom(k)}, url('${portraitUrl(h, w)}') center/cover no-repeat`;
           btn.appendChild(img);
-
           const label = document.createElement('div'); label.className='label'; label.textContent = (CLASS_NAME[k] || `${h} + ${w}`);
           btn.appendChild(label);
 
@@ -345,14 +318,14 @@
               try{
                 await updateDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
                   { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
-              }catch{ toast('Could not unchoose'); }
+              }catch(e){ toast('Could not unchoose'); }
               return;
             }
             try{
               await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
                 { hero:h, weapon:w, className:(CLASS_NAME[k] || `${h} + ${w}`), pickAt: serverTimestamp(), ready:false, updatedAt: serverTimestamp() },
                 { merge:true });
-            }catch{ toast('Could not choose'); }
+            }catch(e){ toast('Could not choose'); }
           };
 
           if(claim) btn.classList.add('claimed');
@@ -361,14 +334,10 @@
       }
     }
 
-    }
-
-    
     function renderOrder(){
       const grid = $('#order'); if(!grid) return;
-      const nameGrid = $('#orderNames'); if(nameGrid) nameGrid.innerHTML='';
-      // Clear
-      Array.from(grid.children).forEach(el=>{ el.innerHTML=''; el.style.background=''; el.classList.remove('filled'); });
+      const caps = $('#orderCaps'); if(caps) caps.innerHTML='';
+      Array.from(grid.children).forEach(el=>{ el.innerHTML=''; el.classList.remove('filled'); });
 
       const chosen = state.players.filter(p=>p.hero && p.weapon).sort((a,b)=>{
         const ta=a.pickAt?.seconds||0, tb=b.pickAt?.seconds||0;
@@ -376,14 +345,13 @@
         return (a.updatedAt?.seconds||0)-(b.updatedAt?.seconds||0);
       }).slice(0,4);
 
-      // Names row
-      if(nameGrid){
+      // names row
+      if(caps){
         for(let i=0;i<4;i++){
-          const n = document.createElement('div');
-          n.className='order-name';
+          const n = document.createElement('div'); n.className='order-name';
           const p = chosen[i];
           n.textContent = p ? (p.name || p.id.slice(0,6)) : '';
-          nameGrid.appendChild(n);
+          caps.appendChild(n);
         }
       }
 
@@ -399,8 +367,6 @@
       });
     }
 
-    }
-
     function renderSeats(){
       const grid = $('#seats'); if(!grid) return;
       grid.innerHTML='';
@@ -414,7 +380,8 @@
 
         if(!p){
           div.innerHTML = '<div class="muted">Open Slot</div>';
-          grid.appendChild(div); continue;
+          grid.appendChild(div);
+          continue;
         }
 
         const isMe = state.me && p.id===state.me.uid;
@@ -435,28 +402,36 @@
         right.className='actions';
 
         if(isMe){
-          const leave = document.createElement('button'); leave.className='btn ghost small'; leave.textContent='Unchoose';
+          const leave = document.createElement('button');
+          leave.className='btn ghost small';
+          leave.textContent='Unchoose';
           leave.onclick = async ()=>{
             try{
-              await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
-            }catch{ toast('Could not unchoose'); }
+              await updateDoc(doc(db,'rooms', roomId, 'players', p.id),
+                { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
+            }catch(e){ toast('Could not unchoose'); }
           };
           right.appendChild(leave);
         }
 
         if(state.isHost && !isMe){
-          const kick = document.createElement('button'); kick.className='btn warn small'; kick.textContent='Kick';
+          const kick = document.createElement('button');
+          kick.className='btn warn small';
+          kick.textContent='Kick';
           kick.onclick = async ()=>{
             if(!confirm(`Remove @${p.name||p.id.slice(0,6)} from party?`)) return;
-            try{ await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() }); }
-            catch{ toast('Could not update'); }
+            try{
+              await updateDoc(doc(db,'rooms', roomId, 'players', p.id),
+                { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
+            }catch(e){ toast('Could not update'); }
           };
           right.appendChild(kick);
         }
 
         const container = document.createElement('div');
         container.style.cssText='display:flex;align-items:center;justify-content:space-between;width:100%';
-        container.appendChild(left); container.appendChild(right);
+        container.appendChild(left);
+        container.appendChild(right);
 
         div.appendChild(container);
         grid.appendChild(div);
@@ -476,8 +451,9 @@
       if(!state.me) return;
       const meDoc = state.players.find(p=>p.id===state.me.uid);
       const next = !(meDoc && meDoc.ready);
-      try{ await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { ready: next, updatedAt: serverTimestamp() }, { merge:true }); }
-      catch{ toast('Could not update ready'); }
+      try{
+        await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { ready: next, updatedAt: serverTimestamp() }, { merge:true });
+      }catch(e){ toast('Could not update ready'); }
     }
 
     async function lockAndStart(){
@@ -498,19 +474,20 @@
           updatedAt: serverTimestamp()
         });
         const target = 'run.html?roomId='+roomId;
-        if(window.Router && Router.to) Router.to(target); else location.href = target;
-      }catch{ toast('Could not lock/start'); }
+        if(window.Router && Router.to){ Router.to(target); } else { location.href = target; }
+      }catch(e){ toast('Could not lock/start'); }
     }
 
     function copyCode(){
-      try{ navigator.clipboard.writeText(roomId); $('#copy-tip').textContent='Copied!'; setTimeout(()=> $('#copy-tip').textContent='Click to copy',1200); }catch{}
+      try{
+        navigator.clipboard.writeText(roomId||'');
+        $('#copy-tip').textContent='Copied!';
+        setTimeout(()=> $('#copy-tip').textContent='Click to copy', 1200);
+      }catch(e){}
     }
 
-    
-    // ---- boot ----
+    // --- Boot ---
     document.addEventListener('DOMContentLoaded', ()=>{
-      if(roomId){ saveRoomId(roomId); }
-      if(!roomId){ $('#banner').textContent='Missing roomId'; }
       $('#rid').textContent = roomId || '…';
       $('#copy-code').addEventListener('click', copyCode);
       $('#ready').addEventListener('click', toggleReady);
@@ -520,16 +497,13 @@
         try{
           await signInWithPopup(auth, new GoogleAuthProvider());
         }catch(e){
-          // Fallback to redirect in case popups are blocked
           try{
-            const { signInWithRedirect } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js');
             await signInWithRedirect(auth, new GoogleAuthProvider());
           }catch(e2){
             toast(e2.code || e2.message || 'Login failed');
           }
         }
       }
-
       $('#login').addEventListener('click', doLogin);
       $('#logout').addEventListener('click', async ()=>{ try{ await signOut(auth); }catch(e){ toast('Logout error'); } });
 
@@ -548,6 +522,6 @@
         await mount();
       });
     });
-</script>
+  </script>
 </body>
 </html>
