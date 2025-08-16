@@ -93,18 +93,15 @@
     const PRESENCE_INTERVAL = 30000; // 30s
 
     // ---------- Navigation ----------
-    async function routeToPartySelect(roomId, mode){
-      // Determine mode: prefer explicit arg, else read from Firestore room doc
-      let m = mode;
+    function routeToPartySelect(roomId, mode){
+      // Normalize and persist mode if provided
       try {
-        if (!m) {
-          const snap = await getDoc(doc(db,'rooms', roomId));
-          if (snap.exists()) m = (snap.data().mode || snap.data().visibility);
+        if (mode !== undefined && mode !== null) {
+          const m = String(mode).toLowerCase();
+          const norm = (m === 'multiplayer' || m === 'multi' || m === 'friends' || m === 'public') ? 'multi' : 'single';
+          localStorage.setItem('ET_mode', norm);
         }
       } catch {}
-      // Normalize & persist for Party Select
-      const norm = (m === 'multiplayer' || m === 'multi' || m === 'friends' || m === true) ? 'multi' : 'single';
-      try { localStorage.setItem('ET_mode', norm); } catch {}
       const url = `partyselect.html?roomId=${roomId}`;
       if (window.Router && typeof Router.to === 'function') { Router.to(url); return; }
       window.location.href = url;
