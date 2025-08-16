@@ -2,13 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
   <style>
-    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
+    :root{
+      --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px;
+      --chip:#0f172a; --chipText:#cbd5e1;
+    }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:1200px;margin:32px auto;padding:0 16px;display:grid;grid-template-columns:1fr 320px;gap:16px}
-    @media (max-width:1100px){ .wrap{grid-template-columns:1fr;} .right{order:-1} }
+    .wrap{max-width:1200px;margin:28px auto;padding:0 16px;display:grid;grid-template-columns:1fr 360px;gap:16px}
+    @media (max-width:1200px){ .wrap{grid-template-columns:1fr} .right{order:-1} }
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;grid-column:1/-1}
     h1{margin:0;font-size:28px}
     .auth{display:flex;gap:10px;align-items:center;color:#cbd5e1}
@@ -23,21 +26,46 @@
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
     .grid{display:grid;gap:12px}
     .muted{color:#9aa4b2;font-size:12px}
+
+    /* Profile header */
+    .profileHeader{position:relative;border-radius:16px;overflow:hidden;background:#0f1220;border:1px solid #2a3147}
+    .profileHeader .bg{width:100%;height:240px;background-size:cover;background-position:center}
+    .profileHeader .name{position:absolute;left:14px;bottom:12px;font-weight:900;font-size:18px;
+      padding:6px 10px;border-radius:999px;background:rgba(5,10,20,.7);backdrop-filter:blur(2px);}
+    .profileHeader .edit{position:absolute;right:12px;bottom:12px}
+
+    /* Friends list tiles */
+    .friendTile{position:relative;border-radius:14px;overflow:hidden;border:1px solid #2a3147;background:#0f1220}
+    .friendTile .bg{width:100%;height:220px;background-size:cover;background-position:center;opacity:0.96}
+    .friendTile .label{position:absolute;left:14px;bottom:12px;font-weight:800;background:rgba(8,12,20,.75);padding:6px 10px;border-radius:999px}
+    .chip{position:absolute;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:8px;background:var(--chip);color:var(--chipText);padding:6px 10px;border-radius:999px;border:1px solid #273148}
+    .dot{width:8px;height:8px;border-radius:999px;background:#64748b}
+    .dot.online{background:#22c55e}
+
+    .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
     .slots{display:grid;grid-template-columns:1fr;gap:10px}
     .slot{display:flex;align-items:center;justify-content:space-between;border:1px solid #2a3147;background:#0f1220;border-radius:10px;padding:12px}
     .slot .left{display:flex;flex-direction:column}
     .slot .title{font-weight:800}
-    .friend{display:flex;align-items:center;justify-content:space-between;border:1px solid #2a3147;background:#0f1220;border-radius:10px;padding:10px}
-    .status{display:inline-flex;align-items:center;gap:6px}
-    .dot{width:8px;height:8px;border-radius:999px;background:#64748b}
-    .dot.online{background:#22c55e}
+
+    .field{display:flex;gap:8px}
+    .input{flex:1;background:#0f1220;border:1px solid #2a3147;border-radius:12px;padding:10px 12px;color:#e2e8f0;outline:none}
+    .input:focus{border-color:#35508f}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px}
+    .modal.open{display:flex}
+    .modal .panel{background:#0f1220;border:1px solid #2a3147;border-radius:16px;max-width:720px;width:100%;padding:18px}
+    .avatarGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px}
+    .avatar{aspect-ratio:16/10;border-radius:12px;background:#121826;border:1px solid #2a3147;background-size:cover;background-position:center;cursor:pointer}
+    .avatar.selected{outline:2px solid var(--accent)}
   </style>
 </head>
 <body>
   <header class="wrap">
     <div>
       <h1>ElemenTails</h1>
-      <div class="muted">Create a session and invite friends.</div>
+      <div class="muted">Create a session, edit your profile, and invite friends.</div>
     </div>
     <div class="auth">
       <span id="auth-username" class="pill" style="display:none;"></span>
@@ -47,25 +75,59 @@
   </header>
 
   <main class="wrap">
-    <section class="card">
-      <h3 style="margin:0 0 8px;font-size:16px;color:#e2e8f0">Your Save Slots</h3>
-      <div id="slots-header" class="muted" style="margin-bottom:10px;">Save Slots — 0/5 used</div>
-      <div id="slots-wrap" class="slots"></div>
+    <section class="left">
+      <!-- Profile header -->
+      <div class="profileHeader card">
+        <div id="myProfileBg" class="bg" style="background-image:url('assets/avatars/monk.jpg');"></div>
+        <div id="myHandle" class="name">@user</div>
+        <button id="btnEditProfile" class="btn small edit">Edit Profile</button>
+      </div>
+
+      <!-- Friends -->
+      <section class="card" style="margin-top:12px">
+        <div class="row">
+          <h3 style="margin:0;font-size:16px">Friends</h3>
+          <div class="field" style="flex:1;margin-left:12px">
+            <input id="friendSearch" class="input" placeholder="Enter username"/>
+            <button id="btnAddFriend" class="btn small">Add</button>
+          </div>
+        </div>
+        <div id="friends-list" class="grid" style="margin-top:12px"></div>
+      </section>
     </section>
 
     <aside class="right">
       <section class="card">
-        <h3 style="margin:0 0 8px;font-size:16px;color:#e2e8f0">Friends</h3>
-        <div id="friends-list" class="grid"></div>
+        <h3 style="margin:0 0 8px;font-size:16px">Your Save Slots</h3>
+        <div id="slots-header" class="muted" style="margin-bottom:10px;">Save Slots — 0/5 used</div>
+        <div id="slots-wrap" class="slots"></div>
       </section>
     </aside>
   </main>
+
+  <!-- Edit Profile Modal -->
+  <div id="profileModal" class="modal">
+    <div class="panel">
+      <h3 style="margin:0 0 8px;font-size:18px">Edit Profile</h3>
+      <div class="muted">Usernames: lowercase a–z, 0–9 or underscore, 3–20 chars.</div>
+      <div class="field" style="margin-top:10px">
+        <input id="usernameInput" class="input" placeholder="username"/>
+        <button id="btnSaveProfile" class="btn">Save</button>
+        <button id="btnCloseProfile" class="btn ghost">Close</button>
+      </div>
+      <div class="muted" style="margin-top:10px">Pick an avatar:</div>
+      <div id="avatarGrid" class="avatarGrid"></div>
+      <div class="field" style="margin-top:10px">
+        <input id="avatarUrl" class="input" placeholder="Or paste image URL"/>
+      </div>
+    </div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, collection, serverTimestamp,
+      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, serverTimestamp,
       writeBatch, getDocs, query, where, onSnapshot
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
@@ -83,6 +145,18 @@
     const db = getFirestore(app);
 
     const SLOT_IDS = ["slot1","slot2","slot3","slot4","slot5"];
+    const DEFAULT_AVATARS = [
+      "assets/avatars/monk.jpg",
+      "assets/avatars/rogue.jpg",
+      "assets/avatars/cleric.jpg",
+      "assets/avatars/paladin.jpg",
+      "assets/avatars/summoner.jpg",
+      "assets/avatars/warrior.jpg",
+      "assets/avatars/druid.jpg",
+      "assets/avatars/assassin.jpg",
+      "assets/avatars/battlemage.jpg",
+      "assets/avatars/ranger.jpg",
+    ];
 
     // ---------- Helpers ----------
     function slotRef(uid, slotId){ return doc(db, `users/${uid}/slots/${slotId}`); }
@@ -94,12 +168,9 @@
       window.location.href = `partyselect.html?roomId=${encodeURIComponent(roomId)}`;
     }
     function clearLocalForRoom(roomId){
-      try{
-        for (const v of ['v2','v3','v4']){
-          localStorage.removeItem(`ET_ps_${v}:${roomId}`);
-        }
-      }catch{}
+      try{ ['v2','v3','v4'].forEach(v => localStorage.removeItem(`ET_ps_${v}:${roomId}`)); }catch{}
     }
+    const unameRx = /^[a-z0-9_]{3,20}$/;
 
     // ---------- Auth UI ----------
     document.addEventListener('DOMContentLoaded', () => {
@@ -115,26 +186,156 @@
 
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-          let display = user.displayName || '(user)';
-          try {
-            const uDoc = await getDoc(doc(db, 'users', user.uid));
-            if (uDoc.exists() && uDoc.data().username) display = uDoc.data().username;
-          } catch {}
-          namePill.textContent = '@' + display;
           namePill.style.display = 'inline-block';
-          loginBtn.style.display = 'none';
-          logoutBtn.style.display = 'inline-block';
-          refreshSlots();
+          document.getElementById('auth-login').style.display = 'none';
+          document.getElementById('auth-logout').style.display = 'inline-block';
+          await loadMyProfile();
           refreshFriends();
+          refreshSlots();
         } else {
           namePill.style.display = 'none';
-          loginBtn.style.display = 'inline-block';
-          logoutBtn.style.display = 'none';
-          document.getElementById('slots-wrap').innerHTML = '<div class="muted">Sign in to see your save slots.</div>';
-          document.getElementById('friends-list').innerHTML = '<div class="muted">Sign in to see friends.</div>';
+          document.getElementById('auth-login').style.display = 'inline-block';
+          document.getElementById('auth-logout').style.display = 'none';
         }
       });
+
+      // Profile modal handlers
+      document.getElementById('btnEditProfile').addEventListener('click', openProfileModal);
+      document.getElementById('btnCloseProfile').addEventListener('click', () => toggleModal(false));
+      document.getElementById('btnSaveProfile').addEventListener('click', saveProfile);
+      document.getElementById('btnAddFriend').addEventListener('click', addFriendByUsername);
+
+      // Build avatar grid
+      const grid = document.getElementById('avatarGrid');
+      DEFAULT_AVATARS.forEach(url => {
+        const d = document.createElement('div');
+        d.className = 'avatar';
+        d.style.backgroundImage = `url('${url}')`;
+        d.addEventListener('click', () => {
+          [...grid.children].forEach(n => n.classList.remove('selected'));
+          d.classList.add('selected');
+          document.getElementById('avatarUrl').value = url;
+        });
+        grid.appendChild(d);
+      });
     });
+
+    // ---------- Profile ----------
+    async function loadMyProfile(){
+      const me = auth.currentUser; if(!me) return;
+      const myProfile = await getDoc(doc(db,'publicProfiles', me.uid));
+      let handle = me.displayName || me.email?.split('@')[0] || 'user';
+      let avatar = DEFAULT_AVATARS[0];
+      if (myProfile.exists()){
+        const d = myProfile.data();
+        if (d.username) handle = d.username;
+        if (d.avatarUrl) avatar = d.avatarUrl;
+      }
+      document.getElementById('auth-username').textContent = '@' + handle;
+      document.getElementById('myHandle').textContent = '@' + handle;
+      document.getElementById('myProfileBg').style.backgroundImage = `url('${avatar}')`;
+    }
+
+    function toggleModal(isOpen){
+      document.getElementById('profileModal').classList.toggle('open', !!isOpen);
+    }
+    async function openProfileModal(){
+      const me = auth.currentUser; if(!me) return;
+      const snap = await getDoc(doc(db,'publicProfiles', me.uid));
+      const uname = snap.exists() && snap.data().username ? snap.data().username : '';
+      const avatar = snap.exists() && snap.data().avatarUrl ? snap.data().avatarUrl : '';
+      document.getElementById('usernameInput').value = uname;
+      document.getElementById('avatarUrl').value = avatar;
+      toggleModal(true);
+    }
+
+    async function saveProfile(){
+      const me = auth.currentUser; if(!me) return;
+      const newU = (document.getElementById('usernameInput').value || '').trim();
+      const newAvatar = (document.getElementById('avatarUrl').value || '').trim();
+      if (!unameRx.test(newU)) { alert('Invalid username. Use a–z, 0–9, underscore, 3–20 chars.'); return; }
+
+      const profRef = doc(db,'publicProfiles', me.uid);
+      const curr = await getDoc(profRef);
+      const oldU = curr.exists() && curr.data().username ? curr.data().username : null;
+
+      // Check availability if changing
+      if (!oldU || oldU !== newU){
+        const claim = await getDoc(doc(db,'usernames', newU));
+        if (claim.exists() && claim.data().uid !== me.uid){
+          alert('That username is taken.'); return;
+        }
+      }
+
+      const batch = writeBatch(db);
+      batch.set(profRef, {
+        username: newU,
+        avatarUrl: newAvatar || DEFAULT_AVATARS[0],
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      batch.set(doc(db,'usernames', newU), { uid: me.uid });
+      if (oldU && oldU !== newU) {
+        batch.delete(doc(db,'usernames', oldU));
+      }
+      try{
+        await batch.commit();
+        toggleModal(false);
+        await loadMyProfile();
+      }catch(e){
+        alert(e.message || e.code || 'Failed to save profile.');
+      }
+    }
+
+    // ---------- Friends ----------
+    async function addFriendByUsername(){
+      const me = auth.currentUser; if(!me) return;
+      const input = document.getElementById('friendSearch');
+      const uname = (input.value || '').trim().toLowerCase();
+      if (!unameRx.test(uname)){ alert('Enter a valid username.'); return; }
+      const claim = await getDoc(doc(db,'usernames', uname));
+      if (!claim.exists()){ alert('User not found.'); return; }
+      const uid = claim.data().uid;
+      if (uid === me.uid){ alert('You cannot add yourself.'); return; }
+      // Create/merge friend doc
+      await setDoc(doc(db,`users/${me.uid}/friends/${uid}`), { uid, addedAt: serverTimestamp() }, { merge: true });
+      input.value='';
+      await refreshFriends();
+    }
+
+    async function refreshFriends(){
+      const me = auth.currentUser; if(!me) return;
+      const list = document.getElementById('friends-list');
+      list.innerHTML = '';
+      try{
+        const ss = await getDocs(query(collection(db, `users/${me.uid}/friends`)));
+        if (ss.empty){ list.innerHTML = '<div class="muted">(No friends yet)</div>'; return; }
+
+        for (const ds of ss.docs){
+          const fuid = ds.id;
+          // Load public profile for avatar + username
+          const pSnap = await getDoc(doc(db,'publicProfiles', fuid));
+          const pd = pSnap.exists() ? pSnap.data() : {};
+          const handle = pd.username || 'user';
+          const avatar = pd.avatarUrl || DEFAULT_AVATARS[1];
+
+          // Build tile
+          const tile = document.createElement('div'); tile.className='friendTile';
+          const bg = document.createElement('div'); bg.className='bg'; bg.style.backgroundImage = `url('${avatar}')`;
+          const label = document.createElement('div'); label.className='label'; label.textContent = handle;
+          const chip = document.createElement('div'); chip.className='chip'; chip.innerHTML = '<span class="dot"></span><span>Offline</span>';
+          const dot = chip.querySelector('.dot'); const txt = chip.querySelector('span + span');
+          onSnapshot(doc(db,'presence', fuid), (snap)=>{
+            const online = snap.exists() && !!snap.data().online;
+            dot.className = online ? 'dot online' : 'dot';
+            txt.textContent = online ? 'Online' : 'Offline';
+          });
+          tile.appendChild(bg); tile.appendChild(label); tile.appendChild(chip);
+          list.appendChild(tile);
+        }
+      }catch(e){
+        list.innerHTML = `<div class="muted">Could not load friends: ${e.message||e.code}</div>`;
+      }
+    }
 
     // ---------- Slots ----------
     async function refreshSlots(){
@@ -153,10 +354,8 @@
         }
         entries.push({ id, slot: s, room });
       }
-
       const used = entries.filter(e => e.slot?.roomId).length;
       document.getElementById('slots-header').textContent = `Save Slots — ${used}/5 used`;
-
       entries.forEach(e => renderSlotRow(wrap, e));
     }
 
@@ -171,10 +370,8 @@
                           <div class="muted">${e.room.missing ? '(Missing room doc)' : `Status: ${e.room.status || 'open'} · Visibility: ${e.room.visibility || 'friends'}`}</div>`;
         const loadBtn = document.createElement('button'); loadBtn.className='btn small'; loadBtn.textContent='Load';
         loadBtn.onclick = ()=> routeToPartySelect(e.room.id, e.room.visibility || 'friends');
-
         const delBtn = document.createElement('button'); delBtn.className='btn ghost small'; delBtn.textContent='Delete';
         delBtn.onclick = ()=> deleteSlotRoom(e.id, e.room.id);
-
         right.appendChild(loadBtn); right.appendChild(delBtn);
       } else {
         left.innerHTML = `<div class="title">Slot ${e.id.slice(4)} — Empty</div>
@@ -234,51 +431,6 @@
         clearLocalForRoom(roomId); await refreshSlots();
       }catch(e){
         alert(e.message || e.code || 'Failed to delete save.');
-      }
-    }
-
-    // ---------- Friends panel (publicProfiles + usernames) ----------
-    async function refreshFriends(){
-      const me = auth.currentUser; if(!me) return;
-      const list = document.getElementById('friends-list');
-      list.innerHTML = '';
-      try{
-        const ss = await getDocs(query(collection(db, `users/${me.uid}/friends`)));
-        if (ss.empty){ list.innerHTML = '<div class="muted">(No friends yet)</div>'; return; }
-
-        async function resolveHandle(friendUid){
-          try{
-            const pSnap = await getDoc(doc(db,'publicProfiles', friendUid));
-            if (pSnap.exists()){
-              const pd = pSnap.data();
-              if (pd.username && String(pd.username).length) return pd.username;
-              if (pd.displayName && String(pd.displayName).length) return pd.displayName;
-            }
-          }catch{}
-        try{
-            const res = await getDocs(query(collection(db,'usernames'), where('uid','==', friendUid)));
-            if (!res.empty){ return res.docs[0].id; }
-          }catch{}
-          return friendUid.slice(0,6);
-        }
-
-        for (const ds of ss.docs){
-          const fuid = ds.id;
-          const handle = await resolveHandle(fuid);
-          const row = document.createElement('div'); row.className='friend';
-          const left = document.createElement('div'); left.textContent = '@'+handle;
-          const right = document.createElement('div'); right.className='status'; right.innerHTML = '<span class="dot"></span><span class="muted">offline</span>';
-          const dot = right.querySelector('.dot'); const txt = right.querySelector('span + span');
-          onSnapshot(doc(db,'presence', fuid), (snap)=>{
-            const online = snap.exists() && snap.data().online;
-            dot.className = online ? 'dot online' : 'dot';
-            txt.textContent = online ? 'online' : 'offline';
-          });
-          row.appendChild(left); row.appendChild(right);
-          list.appendChild(row);
-        }
-      }catch(e){
-        list.innerHTML = `<div class="muted">Could not load friends: ${e.message||e.code}</div>`;
       }
     }
   </script>
