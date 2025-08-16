@@ -5,44 +5,68 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Party Select</title>
   <meta name="screen" content="Party Select">
+
   <style>
-    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#e55353; --radius:14px; }
-    html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:1100px;margin:32px auto;padding:0 16px;}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    h1{margin:0;font-size:28px}
-    .pill{background:#0f1220;border:1px solid #2a3147;border-radius:999px;padding:6px 10px;font-size:14px}
+    :root{
+      --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#e55353; --radius:14px;
+      --ink:#e9eef5; --ink-dim:#d7dde6;
+      --stroke:#2a3147; --tile:#0f1220;
+    }
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:1160px;margin:28px auto;padding:0 16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    h1{margin:0;font-size:28px;letter-spacing:.2px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{background:var(--tile);border:1px solid var(--stroke);border-radius:999px;padding:6px 10px;font-size:14px}
     .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:#1e2433;color:#fff}
     .btn:hover{filter:brightness(1.08)}
-    .btn.primary{background:var(--accent);color:#06241e}
-    .btn.danger{background:#5a1d24}
-    .btn.ghost{background:transparent;border:1px solid #2a3147}
-    .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
-    .grid{display:grid;gap:12px}
+    .btn.primary{background:var(--accent);color:#07352c}
+    .btn.ghost{background:transparent;border:1px solid var(--stroke)}
+    .btn.warn{background:#512029}
+    .btn.small{padding:7px 10px;font-size:14px;border-radius:8px}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
     .muted{color:var(--muted)}
-    .columns{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
-    @media (max-width:1000px){.columns{grid-template-columns:1fr}}
-    .players{display:grid;grid-template-columns:1fr;gap:10px}
-    .player{display:flex;align-items:center;justify-content:space-between;background:#0f1220;border:1px solid #2a3147;border-radius:10px;padding:10px 12px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .note{font-size:12px;color:#9aa4b2;margin-left:6px}
+    .grid{display:grid;gap:14px}
+    .columns{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}
+    @media (max-width:1080px){ .columns{grid-template-columns:1fr} }
+
+    .card{background:var(--panel);padding:16px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .subhead{font-weight:800;margin:0 0 8px 0}
+
+    /* Seats */
+    .seats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:720px){ .seats{grid-template-columns:1fr} }
+    .seat{
+      position:relative;min-height:108px;border:1px solid var(--stroke);border-radius:12px;background:var(--tile);
+      padding:12px;display:flex;align-items:center;justify-content:space-between;overflow:hidden
+    }
+    .seat .meta{display:flex;flex-direction:column;gap:6px}
+    .seat .name{font-weight:800}
+    .seat .class{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f1220;border:1px solid var(--stroke);font-size:12px}
+    .status{font-size:13px}
+    .crown{display:inline-block;margin-right:6px}
+    .seat .actions{display:flex;gap:8px;align-items:center}
+    .seat.open{opacity:.8;justify-content:center;align-items:center}
+    .seat.open .muted{font-size:14px}
+
+    /* Draw + classes */
     .weapons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    @media (max-width:700px){.weapons{grid-template-columns:repeat(2,1fr)}}
-    .weapon{background:#0f1220;border:1px solid #2a3147;border-radius:12px;padding:10px;cursor:pointer;text-align:center}
+    @media (max-width:800px){ .weapons{grid-template-columns:repeat(2,1fr)} }
+    .weapon{background:var(--tile);border:1px solid var(--stroke);border-radius:12px;padding:10px;text-align:center;cursor:pointer}
     .weapon.selected{outline:2px solid var(--accent)}
+
     .classes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-    @media (max-width:700px){.classes{grid-template-columns:1fr}}
-    .class{background:#111527;border:1px solid #2a3147;border-radius:12px;padding:10px}
-    .class.disabled{opacity:.5;filter:grayscale(1);pointer-events:none}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f1220;border:1px solid #2a3147;font-size:12px}
-    .hero{font-weight:800}
+    @media (max-width:900px){ .classes{grid-template-columns:1fr} }
+    .class-tile{background:#111527;border:1px solid var(--stroke);border-radius:12px;padding:10px}
+    .class-tile.disabled{opacity:.5;filter:grayscale(1);pointer-events:none}
   </style>
 
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, runTransaction
+      getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, runTransaction, deleteField
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     // ---- Firebase config ----
@@ -58,9 +82,8 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    // ---- Rules Bible: Party Select constants ----
-    const PARTY_LIMIT = 4; // per Rules Bible
-    // Weapons (9) and who can wield them (2 heroes each)
+    // ---- Rules Bible constants ----
+    const PARTY_LIMIT = 4;
     const WEAPON_HEROES = {
       "Knuckles": ["Fox","Frog"],
       "Tome": ["Fox","Rabbit"],
@@ -72,42 +95,25 @@
       "Greataxe": ["Raven","Bear"],
       "Sword & Shield": ["Wolf","Bear"]
     };
-    // Class names per (Hero, Weapon)
     const CLASS_NAME = {
-      "Fox|Knuckles": "Monk",
-      "Fox|Tome": "Summoner",
-      "Fox|Daggers": "Assassin",
-      "Frog|Staff": "Wizard",
-      "Frog|Knuckles": "Berserker",
-      "Frog|Spear": "Myrmidon",
-      "Rabbit|Tome": "Cleric",
-      "Rabbit|Staff": "Druid",
-      "Rabbit|Bow": "Bard",
-      "Raven|Bow": "Archer",
-      "Raven|Katana": "Battlemage",
-      "Raven|Greataxe": "Reaper",
-      "Wolf|Daggers": "Ninja",
-      "Wolf|Katana": "Samurai",
-      "Wolf|Sword & Shield": "Paladin",
-      "Bear|Spear": "Lancer",
-      "Bear|Greataxe": "Barbearian",
-      "Bear|Sword & Shield": "Warrior"
+      "Fox|Knuckles": "Monk", "Fox|Tome": "Summoner", "Fox|Daggers": "Assassin",
+      "Frog|Staff": "Wizard", "Frog|Knuckles": "Berserker", "Frog|Spear": "Myrmidon",
+      "Rabbit|Tome": "Cleric", "Rabbit|Staff": "Druid", "Rabbit|Bow": "Bard",
+      "Raven|Bow": "Archer", "Raven|Katana": "Battlemage", "Raven|Greataxe": "Reaper",
+      "Wolf|Daggers": "Ninja", "Wolf|Katana": "Samurai", "Wolf|Sword & Shield": "Paladin",
+      "Bear|Spear": "Lancer", "Bear|Greataxe": "Barbearian", "Bear|Sword & Shield": "Warrior"
     };
 
-    // ---- helpers ----
-    const $ = (sel) => document.querySelector(sel);
+    // ---- utils ----
+    const $ = s => document.querySelector(s);
     const params = new URLSearchParams(location.search);
     const roomId = params.get('roomId') || (window.Session && Session.getRoomCode && Session.getRoomCode());
 
     const state = {
-      me: null,
-      room: null,
-      players: [],
-      isHost: false,
-      selectedWeapon: null
+      me:null, room:null, players:[], isHost:false, selectedWeapon:null
     };
 
-    function toast(msg){ try{ alert(msg); }catch{} }
+    function toast(m){ try{ alert(m); }catch{} }
 
     async function getUsername(uid){
       try{
@@ -117,220 +123,257 @@
       return null;
     }
 
-    async function mount(){
-      if (!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
-      $('#rid').textContent = roomId;
-
-      // room snapshot (host/visibility/status/draw)
-      onSnapshot(doc(db,'rooms', roomId), async (snap) => {
-        if (!snap.exists()){ $('#banner').textContent = 'Room not found.'; return; }
-        state.room = { id: snap.id, ...snap.data() };
-        state.isHost = !!(state.me && state.room && state.room.hostUid === state.me.uid);
-        $('#vis').textContent = (state.room.visibility || 'open');
-        $('#status').textContent = (state.room.status || 'open');
-        // ensure draw exists (host-only, once)
-        if (state.isHost && !Array.isArray(state.room.draw) ){
-          await runTransaction(db, async (tx) => {
-            const rref = doc(db,'rooms', roomId);
-            const rdoc = await tx.get(rref);
-            if (!rdoc.exists()) return;
-            if (Array.isArray(rdoc.data().draw)) return; // another client wrote it
-            const all = Object.keys(WEAPON_HEROES);
-            const shuffled = all.sort(()=> Math.random()-0.5);
-            const draw = shuffled.slice(0,4);
-            tx.update(rref, { draw, status:'party', updatedAt: serverTimestamp() });
-          });
-        }
-        renderWeapons();
-        renderControls();
-      });
-
-      // subscribe players subcollection
-      onSnapshot(collection(db,'rooms', roomId, 'players'), async (snap) => {
-        state.players = [];
-        for (const d of snap.docs){
-          const p = { id: d.id, ...d.data() };
-          // Resolve username (once per mount)
-          if (!p.name){
-            const name = await getUsername(p.id);
-            p.name = name || (p.displayName || p.id.slice(0,6));
-          }
-          state.players.push(p);
-        }
-        renderPlayers();
-        renderControls();
-      });
-
-      // upsert my player doc (name only)
-      const myName = (await getUsername(state.me.uid)) || (state.me.displayName || state.me.email || state.me.uid.slice(0,6));
-      await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), {
-        name: myName,
-        updatedAt: serverTimestamp()
-      }, { merge:true });
+    function uniqueHeroesOk(players){
+      const used = new Set();
+      for(const p of players){
+        if(!p.hero) return false;
+        if(used.has(p.hero)) return false;
+        used.add(p.hero);
+      }
+      return true;
     }
 
-    function renderWeapons(){
-      const grid = $('#weapons'); if (!grid) return;
-      grid.innerHTML = '';
-      const drawn = (state.room && Array.isArray(state.room.draw)) ? state.room.draw : [];
-      if (!drawn.length){
-        grid.innerHTML = '<div class="muted">Waiting for host to draw weapons…</div>';
-        return;
-      }
-      drawn.forEach(w => {
+    // ---- mount & listeners ----
+    async function mount(){
+      if(!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
+      $('#rid').textContent = roomId;
+
+      // room snapshot
+      onSnapshot(doc(db,'rooms', roomId), async (snap)=>{
+        if(!snap.exists()){ $('#banner').textContent='Room not found.'; return; }
+        state.room = { id:snap.id, ...snap.data() };
+        state.isHost = !!(state.me && state.room.hostUid === state.me.uid);
+        $('#vis').textContent = state.room.visibility || 'friends';
+        $('#status').textContent = state.room.status || 'party';
+        $('#host-badge').style.display = state.isHost ? 'inline-block' : 'none';
+
+        // Ensure draw once (host only)
+        if(state.isHost && !Array.isArray(state.room.draw)){
+          await runTransaction(db, async tx => {
+            const rref = doc(db,'rooms', roomId);
+            const rdoc = await tx.get(rref);
+            if(!rdoc.exists()) return;
+            if(Array.isArray(rdoc.data().draw)) return;
+            const all = Object.keys(WEAPON_HEROES);
+            const shuffled = all.slice().sort(()=>Math.random()-0.5);
+            tx.update(rref, { draw: shuffled.slice(0,4), status:'party', updatedAt: serverTimestamp() });
+          });
+        }
+
+        renderDraw();
+        renderSeats();
+        renderControls();
+      });
+
+      // players
+      onSnapshot(collection(db,'rooms', roomId, 'players'), async (snap)=>{
+        state.players = [];
+        for(const d of snap.docs){
+          const p={ id:d.id, ...d.data() };
+          if(!p.name) p.name = (await getUsername(p.id)) || p.displayName || p.id.slice(0,6);
+          state.players.push(p);
+        }
+        $('#count').textContent = String(state.players.length);
+        renderSeats();
+        renderControls();
+      });
+
+      // me → upsert name
+      const myName = (await getUsername(state.me.uid)) || (state.me.displayName || state.me.email || state.me.uid.slice(0,6));
+      await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { name: myName, updatedAt: serverTimestamp() }, { merge:true });
+    }
+
+    function renderDraw(){
+      const grid = $('#weapons'); if(!grid) return;
+      grid.innerHTML='';
+      const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
+      if(!drawn.length){ grid.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
+
+      drawn.forEach(w=>{
         const div = document.createElement('div');
         div.className = 'weapon' + (state.selectedWeapon===w ? ' selected' : '');
         div.textContent = w;
-        div.addEventListener('click', () => { state.selectedWeapon = w; renderWeapons(); renderClasses(); });
+        div.onclick = ()=>{ state.selectedWeapon=w; renderDraw(); renderClasses(); };
         grid.appendChild(div);
       });
-      // auto-select first if none
-      if (!state.selectedWeapon && drawn.length){ state.selectedWeapon = drawn[0]; renderWeapons(); renderClasses(); }
+      if(!state.selectedWeapon && drawn.length){ state.selectedWeapon=drawn[0]; renderDraw(); renderClasses(); }
     }
 
     function takenHeroes(){
-      const set = new Set();
-      for (const p of state.players){
-        if (p.hero) set.add(p.hero);
-      }
-      return set;
+      const s = new Set();
+      for(const p of state.players){ if(p.hero) s.add(p.hero); }
+      return s;
     }
 
     function renderClasses(){
-      const wrap = $('#classes'); if (!wrap) return;
-      wrap.innerHTML = '';
-      const w = state.selectedWeapon;
-      if (!w){ wrap.innerHTML = '<div class="muted">Select a weapon above.</div>'; return; }
-      const heroes = WEAPON_HEROES[w] || [];
+      const wrap = $('#classes'); if(!wrap) return;
+      wrap.innerHTML='';
+      const w = state.selectedWeapon; if(!w){ wrap.innerHTML='<div class="muted">Select a weapon above.</div>'; return; }
+      const options = WEAPON_HEROES[w] || [];
       const used = takenHeroes();
 
-      heroes.forEach(h => {
-        const div = document.createElement('div');
-        const key = `${h}|${w}`;
-        const cname = CLASS_NAME[key] || `${h} + ${w}`;
-        const disabled = used.has(h) && !state.players.find(p => p.id===state.me?.uid && p.hero===h);
-        div.className = 'class' + (disabled ? ' disabled' : '');
-        div.innerHTML = `
+      options.forEach(h=>{
+        const key = `${h}|${w}`, cname = CLASS_NAME[key] || `${h} + ${w}`;
+        const myPick = state.players.find(p => p.id===state.me?.uid)?.hero === h;
+        const disabled = used.has(h) && !myPick;
+        const tile = document.createElement('div');
+        tile.className = 'class-tile' + (disabled ? ' disabled' : '');
+        tile.innerHTML = `
           <div class="row" style="justify-content:space-between;">
-            <div><span class="hero">${cname}</span> <span class="badge">${h}</span> <span class="badge">${w}</span></div>
+            <div>
+              <div style="font-weight:800">${cname}</div>
+              <div class="row" style="gap:6px"><span class="badge">${h}</span><span class="badge">${w}</span></div>
+            </div>
             <div class="row">
-              <button class="btn ghost choose">Choose</button>
+              <button class="btn ghost small choose">${myPick ? 'Re-choose' : 'Choose'}</button>
             </div>
           </div>
-          <div class="note">Each hero can be represented only once per run.</div>
+          <div class="muted" style="margin-top:6px">Each hero can be represented only once per run.</div>
         `;
-        div.querySelector('.choose').addEventListener('click', async () => {
+        tile.querySelector('.choose').onclick = async ()=>{
           try{
-            await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), {
-              hero: h, weapon: w, className: cname, ready: false, updatedAt: serverTimestamp()
-            }, { merge: true });
-            renderPlayers();
-            renderControls();
-          }catch{ toast('Could not choose class.'); }
-        });
-        wrap.appendChild(div);
+            await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
+              { hero:h, weapon:w, className:cname, ready:false, updatedAt: serverTimestamp() },
+              { merge:true });
+          }catch{ toast('Could not choose class'); }
+        };
+        wrap.appendChild(tile);
       });
     }
 
-    function renderPlayers(){
-      const list = $('#players'); if (!list) return;
-      list.innerHTML = '';
-      let allReady = state.players.length > 0;
-      let count = 0;
-      for (const p of state.players){
-        count++;
+    function renderSeats(){
+      const grid = $('#seats'); if(!grid) return;
+      grid.innerHTML='';
+      const seats = [null,null,null,null];
+      state.players.slice(0,4).forEach((p,i)=> seats[i]=p);
+
+      for(let i=0;i<4;i++){
+        const p = seats[i];
         const div = document.createElement('div');
-        div.className = 'player';
+        div.className = 'seat' + (p ? '' : ' open');
+
+        if(!p){
+          div.innerHTML = '<div class="muted">Open Slot</div>';
+          grid.appendChild(div); continue;
+        }
+
+        const isMe = state.me && p.id===state.me.uid;
+        const crown = state.room?.hostUid===p.id ? '👑' : '';
         const left = document.createElement('div');
-        left.innerHTML = `<strong>@${p.name || p.id.slice(0,6)}</strong> ${p.className ? `<span class="badge">${p.className}</span>` : '<span class="badge">No class</span>'}`;
+        left.className='meta';
+        left.innerHTML = `
+          <div class="name">${crown ? `<span class="crown">${crown}</span>` : ''}@${p.name||p.id.slice(0,6)}</div>
+          <div class="class">
+            ${p.className ? `<span class="badge">${p.className}</span>` : '<span class="badge">No class</span>'}
+            ${p.hero ? `<span class="badge">${p.hero}</span>` : ''}
+            ${p.weapon ? `<span class="badge">${p.weapon}</span>` : ''}
+          </div>
+          <div class="status muted">${p.ready ? '✅ Ready' : '⏳ Not ready'}</div>
+        `;
+
         const right = document.createElement('div');
-        right.textContent = p.ready ? '✅ Ready' : '⏳ Not ready';
-        list.appendChild(div);
-        div.append(left, right);
-        if (!p.ready) allReady = false;
+        right.className='actions';
+
+        if(isMe){
+          const leave = document.createElement('button'); leave.className='btn ghost small'; leave.textContent='Unchoose';
+          leave.onclick = async ()=>{
+            try{
+              await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() });
+            }catch{ toast('Could not unchoose'); }
+          };
+          right.appendChild(leave);
+        }
+
+        if(state.isHost && !isMe){
+          const kick = document.createElement('button'); kick.className='btn warn small'; kick.textContent='Kick';
+          kick.onclick = async ()=>{
+            if(!confirm(`Remove @${p.name||p.id.slice(0,6)} from party?`)) return;
+            try{ await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() }); }
+            catch{ toast('Could not update'); }
+          };
+          right.appendChild(kick);
+        }
+
+        const container = document.createElement('div');
+        container.style.cssText='display:flex;align-items:center;justify-content:space-between;width:100%';
+        container.appendChild(left); container.appendChild(right);
+
+        div.appendChild(container);
+        grid.appendChild(div);
       }
-      $('#count').textContent = String(count);
-      // my ready button label
-      const meDoc = state.players.find(x => x.id === (state.me && state.me.uid));
-      $('#ready').textContent = (meDoc && meDoc.ready) ? 'Unready' : 'Ready';
+
       renderClasses();
     }
 
     function renderControls(){
-      const hostBadge = $('#host-badge');
-      hostBadge.style.display = state.isHost ? 'inline-block' : 'none';
+      const everyoneReady = state.players.length>0 && state.players.every(p=>p.className && p.ready);
+      const partyOk = state.players.length<=PARTY_LIMIT && uniqueHeroesOk(state.players.filter(p=>p.className));
+      $('#lock').disabled = !(state.isHost && Array.isArray(state.room?.draw) && state.room.draw.length===4 && everyoneReady && partyOk && !state.room?.partyLocked);
 
-      const lockBtn = $('#lock');
-      const drawn = (state.room && Array.isArray(state.room.draw)) ? state.room.draw : [];
-      const heroesUsed = takenHeroes();
-      const everyoneReady = state.players.length > 0 && state.players.every(p => !!p.className && p.ready);
-      const partyOk = state.players.length <= PARTY_LIMIT;
-      lockBtn.disabled = !(state.isHost && drawn.length===4 && everyoneReady && partyOk && !state.room?.partyLocked);
+      // ready label
+      const meDoc = state.players.find(p=>p.id===state.me?.uid);
+      $('#ready').textContent = meDoc?.ready ? 'Unready' : 'Ready';
     }
 
     async function toggleReady(){
-      if (!state.me) return;
-      const meRef = doc(db,'rooms', roomId, 'players', state.me.uid);
-      const meDoc = state.players.find(x => x.id===state.me.uid);
+      if(!state.me) return;
+      const meDoc = state.players.find(p=>p.id===state.me.uid);
       const next = !(meDoc && meDoc.ready);
-      try{
-        await setDoc(meRef, { ready: next, updatedAt: serverTimestamp() }, { merge:true });
-      }catch{ toast('Could not update ready'); }
+      try{ await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { ready: next, updatedAt: serverTimestamp() }, { merge:true }); }
+      catch{ toast('Could not update ready'); }
     }
 
     async function lockAndStart(){
-      if (!state.isHost) return;
-      // ensure <=4 and every player has a unique hero & a class
+      if(!state.isHost) return;
       const heroes = new Set();
-      for (const p of state.players){
-        if (!p.className) { toast('All players must choose a class.'); return; }
-        if (heroes.has(p.hero)){ toast('Each hero can appear only once.'); return; }
+      for(const p of state.players){
+        if(!p.className){ toast('All players must choose a class.'); return; }
+        if(heroes.has(p.hero)){ toast('Each hero can appear only once.'); return; }
         heroes.add(p.hero);
       }
-      if (state.players.length > PARTY_LIMIT){ toast('Party limit is 4.'); return; }
+      if(state.players.length>PARTY_LIMIT){ toast('Party limit is 4.'); return; }
 
       try{
         await updateDoc(doc(db,'rooms', roomId), {
-          partyLocked: true,
+          partyLocked:true,
           partyUids: state.players.map(p=>p.id),
-          status: 'running',
+          status:'running',
           updatedAt: serverTimestamp()
         });
-        $('#banner').textContent = 'Party locked — starting run…';
-        const target = 'run.html?roomId=' + roomId;
-        if (window.Router && Router.to) Router.to(target);
-        else location.href = target;
-      }catch{ toast('Could not lock/start.'); }
+        const target = 'run.html?roomId='+roomId;
+        if(window.Router && Router.to) Router.to(target); else location.href = target;
+      }catch{ toast('Could not lock/start'); }
     }
 
-    // ---- Auth & init ----
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!roomId) { $('#missing').style.display='block'; $('#content').style.display='none'; return; }
+    function copyCode(){
+      try{ navigator.clipboard.writeText(roomId); $('#copy-tip').textContent='Copied!'; setTimeout(()=> $('#copy-tip').textContent='Click to copy',1200); }catch{}
+    }
+
+    // ---- boot ----
+    document.addEventListener('DOMContentLoaded', ()=>{
+      if(!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
       $('#rid').textContent = roomId;
+      $('#copy-code').addEventListener('click', copyCode);
+      $('#ready').addEventListener('click', toggleReady);
+      $('#lock').addEventListener('click', lockAndStart);
 
-      $('#login').addEventListener('click', async () => {
-        try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-        catch(e){ toast(e.code || 'Login failed'); }
-      });
-      $('#logout').addEventListener('click', async () => { try{ await signOut(auth); }catch{} });
+      $('#login').addEventListener('click', async ()=>{ try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ toast(e.code||'Login failed'); } });
+      $('#logout').addEventListener('click', async ()=>{ try{ await signOut(auth); }catch{} });
 
-      onAuthStateChanged(auth, async (user) => {
-        if (!user){
-          $('#user').textContent = '(not signed in)';
-          $('#login').style.display = 'inline-block';
-          $('#logout').style.display = 'none';
+      onAuthStateChanged(auth, async (user)=>{
+        if(!user){
+          $('#user').textContent='(not signed in)';
+          $('#login').style.display='inline-block';
+          $('#logout').style.display='none';
           return;
         }
         state.me = user;
-        const name = (await getUsername(user.uid)) || (user.displayName || user.email || user.uid.slice(0,6));
-        $('#user').textContent = '@' + name;
-        $('#login').style.display = 'none';
-        $('#logout').style.display = 'inline-block';
+        const name = (await getUsername(user.uid)) || user.displayName || user.email || user.uid.slice(0,6);
+        $('#user').textContent='@'+name;
+        $('#login').style.display='none';
+        $('#logout').style.display='inline-block';
         await mount();
       });
-
-      $('#ready').addEventListener('click', toggleReady);
-      $('#lock').addEventListener('click', lockAndStart);
     });
   </script>
 </head>
@@ -339,7 +382,14 @@
     <header>
       <div>
         <h1>Party Select <span id="host-badge" class="pill" style="display:none;margin-left:8px;">Host</span></h1>
-        <div class="muted">Room <span id="rid">…</span> • <span id="vis">…</span> • <span id="status">…</span> • Players: <span id="count">0</span>/4</div>
+        <div class="muted">
+          Room <span id="rid">…</span>
+          • <span id="vis">friends</span>
+          • <span id="status">party</span>
+          • Players: <span id="count">0</span>/4
+          • <button id="copy-code" class="btn ghost small" style="margin-left:6px">Copy code</button>
+          <span id="copy-tip" class="muted" style="margin-left:4px;font-size:12px;">Click to copy</span>
+        </div>
       </div>
       <div class="row">
         <span id="user" class="pill">(not signed in)</span>
@@ -349,30 +399,30 @@
     </header>
 
     <section id="missing" class="card" style="display:none;">
-      <h2>No room selected</h2>
+      <h2 class="subhead">No room selected</h2>
       <p class="muted">This page expects a <code>?roomId=XYZ</code> param or an ID saved by your Session code.</p>
       <p><a href="mainmenu.html" class="btn">Back to Main Menu</a></p>
     </section>
 
     <section id="content" class="columns">
       <div class="card">
-        <h3 style="margin-top:0">Players</h3>
-        <div id="players" class="players"></div>
+        <h3 class="subhead">Players</h3>
+        <div id="seats" class="seats"></div>
         <div class="row" style="margin-top:12px;">
           <button id="ready" class="btn">Ready</button>
           <button id="lock"  class="btn primary" disabled>Lock party & start</button>
-          <span class="note">Host can start when everyone is Ready and each player selected a unique hero. Party limit 4.</span>
+          <span class="muted">Host can start when everyone is Ready and each player selected a unique hero. Party limit 4.</span>
         </div>
       </div>
 
       <div class="grid">
         <div class="card">
-          <h3 style="margin-top:0">Weapon Draw</h3>
+          <h3 class="subhead">Weapon Draw</h3>
           <div id="weapons" class="weapons"></div>
-          <div class="note">Draw is generated once by the Host: 4 of the 9 weapons (Rules Bible).</div>
+          <div class="muted">Draw is generated once by the Host: 4 of the 9 weapons (Rules Bible).</div>
         </div>
         <div class="card">
-          <h3 style="margin-top:0">Available Classes</h3>
+          <h3 class="subhead">Available Classes</h3>
           <div id="classes" class="classes"></div>
         </div>
       </div>
