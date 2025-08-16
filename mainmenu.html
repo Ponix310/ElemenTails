@@ -87,6 +87,10 @@
     const partyCount  = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
     const includesMe  = (uid, room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(uid) : false;
 
+    // presence heartbeat
+    let presenceTimer = null;
+    const PRESENCE_INTERVAL = 30000; // 30s
+
     // ---------- Navigation ----------
     function routeToPartySelect(roomId){
       const url = `partyselect.html?roomId=${roomId}`;
@@ -118,9 +122,12 @@
           loginBtn.style.display = 'none';
           logoutBtn.style.display = 'inline-block';
           await upsertPresence('MainMenu');
+          if (presenceTimer) clearInterval(presenceTimer);
+          presenceTimer = setInterval(() => upsertPresence('MainMenu'), PRESENCE_INTERVAL);
           renderMyBanner();
           refreshFriends();
         } else {
+          if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
           namePill.style.display = 'none';
           loginBtn.style.display = 'inline-block';
           logoutBtn.style.display = 'none';
@@ -149,6 +156,7 @@
         try {
           await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true });
         } catch {}
+        try { clearInterval(presenceTimer); } catch {}
       });
     });
 
@@ -374,7 +382,9 @@
       const presRef = doc(db,'presence', friend.id);
       const unsubPresence = onSnapshot(presRef, async (snap) => {
         const p = snap.exists() ? snap.data() : {};
-        currentPresence = { online: !!p.online, screen: p.screen || null };
+        const updatedAt = p?.updatedAt?.toDate ? p.updatedAt.toDate() : null;
+        const fresh = updatedAt && (Date.now() - updatedAt.getTime() < 60000);
+        currentPresence = { online: !!p.online && fresh, screen: p.screen || null };
         presenceBtn.textContent = currentPresence.online ? 'Online' : 'Offline';
         presenceBtn.className   = 'status-btn status-disabled';
         try { await refreshFriendSession(); } catch {}
