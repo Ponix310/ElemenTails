@@ -27,14 +27,12 @@
     .grid{display:grid;gap:12px}
     .muted{color:#9aa4b2;font-size:12px}
 
-    /* Profile header */
     .profileHeader{position:relative;border-radius:16px;overflow:hidden;background:#0f1220;border:1px solid #2a3147}
     .profileHeader .bg{width:100%;height:240px;background-size:cover;background-position:center}
     .profileHeader .name{position:absolute;left:14px;bottom:12px;font-weight:900;font-size:18px;
       padding:6px 10px;border-radius:999px;background:rgba(5,10,20,.7);backdrop-filter:blur(2px);}
     .profileHeader .edit{position:absolute;right:12px;bottom:12px}
 
-    /* Friends list tiles */
     .friendTile{position:relative;border-radius:14px;overflow:hidden;border:1px solid #2a3147;background:#0f1220}
     .friendTile .bg{width:100%;height:220px;background-size:cover;background-position:center;opacity:0.96}
     .friendTile .label{position:absolute;left:14px;bottom:12px;font-weight:800;background:rgba(8,12,20,.75);padding:6px 10px;border-radius:999px}
@@ -52,11 +50,10 @@
     .input{flex:1;background:#0f1220;border:1px solid #2a3147;border-radius:12px;padding:10px 12px;color:#e2e8f0;outline:none}
     .input:focus{border-color:#35508f}
 
-    /* Modal */
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px}
     .modal.open{display:flex}
-    .modal .panel{background:#0f1220;border:1px solid #2a3147;border-radius:16px;max-width:720px;width:100%;padding:18px}
-    .avatarGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px}
+    .modal .panel{background:#0f1220;border:1px solid #2a3147;border-radius:16px;max-width:860px;width:100%;padding:18px}
+    .avatarGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px}
     .avatar{aspect-ratio:16/10;border-radius:12px;background:#121826;border:1px solid #2a3147;background-size:cover;background-position:center;cursor:pointer}
     .avatar.selected{outline:2px solid var(--accent)}
   </style>
@@ -76,14 +73,12 @@
 
   <main class="wrap">
     <section class="left">
-      <!-- Profile header -->
       <div class="profileHeader card">
-        <div id="myProfileBg" class="bg" style="background-image:url('images/class-portraits/monk.png');"></div>
-        <div id="myHandle" class="name">@user</div>
+        <div id="myProfileBg" class="bg"></div>
+        <div id="myHandle" class="name">@User</div>
         <button id="btnEditProfile" class="btn small edit">Edit Profile</button>
       </div>
 
-      <!-- Friends -->
       <section class="card" style="margin-top:12px">
         <div class="row">
           <h3 style="margin:0;font-size:16px">Friends</h3>
@@ -105,21 +100,17 @@
     </aside>
   </main>
 
-  <!-- Edit Profile Modal -->
   <div id="profileModal" class="modal">
     <div class="panel">
       <h3 style="margin:0 0 8px;font-size:18px">Edit Profile</h3>
-      <div class="muted">Usernames: lowercase a–z, 0–9 or underscore, 3–20 chars.</div>
+      <div class="muted">Letters only (A–Z), length 3–20. We’ll auto‑capitalize.</div>
       <div class="field" style="margin-top:10px">
-        <input id="usernameInput" class="input" placeholder="username"/>
+        <input id="usernameInput" class="input" placeholder="Username"/>
         <button id="btnSaveProfile" class="btn">Save</button>
         <button id="btnCloseProfile" class="btn ghost">Close</button>
       </div>
       <div class="muted" style="margin-top:10px">Pick an avatar:</div>
       <div id="avatarGrid" class="avatarGrid"></div>
-      <div class="field" style="margin-top:10px">
-        <input id="avatarUrl" class="input" placeholder="Or paste image URL (https://…)"/>
-      </div>
     </div>
   </div>
 
@@ -127,8 +118,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, serverTimestamp,
-      writeBatch, getDocs, query, where, onSnapshot
+      getFirestore, doc, getDoc, setDoc, collection, serverTimestamp,
+      writeBatch, getDocs, query, onSnapshot
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -146,127 +137,122 @@
 
     const SLOT_IDS = ["slot1","slot2","slot3","slot4","slot5"];
 
-    // Use portraits from images/class-portraits (PNG)
-    const DEFAULT_AVATARS = [
-      "images/class-portraits/monk.png",
-      "images/class-portraits/rogue.png",
-      "images/class-portraits/cleric.png",
-      "images/class-portraits/paladin.png",
-      "images/class-portraits/summoner.png",
-      "images/class-portraits/warrior.png",
-      "images/class-portraits/druid.png",
-      "images/class-portraits/assassin.png",
-      "images/class-portraits/battlemage.png",
-      "images/class-portraits/ranger.png",
-      "images/class-portraits/ninja.png",
-      "images/class-portraits/samurai.png",
-      "images/class-portraits/wizard.png",
+    const PORTRAITS = [
+      'archer','assassin','barbarian','bard','battlemage','berserker','cleric',
+      'druid','lancer','monk','myrmidon','ninja','paladin','reaper','samurai',
+      'summoner','warrior','wizard'
     ];
+    const PORTRAIT_PATH = 'images/class-portraits/';
+    const FALLBACK = PORTRAIT_PATH + 'monk.png';
 
-    // ---------- Helpers ----------
+    function portraitUrl(name){ return PORTRAIT_PATH + name + '.png'; }
+
+    // NEW: letters only, 3–20
+    const unameLettersOnly = /^[A-Za-z]{3,20}$/;
+    const toDisplay = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    const toLower = s => s.toLowerCase();
+
     function slotRef(uid, slotId){ return doc(db, `users/${uid}/slots/${slotId}`); }
     function routeToPartySelect(roomId, mode){
-      try {
-        const norm = (mode === 'friends' || mode === 'public' || mode === 'multiplayer' || mode === 'multi') ? 'multi' : 'single';
-        localStorage.setItem('ET_mode', norm);
-      } catch {}
+      try { localStorage.setItem('ET_mode', (mode==='friends'?'multi':'single')); } catch {}
       window.location.href = `partyselect.html?roomId=${encodeURIComponent(roomId)}`;
     }
     function clearLocalForRoom(roomId){
       try{ ['v2','v3','v4'].forEach(v => localStorage.removeItem(`ET_ps_${v}:${roomId}`)); }catch{}
     }
-    const unameRx = /^[a-z0-9_]{3,20}$/;
 
-    // ---------- Auth UI ----------
     document.addEventListener('DOMContentLoaded', () => {
-      const loginBtn = document.getElementById('auth-login');
-      const logoutBtn = document.getElementById('auth-logout');
-      const namePill = document.getElementById('auth-username');
-
-      loginBtn.addEventListener('click', async () => {
-        try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-        catch (e) { alert(e.code || 'Login failed'); }
+      document.getElementById('auth-login').addEventListener('click', async () => {
+        try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e){ alert(e.code||'Login failed'); }
       });
-      logoutBtn.addEventListener('click', async () => { try { await signOut(auth); } catch {} });
-
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          namePill.style.display = 'inline-block';
-          document.getElementById('auth-login').style.display = 'none';
-          document.getElementById('auth-logout').style.display = 'inline-block';
-          await loadMyProfile();
-          refreshFriends();
-          refreshSlots();
-        } else {
-          namePill.style.display = 'none';
-          document.getElementById('auth-login').style.display = 'inline-block';
-          document.getElementById('auth-logout').style.display = 'none';
-        }
-      });
-
-      // Profile modal handlers
-      document.getElementById('btnEditProfile').addEventListener('click', openProfileModal);
+      document.getElementById('auth-logout').addEventListener('click', async () => { try { await signOut(auth); } catch {} });
+      document.getElementById('btnEditProfile').addEventListener('click', () => toggleModal(true));
       document.getElementById('btnCloseProfile').addEventListener('click', () => toggleModal(false));
       document.getElementById('btnSaveProfile').addEventListener('click', saveProfile);
       document.getElementById('btnAddFriend').addEventListener('click', addFriendByUsername);
 
       // Build avatar grid
       const grid = document.getElementById('avatarGrid');
-      DEFAULT_AVATARS.forEach(url => {
+      PORTRAITS.forEach(name => {
         const d = document.createElement('div');
         d.className = 'avatar';
-        d.style.backgroundImage = `url('${url}')`;
+        d.style.backgroundImage = `url('${portraitUrl(name)}')`;
+        d.title = name;
         d.addEventListener('click', () => {
           [...grid.children].forEach(n => n.classList.remove('selected'));
           d.classList.add('selected');
-          document.getElementById('avatarUrl').value = url;
+          grid.dataset.selectedName = name;
         });
         grid.appendChild(d);
       });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          document.getElementById('auth-username').style.display='inline-block';
+          document.getElementById('auth-login').style.display='none';
+          document.getElementById('auth-logout').style.display='inline-block';
+          await loadMyProfile();
+          refreshFriends();
+          refreshSlots();
+        } else {
+          document.getElementById('auth-username').style.display='none';
+          document.getElementById('auth-login').style.display='inline-block';
+          document.getElementById('auth-logout').style.display='none';
+        }
+      });
     });
 
-    // ---------- Profile ----------
     async function loadMyProfile(){
       const me = auth.currentUser; if(!me) return;
-      const myProfile = await getDoc(doc(db,'publicProfiles', me.uid));
-      let handle = me.displayName || me.email?.split('@')[0] || 'user';
-      let avatar = DEFAULT_AVATARS[0];
-      if (myProfile.exists()){
-        const d = myProfile.data();
-        if (d.username) handle = d.username;
-        if (d.avatarUrl) avatar = d.avatarUrl;
+      const snap = await getDoc(doc(db,'publicProfiles', me.uid));
+      let display = 'User';
+      let lower = 'user';
+      let avatarName = 'monk';
+      if (snap.exists()){
+        const d = snap.data();
+        display = d.usernameDisplay || toDisplay(d.usernameLower||'user');
+        lower = d.usernameLower || 'user';
+        if (PORTRAITS.includes(d.avatarName)) avatarName = d.avatarName;
       }
-      document.getElementById('auth-username').textContent = '@' + handle;
-      document.getElementById('myHandle').textContent = '@' + handle;
-      document.getElementById('myProfileBg').style.backgroundImage = `url('${avatar}')`;
+      document.getElementById('auth-username').textContent = '@' + display;
+      document.getElementById('myHandle').textContent = '@' + display;
+      document.getElementById('myProfileBg').style.backgroundImage = `url('${portraitUrl(avatarName)}')`;
+      document.getElementById('profileModal').dataset.currentAvatar = avatarName;
+      document.getElementById('usernameInput').value = display;
     }
 
-    function toggleModal(isOpen){
-      document.getElementById('profileModal').classList.toggle('open', !!isOpen);
-    }
-    async function openProfileModal(){
-      const me = auth.currentUser; if(!me) return;
-      const snap = await getDoc(doc(db,'publicProfiles', me.uid));
-      const uname = snap.exists() && snap.data().username ? snap.data().username : '';
-      const avatar = snap.exists() && snap.data().avatarUrl ? snap.data().avatarUrl : '';
-      document.getElementById('usernameInput').value = uname;
-      document.getElementById('avatarUrl').value = avatar;
-      toggleModal(true);
+    function toggleModal(open){
+      const m = document.getElementById('profileModal');
+      m.classList.toggle('open', !!open);
+      if (open){
+        const current = m.dataset.currentAvatar || 'monk';
+        const grid = document.getElementById('avatarGrid');
+        [...grid.children].forEach(n => n.classList.remove('selected'));
+        const idx = PORTRAITS.indexOf(current);
+        if (idx>=0) grid.children[idx].classList.add('selected');
+        grid.dataset.selectedName = current;
+      }
     }
 
     async function saveProfile(){
       const me = auth.currentUser; if(!me) return;
-      const newU = (document.getElementById('usernameInput').value || '').trim();
-      const newAvatar = (document.getElementById('avatarUrl').value || '').trim();
-      if (!unameRx.test(newU)) { alert('Invalid username. Use a–z, 0–9, underscore, 3–20 chars.'); return; }
+      const raw = (document.getElementById('usernameInput').value || '').trim();
+      // Validate letters-only and length
+      if (!unameLettersOnly.test(raw)){
+        alert('Invalid username. Letters A–Z only, 3–20 chars.'); return;
+      }
+      const lower = toLower(raw);
+      const display = toDisplay(raw);
+      const avatarName = document.getElementById('avatarGrid').dataset.selectedName || 'monk';
+      if (!PORTRAITS.includes(avatarName)){ alert('Pick an avatar.'); return; }
 
       const profRef = doc(db,'publicProfiles', me.uid);
       const curr = await getDoc(profRef);
-      const oldU = curr.exists() && curr.data().username ? curr.data().username : null;
+      const oldLower = curr.exists() && curr.data().usernameLower ? curr.data().usernameLower : null;
 
       // Check availability if changing
-      if (!oldU || oldU !== newU){
-        const claim = await getDoc(doc(db,'usernames', newU));
+      if (!oldLower || oldLower !== lower){
+        const claim = await getDoc(doc(db,'usernames', lower));
         if (claim.exists() && claim.data().uid !== me.uid){
           alert('That username is taken.'); return;
         }
@@ -274,13 +260,14 @@
 
       const batch = writeBatch(db);
       batch.set(profRef, {
-        username: newU,
-        avatarUrl: newAvatar || DEFAULT_AVATARS[0],
+        usernameLower: lower,
+        usernameDisplay: display,
+        avatarName,
         updatedAt: serverTimestamp(),
       }, { merge: true });
-      batch.set(doc(db,'usernames', newU), { uid: me.uid });
-      if (oldU && oldU !== newU) {
-        batch.delete(doc(db,'usernames', oldU));
+      batch.set(doc(db,'usernames', lower), { uid: me.uid });
+      if (oldLower && oldLower !== lower) {
+        batch.set(doc(db,'usernames', oldLower), { uid: null }); // optional soft release
       }
       try{
         await batch.commit();
@@ -291,17 +278,16 @@
       }
     }
 
-    // ---------- Friends ----------
     async function addFriendByUsername(){
       const me = auth.currentUser; if(!me) return;
       const input = document.getElementById('friendSearch');
-      const uname = (input.value || '').trim().toLowerCase();
-      if (!unameRx.test(uname)){ alert('Enter a valid username.'); return; }
-      const claim = await getDoc(doc(db,'usernames', uname));
+      const raw = (input.value || '').trim();
+      if (!unameLettersOnly.test(raw)){ alert('Enter a valid username (letters only, 3–20).'); return; }
+      const lower = toLower(raw);
+      const claim = await getDoc(doc(db,'usernames', lower));
       if (!claim.exists()){ alert('User not found.'); return; }
       const uid = claim.data().uid;
       if (uid === me.uid){ alert('You cannot add yourself.'); return; }
-      // Create/merge friend doc
       await setDoc(doc(db,`users/${me.uid}/friends/${uid}`), { uid, addedAt: serverTimestamp() }, { merge: true });
       input.value='';
       await refreshFriends();
@@ -317,16 +303,13 @@
 
         for (const ds of ss.docs){
           const fuid = ds.id;
-          // Load public profile for avatar + username
           const pSnap = await getDoc(doc(db,'publicProfiles', fuid));
           const pd = pSnap.exists() ? pSnap.data() : {};
-          const handle = pd.username || 'user';
-          const avatar = pd.avatarUrl || DEFAULT_AVATARS[1];
-
-          // Build tile
+          const display = pd.usernameDisplay || toDisplay(pd.usernameLower||'user');
+          const avatarName = PORTRAITS.includes(pd.avatarName) ? pd.avatarName : 'rogue';
           const tile = document.createElement('div'); tile.className='friendTile';
-          const bg = document.createElement('div'); bg.className='bg'; bg.style.backgroundImage = `url('${avatar}')`;
-          const label = document.createElement('div'); label.className='label'; label.textContent = handle;
+          const bg = document.createElement('div'); bg.className='bg'; bg.style.backgroundImage = `url('${portraitUrl(avatarName)}')`;
+          const label = document.createElement('div'); label.className='label'; label.textContent = display;
           const chip = document.createElement('div'); chip.className='chip'; chip.innerHTML = '<span class="dot"></span><span>Offline</span>';
           const dot = chip.querySelector('.dot'); const txt = chip.querySelector('span + span');
           onSnapshot(doc(db,'presence', fuid), (snap)=>{
@@ -342,7 +325,6 @@
       }
     }
 
-    // ---------- Save Slots ----------
     async function refreshSlots(){
       const me = auth.currentUser; if(!me) return;
       const wrap = document.getElementById('slots-wrap'); wrap.innerHTML='';
