@@ -19,6 +19,7 @@
     .btn.primary{background:var(--accent);color:#06241e}
     .btn.success{background:#1db954;color:#06241e}
     .btn.ghost{background:#1e2433;color:#cbd5e1}
+    .btn.small{padding:8px 10px;border-radius:10px;font-weight:700}
     .btn[disabled]{opacity:.55;cursor:not-allowed;filter:none}
     .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;padding:0}
     .card{background:var(--panel);padding:18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35);}
@@ -28,30 +29,6 @@
     .columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     @media (max-width:1100px){ .columns{grid-template-columns:1fr} }
 
-    /* Right rail */
-    .right-rail{display:grid;gap:16px}
-    .banner-card{position:relative;aspect-ratio:3/2;border-radius:14px;overflow:hidden;border:1px solid #2a3147;box-shadow:0 8px 24px rgba(0,0,0,.35);}
-    .banner-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:1;filter:saturate(1.05) contrast(1.05);}
-    .banner-body{position:relative;padding:14px;display:flex;justify-content:space-between;align-items:flex-end;height:100%;}
-    .banner-title{font-weight:800;font-size:20px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
-
-    /* Friends list (full background tiles) */
-    .friends-col{display:grid;gap:10px}
-    .friend-tile{
-      position:relative; display:flex; align-items:flex-end; gap:10px;
-      border:1px solid #2a3147; border-radius:12px; padding:12px;
-      background:#0f1220; overflow:hidden; min-height:120px; aspect-ratio:3/1.8;
-    }
-    .friend-bg{position:absolute; inset:0; background-size:cover; background-position:center; opacity:1;}
-    .friend-overlay{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.55));}
-    .friend-content{position:relative; z-index:1; width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;}
-    .friend-name{font-weight:800; font-size:16px; text-shadow:0 1px 2px rgba(0,0,0,.6)}
-    .friend-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .status-btn{padding:8px 10px;border-radius:8px;border:0;background:#1e2433;color:#fff;cursor:pointer;font-weight:700;min-width:128px;text-align:center}
-    .status-join{background:var(--accent);color:#06241e}
-    .status-disabled{background:#1e2433;color:#cbd5e1;cursor:not-allowed;opacity:.9}
-
-    /* Left action tiles */
     .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     .action-tile{display:flex;align-items:center;justify-content:center;height:180px;border-radius:14px;border:1px solid #2a3147;background:#122033;cursor:pointer;font-weight:800}
     .action-tile.primary{background:#20c997}
@@ -63,8 +40,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp,
-      where, getDocs, addDoc, limit
+      getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, serverTimestamp,
+      where, getDocs, addDoc, limit, getCountFromServer
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -79,22 +56,11 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const portraitUrl = key => `images/class-portraits/${key}.png`;
 
-    // helpers
-    const clean = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([,v]) => v !== undefined));
-    const isRunning   = (room) => room && (room.status==='running' || room.status==='inGame');
-    const isParty     = (room) => room && (room.status==='party' || room.status==='lobby' || room.status==='open');
-    const partyCount  = (room) => Array.isArray(room?.partyUids) ? room.partyUids.length : 0;
-    const includesMe  = (uid, room) => Array.isArray(room?.partyUids) ? room.partyUids.includes(uid) : false;
-
-    // presence heartbeat
-    let presenceTimer = null;
-    const PRESENCE_INTERVAL = 30000; // 30s
+    const SAVE_LIMIT = 5;
 
     // ---------- Navigation ----------
     function routeToPartySelect(roomId, mode){
-      // Normalize and persist mode if provided; do not touch auth/login flow
       try {
         if (mode !== undefined && mode !== null) {
           const m = String(mode).toLowerCase();
@@ -130,50 +96,41 @@
           namePill.style.display = 'inline-block';
           loginBtn.style.display = 'none';
           logoutBtn.style.display = 'inline-block';
-          await upsertPresence('MainMenu');
-          if (presenceTimer) clearInterval(presenceTimer);
-          presenceTimer = setInterval(() => upsertPresence('MainMenu'), PRESENCE_INTERVAL);
-          renderMyBanner();
-          refreshFriends();
         } else {
-          if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
           namePill.style.display = 'none';
           loginBtn.style.display = 'inline-block';
           logoutBtn.style.display = 'none';
-          document.getElementById('friends-col').innerHTML = '<div class="muted">(sign in to see friends)</div>';
         }
       });
     });
 
-    // ---------- Left actions ----------
+    // ---------- Create / Load ----------
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('tile-single')?.addEventListener('click', ()=> createSession('private'));
       document.getElementById('tile-multi')?.addEventListener('click', ()=> createSession('friends'));
       document.getElementById('btn-load')?.addEventListener('click', toggleLoadList);
-
-      document.getElementById('edit-profile-btn').addEventListener('click', () => {
-        if (window.Router && Router.to) Router.to('profile.html');
-        else location.href = 'profile.html';
-      });
-
-      document.addEventListener('visibilitychange', () => {
-        const me = auth.currentUser; if(!me) return;
-        if (document.visibilityState === 'visible') upsertPresence('MainMenu');
-      });
-      window.addEventListener('beforeunload', async () => {
-        const me = auth.currentUser; if(!me) return;
-        try {
-          await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true });
-        } catch {}
-        try { clearInterval(presenceTimer); } catch {}
-      });
+      document.getElementById('btn-delete-all')?.addEventListener('click', deleteAllMyRooms);
     });
+
+    async function currentSavesCount(uid){
+      const qy = query(collection(db,'rooms'), where('hostUid','==', uid));
+      const snap = await getCountFromServer(qy);
+      return snap.data().count || 0;
+    }
 
     async function createSession(visibility){
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       try {
-        const ref = await addDoc(collection(db, 'rooms'), clean({ hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'), partyLocked:false, maxParty:4, participantUids:[me.uid], partyUids:[me.uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
-        if (window.Session && Session.setRoomCode) Session.setRoomCode(ref.id);
+        const count = await currentSavesCount(me.uid);
+        if (count >= SAVE_LIMIT){
+          alert(`You have ${count}/${SAVE_LIMIT} saves. Please delete a save slot first.`);
+          return;
+        }
+        const ref = await addDoc(collection(db, 'rooms'), {
+          hostUid: me.uid, visibility, status: 'open', mode: (visibility==='private' ? 'solo' : 'multiplayer'),
+          partyLocked:false, maxParty:4, participantUids:[me.uid], partyUids:[me.uid],
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        });
         routeToPartySelect(ref.id, visibility);
       } catch (e) { alert(e.message || 'Could not create session.'); }
     }
@@ -186,238 +143,93 @@
       if (!showing) loadHostedSessions();
     }
 
+    function roomKeyVariants(roomId){
+      return [
+        `ET_ps_v2:${roomId}`,
+        `ET_ps_v3:${roomId}`,
+        `ET_ps_v4:${roomId}`,
+        `ET_ps_v2:standalone`,
+        `ET_ps_v3:standalone`,
+        `ET_ps_v4:standalone`,
+      ];
+    }
+    function clearLocalForRoom(roomId){
+      try{ roomKeyVariants(roomId).forEach(k => localStorage.removeItem(k)); }catch{}
+    }
+
     async function loadHostedSessions(){
       const me = auth.currentUser; if(!me){ return; }
       const wrap = document.getElementById('load-items'); if(!wrap) return;
+      const header = document.getElementById('load-header');
       wrap.innerHTML = '';
       try {
-        const qy = query(collection(db,'rooms'), where('hostUid','==', me.uid), limit(25));
+        const qy = query(collection(db,'rooms'), where('hostUid','==', me.uid), orderBy('createdAt','desc'), limit(SAVE_LIMIT));
         const ss = await getDocs(qy);
+        const used = ss.size;
+        header.textContent = `Your previously hosted sessions — ${used}/${SAVE_LIMIT} slots used:`;
         if (ss.empty){
           wrap.innerHTML = '<div class="muted">(No saves found)</div>';
           return;
         }
-        const rows = [];
-        ss.forEach(docSnap => { const r = docSnap.data(); r.id = docSnap.id; rows.push(r); });
-        rows.sort((a,b)=> (b?.createdAt?.seconds||0) - (a?.createdAt?.seconds||0));
-        rows.forEach(r => {
-          const row = document.createElement('div');
-          row.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid #2a3147;background:#0f1220;border-radius:10px;padding:10px';
-          const left = document.createElement('div');
-          const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : '[unknown time]';
-          left.innerHTML = `<div style="font-weight:700">Room ${r.id.slice(0,6)}…</div>
-                            <div class="muted">Status: ${r.status||'open'} · Visibility: ${r.visibility||'friends'} · ${when}</div>`;
-          const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
-
-          const loadBtn = document.createElement('button'); loadBtn.className='btn'; loadBtn.textContent='Load';
-          loadBtn.onclick = () => routeToPartySelect(r.id);
-
-          const delBtn = document.createElement('button'); delBtn.className='btn ghost icon-btn'; delBtn.title='Delete save';
-          delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
-          </svg>`;
-          delBtn.onclick = async () => {
-            if (!confirm('Delete this save? This cannot be undone.')) return;
-            try{ await deleteDoc(doc(db,'rooms', r.id)); row.remove(); }catch{ alert('Failed to delete save.'); }
-          };
-
-          right.appendChild(loadBtn);
-          right.appendChild(delBtn);
-          row.appendChild(left);
-          row.appendChild(right);
-          wrap.appendChild(row);
-        });
+        ss.forEach(docSnap => appendRoomRow(wrap, { id: docSnap.id, ...docSnap.data() }));
       } catch (e) {
-        wrap.innerHTML = '<div class="muted">Could not load your saves.</div>';
+        wrap.innerHTML = `<div class="muted">Could not load your saves. ${e.message||e.code||''}</div>`;
       }
     }
 
-    // ---------- Presence helpers ----------
-    async function upsertPresence(screen){
-      const me = auth.currentUser; if(!me) return;
-      try {
-        await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen, updatedAt: serverTimestamp() }), { merge:true });
-      } catch {}
-    }
+    function appendRoomRow(wrap, r){
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid #2a3147;background:#0f1220;border-radius:10px;padding:10px';
+      const left = document.createElement('div');
+      const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : '[unknown time]';
+      left.innerHTML = `<div style="font-weight:700">Room ${r.id.slice(0,6)}…</div>
+                        <div class="muted">Status: ${r.status||'open'} · Visibility: ${r.visibility||'friends'} · ${when}</div>`;
+      const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
 
-    // ---------- Banner ----------
-    function fallbackGradient(uid){
-      let h=0; for (let i=0;i<uid.length;i++) h=(h*31+uid.charCodeAt(i))>>>0;
-      const a = h%360, b=(h>>8)%360;
-      return `linear-gradient(135deg, hsl(${a} 45% 18%), hsl(${b} 45% 22%))`;
-    }
+      const loadBtn = document.createElement('button'); loadBtn.className='btn small'; loadBtn.textContent='Load';
+      loadBtn.onclick = () => routeToPartySelect(r.id);
 
-    async function renderMyBanner(){
-      const me = auth.currentUser; if(!me) return;
-      const title = document.getElementById('banner-title');
-      const bg = document.getElementById('banner-bg');
-      title.textContent = document.getElementById('auth-username').textContent || '@Player';
-      try {
-        const p = await getDoc(doc(db,'publicProfiles', me.uid));
-        const key = (p.exists() && p.data().portrait) ? p.data().portrait : null;
-        if (key) bg.style.backgroundImage = `url('${portraitUrl(key)}')`;
-        else bg.style.background = fallbackGradient(me.uid);
-      } catch { bg.style.background = fallbackGradient(me.uid); }
-    }
-
-    // ---------- Friends list (realtime presence + session gating) ----------
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('et-friend-add').addEventListener('click', onAdd);
-      document.getElementById('et-friend-input').addEventListener('keydown', e => { if(e.key==='Enter') onAdd(); });
-    });
-
-    function setStatus(msg){
-      const el = document.getElementById('et-friends-status');
-      el.textContent = msg || '';
-      el.className = 'muted';
-    }
-
-    async function onAdd(){
-      const me = auth.currentUser; if(!me){ setStatus('Sign in first.'); return; }
-      const v = (document.getElementById('et-friend-input').value || '').trim();
-      if(!v){ setStatus('Type a username.'); return; }
-      const uLower = v.toLowerCase();
-      try{
-        const claim = await getDoc(doc(db, 'usernames', uLower));
-        if(!claim.exists()){ setStatus('User not found.'); return; }
-        const friendUid = claim.data() && claim.data().uid;
-        if(!friendUid){ setStatus('User not found.'); return; }
-        if(friendUid === me.uid){ setStatus('That’s you 🙂'); return; }
-        const myRef = doc(db, 'users', me.uid, 'friends', friendUid);
-        const exists = await getDoc(myRef);
-        if(exists.exists()){ setStatus('Already in your friends.'); return; }
-        await setDoc(myRef, clean({ uid: friendUid, username: v, usernameLower: uLower, addedAt: serverTimestamp() }));
-        document.getElementById('et-friend-input').value='';
-        setStatus('Friend added ✔');
-      }catch(e){ setStatus('Could not add friend.'); }
-    }
-
-    async function fetchPortrait(uid){
-      try{
-        const p = await getDoc(doc(db,'publicProfiles', uid));
-        if (p.exists() && p.data().portrait) return p.data().portrait;
-      }catch{}
-      return null;
-    }
-
-    function renderFriendRow(container, friend, me){
-      const row = document.createElement('div'); row.className='friend-tile';
-      const bg = document.createElement('div'); bg.className='friend-bg';
-      const overlay = document.createElement('div'); overlay.className='friend-overlay';
-      row.appendChild(bg); row.appendChild(overlay);
-
-      const content = document.createElement('div'); content.className='friend-content';
-      const name = document.createElement('div'); name.className='friend-name'; name.textContent = friend.username || friend.usernameLower || friend.id;
-      const right = document.createElement('div'); right.className='friend-actions';
-
-      const presenceBtn = document.createElement('button'); presenceBtn.className='status-btn status-disabled'; presenceBtn.textContent='Checking…'; presenceBtn.disabled=true;
-      const rm = document.createElement('button'); rm.className='btn ghost icon-btn'; rm.title='Remove';
-      rm.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="9"></circle>
-        <line x1="6.5" y1="6.5" x2="17.5" y2="17.5"></line>
+      const delBtn = document.createElement('button'); delBtn.className='btn ghost icon-btn'; delBtn.title='Delete save';
+      delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
       </svg>`;
-      rm.onclick = async () => {
-        try{ await deleteDoc(doc(db, 'users', me.uid, 'friends', friend.id)); setStatus('Removed.'); }
-        catch{ setStatus('Could not remove.'); }
+      delBtn.onclick = async () => {
+        if (!confirm('Delete this save? This cannot be undone.')) return;
+        try{
+          await deleteDoc(doc(db,'rooms', r.id));
+          clearLocalForRoom(r.id);
+          row.remove();
+          // refresh header count
+          loadHostedSessions();
+        }catch(e){
+          alert(`Failed to delete save.\n${e.message||e.code||e}`);
+        }
       };
 
-      right.appendChild(presenceBtn);
-      right.appendChild(rm);
-      content.appendChild(name); content.appendChild(right);
-      row.appendChild(content);
-      container.appendChild(row);
-
-      // portrait
-      (async () => {
-        const key = await fetchPortrait(friend.id);
-        if (key) bg.style.backgroundImage = `url('${portraitUrl(key)}')`;
-        else bg.style.background = fallbackGradient(friend.id);
-      })();
-
-      // realtime presence + session gating
-      let currentPresence = { online:false, screen:null };
-
-      async function refreshFriendSession() {
-        const q1 = query(collection(db,'rooms'),
-                         where('participantUids','array-contains', friend.id),
-                         limit(5));
-        const ss = await getDocs(q1);
-
-        // clear old session buttons
-        [...right.querySelectorAll('.status-btn.status-join')].forEach(el => el.remove());
-
-        const rooms = [];
-        ss.forEach(d => { const r = d.data(); r.id = d.id; rooms.push(r); });
-        rooms.sort((a,b)=> (b?.updatedAt?.seconds||b?.createdAt?.seconds||0) - (a?.updatedAt?.seconds||a?.createdAt?.seconds||0)).reverse();
-        const latest = rooms[0] || null;
-
-        const joinable = rooms.find(r => {
-          if (r.visibility === 'private') return false;
-          if (r.partyLocked) {
-            const party = Array.isArray(r.partyUids) ? r.partyUids : [];
-            if (!party.includes(me.uid)) return false;
-          }
-          // Only show "Party Select" if they're actually on that screen now
-          const norm = (s)=> (s||'').toLowerCase().replace(/\s+/g,'');
-          if (isParty(r) && norm(currentPresence.screen) !== 'partyselect') return false;
-          return true;
-        }) || null;
-
-        function addSessionBtn(label, enabled, onClick){
-          const sessionBtn = document.createElement('button');
-          sessionBtn.className = enabled ? 'status-btn status-join' : 'status-btn status-disabled';
-          sessionBtn.textContent = label;
-          sessionBtn.disabled = !enabled;
-          if (enabled && typeof onClick === 'function') sessionBtn.onclick = onClick;
-          right.insertBefore(sessionBtn, rm);
-        }
-
-        if (joinable) {
-          if (isRunning(joinable)) {
-            if (includesMe(me.uid, joinable)) addSessionBtn('Rejoin Game', true, () => routeToPartySelect(joinable.id, joinable.mode || joinable.visibility));
-            else addSessionBtn('In Game', false);
-          } else if (isParty(joinable)) {
-            const canJoin = partyCount(joinable) < 4 && !joinable.partyLocked;
-            addSessionBtn(canJoin ? 'Join Game' : 'In Party Select', canJoin, () => routeToPartySelect(joinable.id, joinable.mode || joinable.visibility));
-          }
-        } else if (latest && isRunning(latest)) {
-          if (includesMe(me.uid, latest)) addSessionBtn('Rejoin Game', true, () => routeToPartySelect(latest.id, latest.mode || latest.visibility));
-          else addSessionBtn('In Game', false);
-        }
-      }
-
-      const presRef = doc(db,'presence', friend.id);
-      const unsubPresence = onSnapshot(presRef, async (snap) => {
-        const p = snap.exists() ? snap.data() : {};
-        const updatedAt = p?.updatedAt?.toDate ? p.updatedAt.toDate() : null;
-        const fresh = updatedAt && (Date.now() - updatedAt.getTime() < 60000);
-        currentPresence = { online: !!p.online && fresh, screen: p.screen || null };
-        presenceBtn.textContent = currentPresence.online ? 'Online' : 'Offline';
-        presenceBtn.className   = 'status-btn status-disabled';
-        try { await refreshFriendSession(); } catch {}
-      });
-
-      row._unsubPresence = unsubPresence;
-      refreshFriendSession().catch(()=>{});
+      right.appendChild(loadBtn);
+      right.appendChild(delBtn);
+      row.appendChild(left);
+      row.appendChild(right);
+      wrap.appendChild(row);
     }
 
-    let unsubFriends=null;
-    function refreshFriends(){
-      if (unsubFriends) try{unsubFriends();}catch{}
-      const me = auth.currentUser; if(!me) return;
-      const list = document.getElementById('friends-col');
-      const q = query(collection(db,'users', me.uid, 'friends'), orderBy('usernameLower'));
-      unsubFriends = onSnapshot(q, (snap)=>{
-        // cleanup old per-row listeners
-        list.querySelectorAll('.friend-tile').forEach(el => { try{ el._unsubPresence && el._unsubPresence(); }catch{} });
-        list.innerHTML = '';
-        const items = snap.docs.map(d=>({id:d.id, ...d.data()}));
-        if(!items.length) list.innerHTML = '<div class="muted">(no friends yet)</div>';
-        items.forEach(it => renderFriendRow(list, it, me));
-      }, ()=> setStatus('Could not load friends.'));
+    async function deleteAllMyRooms(){
+      const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
+      if (!confirm('Delete ALL saves shown (up to 5 most recent)?')) return;
+      try {
+        const qy = query(collection(db,'rooms'), where('hostUid','==', me.uid), orderBy('createdAt','desc'), limit(SAVE_LIMIT));
+        const ss = await getDocs(qy);
+        const ids = ss.docs.map(d=>d.id);
+        await Promise.all(ids.map(id => deleteDoc(doc(db,'rooms', id)).catch(e => e)));
+        ids.forEach(id => clearLocalForRoom(id));
+        await loadHostedSessions();
+        alert('Deleted available saves. If any reappear, your Firestore rules may be preventing deletes.');
+      } catch (e) {
+        alert(`Bulk delete failed.\n${e.message||e.code||e}`);
+      }
     }
   </script>
 </head>
@@ -443,41 +255,17 @@
           <div id="tile-multi" class="action-tile success"><span class="label">Create Multiplayer Game</span></div>
         </div>
         <div class="card" style="background:#0f1220;border:1px solid #2a3147;">
-          <button id="btn-load" class="btn ghost" style="width:100%">Load Game</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <button id="btn-load" class="btn ghost" style="flex:1">Load Game</button>
+            <button id="btn-delete-all" class="btn ghost small" title="Delete all saves shown">Delete All</button>
+          </div>
           <div id="load-list" class="grid" style="display:none;gap:8px;margin-top:10px">
-            <div class="muted">Your previously hosted sessions:</div>
+            <div id="load-header" class="muted">Your previously hosted sessions:</div>
             <div id="load-items" class="grid" style="gap:8px"></div>
           </div>
         </div>
       </section>
-
-      <!-- RIGHT rail -->
-      <section class="right-rail">
-        <div id="banner-card" class="banner-card">
-          <div id="banner-bg" class="banner-bg"></div>
-          <div class="banner-body">
-            <div>
-              <div id="banner-title" class="banner-title">@Player</div>
-              <div class="muted">Your public profile banner</div>
-            </div>
-            <button id="edit-profile-btn" class="btn">Edit Profile</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2 style="margin:0 0 10px 0;font-size:18px">Friends</h2>
-          <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
-            <input id="et-friend-input" type="text" placeholder="Enter username" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid #2a3147;background:#0f1320;color:#fff">
-            <button id="et-friend-add" class="btn">Add</button>
-          </div>
-          <div id="et-friends-status" class="muted" style="margin:2px 0 8px 0"></div>
-          <div id="friends-col" class="friends-col"></div>
-        </div>
-      </section>
     </div>
   </div>
-
-  <script src="source/state/router.js"></script>
-  <script src="source/state/session.js"></script>
 </body>
 </html>
