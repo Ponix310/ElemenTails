@@ -101,14 +101,8 @@
           const norm = (m === 'multiplayer' || m === 'multi' || m === 'friends' || m === 'public') ? 'multi' : 'single';
           localStorage.setItem('ET_mode', norm);
         }
-      } catch {}
-      const url = `partyselect.html?roomId=${roomId}`;
-      if (window.Router && typeof Router.to === 'function') { Router.to(url); return; }
-      window.location.href = url;
-    }
-      } catch {}
-      const url = `partyselect.html?roomId=${roomId}
-`;
+      } catch (e) {}
+      const url = `partyselect.html?roomId=${encodeURIComponent(roomId)}`;
       if (window.Router && typeof Router.to === 'function') { Router.to(url); return; }
       window.location.href = url;
     }
