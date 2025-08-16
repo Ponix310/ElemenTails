@@ -69,12 +69,22 @@
 
     let me = null;
     let unsubRoom = null;
+    let presenceTimer = null;
+    const PRESENCE_INTERVAL = 30000;
+    let leavingPage = false;
+
+    async function updatePresence(){
+      const me = auth.currentUser; if(!me) return;
+      try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'PartySelect', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
+    }
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) { location.href = 'mainmenu.html'; return; }
       me = user;
 
-      try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'PartySelect', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
+      await updatePresence();
+      if (presenceTimer) clearInterval(presenceTimer);
+      presenceTimer = setInterval(updatePresence, PRESENCE_INTERVAL);
 
       mount();
     });
@@ -265,6 +275,7 @@
     }
 
     async function leaveAndBack(){
+      leavingPage = true;
       try {
         const ref = doc(db,'rooms', roomId);
         const snap = await getDoc(ref);
@@ -277,10 +288,13 @@
         }
       } catch {}
       try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'MainMenu', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
+      try { clearInterval(presenceTimer); } catch {}
+      try { unsubRoom && unsubRoom(); } catch {}
       location.href = 'mainmenu.html';
     }
 
     window.addEventListener('beforeunload', async () => {
+      if (leavingPage) return;
       try {
         const ref = doc(db,'rooms', roomId);
         const snap = await getDoc(ref);
@@ -290,8 +304,9 @@
           await updateDoc(ref, clean({ partyUids: arrayRemove(me.uid), readyUids: arrayRemove(me.uid), updatedAt: serverTimestamp() }));
         }
       } catch {}
-      try { await setDoc(doc(db,'presence', me.uid), clean({ online:true, screen:'MainMenu', updatedAt: serverTimestamp() }), { merge:true }); } catch {}
+      try { await setDoc(doc(db,'presence', me.uid), clean({ online:false, lastOnline: serverTimestamp() }), { merge:true }); } catch {}
       try { unsubRoom && unsubRoom(); } catch {}
+      try { clearInterval(presenceTimer); } catch {}
     });
   </script>
 </head>
