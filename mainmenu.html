@@ -78,7 +78,7 @@
     <section class="left">
       <!-- Profile header -->
       <div class="profileHeader card">
-        <div id="myProfileBg" class="bg" style="background-image:url('assets/avatars/monk.jpg');"></div>
+        <div id="myProfileBg" class="bg" style="background-image:url('images/class-portraits/monk.png');"></div>
         <div id="myHandle" class="name">@user</div>
         <button id="btnEditProfile" class="btn small edit">Edit Profile</button>
       </div>
@@ -118,7 +118,7 @@
       <div class="muted" style="margin-top:10px">Pick an avatar:</div>
       <div id="avatarGrid" class="avatarGrid"></div>
       <div class="field" style="margin-top:10px">
-        <input id="avatarUrl" class="input" placeholder="Or paste image URL"/>
+        <input id="avatarUrl" class="input" placeholder="Or paste image URL (https://…)"/>
       </div>
     </div>
   </div>
@@ -145,17 +145,22 @@
     const db = getFirestore(app);
 
     const SLOT_IDS = ["slot1","slot2","slot3","slot4","slot5"];
+
+    // Use portraits from images/class-portraits (PNG)
     const DEFAULT_AVATARS = [
-      "assets/avatars/monk.jpg",
-      "assets/avatars/rogue.jpg",
-      "assets/avatars/cleric.jpg",
-      "assets/avatars/paladin.jpg",
-      "assets/avatars/summoner.jpg",
-      "assets/avatars/warrior.jpg",
-      "assets/avatars/druid.jpg",
-      "assets/avatars/assassin.jpg",
-      "assets/avatars/battlemage.jpg",
-      "assets/avatars/ranger.jpg",
+      "images/class-portraits/monk.png",
+      "images/class-portraits/rogue.png",
+      "images/class-portraits/cleric.png",
+      "images/class-portraits/paladin.png",
+      "images/class-portraits/summoner.png",
+      "images/class-portraits/warrior.png",
+      "images/class-portraits/druid.png",
+      "images/class-portraits/assassin.png",
+      "images/class-portraits/battlemage.png",
+      "images/class-portraits/ranger.png",
+      "images/class-portraits/ninja.png",
+      "images/class-portraits/samurai.png",
+      "images/class-portraits/wizard.png",
     ];
 
     // ---------- Helpers ----------
@@ -337,7 +342,7 @@
       }
     }
 
-    // ---------- Slots ----------
+    // ---------- Save Slots ----------
     async function refreshSlots(){
       const me = auth.currentUser; if(!me) return;
       const wrap = document.getElementById('slots-wrap'); wrap.innerHTML='';
