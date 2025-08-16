@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ElemenTails — Main Menu</title>
+  <meta name="screen" content="Main Menu">
 
   <style>
     :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --radius:14px; }
@@ -352,7 +353,8 @@
             if (!party.includes(me.uid)) return false;
           }
           // Only show "Party Select" if they're actually on that screen now
-          if (isParty(r) && currentPresence.screen !== 'PartySelect') return false;
+          const norm = (s)=> (s||'').toLowerCase().replace(/\s+/g,'');
+          if (isParty(r) && norm(currentPresence.screen) !== 'partyselect') return false;
           return true;
         }) || null;
 
@@ -415,7 +417,7 @@
   <div class="wrap">
     <header>
       <div>
-        <h1>Elemen Tails</h1>
+        <h1>ElemenTails</h1>
         <div class="muted">Create a session and invite friends.</div>
       </div>
       <div class="auth">
