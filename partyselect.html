@@ -93,7 +93,7 @@
       z-index: 50;
     }
     .modal{
-      width: min(720px, 92vw);
+      width: min(820px, 94vw);
       background: #121821;
       border: 1px solid rgba(255,255,255,.1);
       border-radius: 16px;
@@ -101,16 +101,14 @@
       padding: 16px;
     }
     .modal h3{ margin: 0 0 10px; font-size: 18px; }
-    .choice-grid{
-      display:grid; grid-template-columns: repeat(4,1fr); gap: 12px;
-    }
+    .choice-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
     .choice{
       background: linear-gradient(160deg, var(--panel), var(--panel-2));
       border: var(--box-border);
       border-radius: 12px; padding: 10px; text-align:center; cursor: pointer;
-      position: relative; overflow: hidden; min-height: 110px;
+      position: relative; overflow: hidden; min-height: 160px;
     }
-    .choice img{ width: 100%; height: 70px; object-fit: contain; display:block; filter: drop-shadow(0 4px 14px rgba(0,0,0,.35)); }
+    .choice img{ width: 100%; height: 110px; object-fit: contain; display:block; filter: drop-shadow(0 4px 14px rgba(0,0,0,.35)); }
     .choice .name{ display:block; margin-top: 6px; font-weight: 700; font-size: 13px; }
     .choice.taken{ opacity:.45; filter: grayscale(1); cursor: not-allowed; }
     .modal .row{ display:flex; justify-content:flex-end; gap:10px; margin-top: 12px; }
@@ -124,7 +122,7 @@
   <header>
     <div class="title">
       <h1>Party Select</h1>
-      <span class="sub">Uses images from <code>/images/class-portraits</code> and <code>/images/weapons</code></span>
+      <span class="sub">Rules-backed: 4 weapons drawn; classes limited to those weapons; each hero unique.</span>
     </div>
     <div class="actions">
       <a class="btn" href="mainmenu.html">Back</a>
@@ -141,14 +139,14 @@
     <!-- Column titles -->
     <section class="grid" id="names-row" aria-label="player-names"></section>
 
-    <!-- Row 1: Large hero portraits -->
-    <section class="grid" id="row-hero" aria-label="hero-portraits"></section>
+    <!-- Row 1: Large class portraits (updates when a class is chosen) -->
+    <section class="grid" id="row-hero" aria-label="class-portraits"></section>
 
     <!-- Row 2: Weapon / class icons -->
     <section class="grid" id="row-icon" aria-label="weapon-icons"></section>
 
     <!-- Optional note -->
-    <div class="hint">Click a player’s icon tile to choose from the 4 drawn weapons.</div>
+    <div class="hint">Click a player’s icon to choose a class. Choices are restricted to the 4 drawn weapons and each hero may only appear once.</div>
 
     <!-- Row 3 & 4: Placeholder "option" rows (faded) -->
     <section class="grid" id="row-opt-a" aria-label="option-row-a"></section>
@@ -167,18 +165,15 @@
   </div>
 
   <script>
-  // ---- Utility helpers ------------------------------------------------------
+  // ---- Utility --------------------------------------------------------------
   const $ = (sel, el=document) => el.querySelector(sel);
-  const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
   const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
   const img = (src, alt='') => { const i = new Image(); i.src = src; i.alt = alt; return i; };
   const shuffle = (arr) => arr.map(v => [Math.random(), v]).sort((a,b)=>a[0]-b[0]).map(([,v])=>v);
 
-  // ---- Resolve mode: Single vs Multiplayer (no new rules) -------------------
   function resolveMode(){
     const url = new URL(window.location.href);
     const qp = (url.searchParams.get('mode') || '').toLowerCase();
-    // Try multiple keys so it works with your main menu without renaming
     const lsGameMode = (localStorage.getItem('gameMode') || '').toLowerCase();
     const lsMode = (localStorage.getItem('mode') || '').toLowerCase();
     const isMultiFlag = (localStorage.getItem('isMultiplayer') || localStorage.getItem('multiplayer') || '')
@@ -190,206 +185,189 @@
     if (lsMode === 'single') return 'single';
     if (lsMode === 'multi' || lsMode === 'multiplayer') return 'multi';
     if (['1','true','yes'].includes(isMultiFlag)) return 'multi';
-    return 'single'; // safe default
+    return 'single';
   }
 
-  // ---- Data (filenames can be adjusted to match repo) -----------------------
-  const HEROES = [
-    { name: "Ponix",  hero: "images/class-portraits/monk.png" },
-    { name: "Dikken", hero: "images/class-portraits/assassin.png" },
-    { name: "Ponix",  hero: "images/class-portraits/wizard.png" },
-    { name: "Chewni", hero: "images/class-portraits/warrior.png" },
-  ];
-
-  // Catalog for the 4 weapon/class icons shown in your mock
+  // ---- Assets ---------------------------------------------------------------
   const WEAPONS = [
-    { id: "bow",           name: "Bow",            icon: "images/weapons/bow.png" },
-    { id: "daggers",       name: "Daggers",        icon: "images/weapons/daggers.png" },
-    { id: "greataxe",      name: "Greataxe",       icon: "images/weapons/greataxe.png" },
-    { id: "katana",        name: "Katana",         icon: "images/weapons/katana.png" },
-    { id: "knuckles",      name: "Knuckles",       icon: "images/weapons/knuckles.png" },
-    { id: "spear",         name: "Spear",          icon: "images/weapons/spear.png" },
-    { id: "staff",         name: "Staff",          icon: "images/weapons/staff.png" },
-    { id: "sword-shield",  name: "Sword & Shield", icon: "images/weapons/sword-shield.png" },
-    { id: "tome",          name: "Tome",           icon: "images/weapons/tome.png" },
+    { id: 'bow',          name: 'Bow',           icon: 'images/weapons/bow.png' },
+    { id: 'daggers',      name: 'Daggers',       icon: 'images/weapons/daggers.png' },
+    { id: 'greataxe',     name: 'Greataxe',      icon: 'images/weapons/greataxe.png' },
+    { id: 'katana',       name: 'Katana',        icon: 'images/weapons/katana.png' },
+    { id: 'knuckles',     name: 'Knuckles',      icon: 'images/weapons/knuckles.png' },
+    { id: 'spear',        name: 'Spear',         icon: 'images/weapons/spear.png' },
+    { id: 'staff',        name: 'Staff',         icon: 'images/weapons/staff.png' },
+    { id: 'sword-shield', name: 'Sword & Shield',icon: 'images/weapons/sword-shield.png' },
+    { id: 'tome',         name: 'Tome',          icon: 'images/weapons/tome.png' },
+  ];
+  const HEROES = ['fox','frog','rabbit','raven','wolf','bear']; // order not shown to users
+
+  // ---- Classes (exactly as listed in Master Rules) --------------------------
+  // Portrait files are expected at images/class-portraits/<class>.png
+  const CLASSES = [
+    { id:'monk',       name:'Monk',       hero:'fox',    weapon:'knuckles',     portrait:'images/class-portraits/monk.png' },
+    { id:'summoner',   name:'Summoner',   hero:'fox',    weapon:'tome',         portrait:'images/class-portraits/summoner.png' },
+    { id:'assassin',   name:'Assassin',   hero:'fox',    weapon:'daggers',      portrait:'images/class-portraits/assassin.png' },
+
+    { id:'wizard',     name:'Wizard',     hero:'frog',   weapon:'staff',        portrait:'images/class-portraits/wizard.png' },
+    { id:'berserker',  name:'Berserker',  hero:'frog',   weapon:'knuckles',     portrait:'images/class-portraits/berserker.png' },
+    { id:'myrmidon',   name:'Myrmidon',   hero:'frog',   weapon:'spear',        portrait:'images/class-portraits/myrmidon.png' },
+
+    { id:'cleric',     name:'Cleric',     hero:'rabbit', weapon:'tome',         portrait:'images/class-portraits/cleric.png' },
+    { id:'druid',      name:'Druid',      hero:'rabbit', weapon:'staff',        portrait:'images/class-portraits/druid.png' },
+    { id:'bard',       name:'Bard',       hero:'rabbit', weapon:'bow',          portrait:'images/class-portraits/bard.png' },
+
+    { id:'archer',     name:'Archer',     hero:'raven',  weapon:'bow',          portrait:'images/class-portraits/archer.png' },
+    { id:'battlemage', name:'Battlemage', hero:'raven',  weapon:'katana',       portrait:'images/class-portraits/battlemage.png' },
+    { id:'reaper',     name:'Reaper',     hero:'raven',  weapon:'greataxe',     portrait:'images/class-portraits/reaper.png' },
+
+    { id:'ninja',      name:'Ninja',      hero:'wolf',   weapon:'daggers',      portrait:'images/class-portraits/ninja.png' },
+    { id:'samurai',    name:'Samurai',    hero:'wolf',   weapon:'katana',       portrait:'images/class-portraits/samurai.png' },
+    { id:'paladin',    name:'Paladin',    hero:'wolf',   weapon:'sword-shield', portrait:'images/class-portraits/paladin.png' },
+
+    { id:'lancer',     name:'Lancer',     hero:'bear',   weapon:'spear',        portrait:'images/class-portraits/lancer.png' },
+    { id:'barbearian', name:'Barbearian', hero:'bear',   weapon:'greataxe',     portrait:'images/class-portraits/barbearian.png' },
+    { id:'warrior',    name:'Warrior',    hero:'bear',   weapon:'sword-shield', portrait:'images/class-portraits/warrior.png' },
   ];
 
-  // ---- State ----------------------------------------------------------------
+  // ---- Render & State -------------------------------------------------------
   const state = {
-    mode: resolveMode(),           // 'single' | 'multi'
-    drawn: [],                     // 4 randomly drawn weapons (ids)
-    takenByPlayer: [null, null, null, null],  // weapon id per player or null
+    mode: resolveMode(),
+    drawn: [],                  // 4 weapon ids
+    players: [null,null,null,null], // class ids (or null)
   };
+  const LS_KEY = 'ET_partyselect_rules_v1';
 
-  function drawWeapons(){
-    // Draw 4 at random without replacement (matches your "4 weapons drawn")
-    state.drawn = shuffle(WEAPONS).slice(0, 4).map(w => w.id);
-  }
-
-  function weaponById(id){ return WEAPONS.find(w => w.id === id); }
-  function isWeaponAvailable(id){
-    const isInDrawn = state.drawn.includes(id);
-    const isTaken = state.takenByPlayer.includes(id);
-    return isInDrawn && !isTaken;
-  }
-
-  // ---- Render grids ---------------------------------------------------------
-  function renderGrids(){
-    const rows = {
-      names: $('#names-row'),
-      hero:  $('#row-hero'),
-      icon:  $('#row-icon'),
-      optA:  $('#row-opt-a'),
-      optB:  $('#row-opt-b'),
-    };
-    for (const k in rows) rows[k].innerHTML = '';
-
-    const single = state.mode === 'single';
-    // Column setup
-    HEROES.forEach((h, idx) => {
-      // Name row
-      const name = el('div', 'col-name');
-      name.textContent = h.name || `Player ${idx+1}`;
-      rows.names.appendChild(name);
-
-      // Hero image
-      const hero = el('div', 'frame large');
-      hero.appendChild(img(h.hero, `${h.name} — hero`));
-      // Lock other columns if in Single Player
-      if (single && idx > 0) {
-        hero.classList.add('inactive');
-        hero.appendChild(el('div','overlay'));
-        const lock = el('div','lockTag'); lock.textContent = 'Locked (Single Player)';
-        hero.appendChild(lock);
-      }
-      rows.hero.appendChild(hero);
-
-      // Icon tile (click to choose)
-      const icon = el('div', 'frame icon');
-      const chosenId = state.takenByPlayer[idx];
-      if (chosenId){
-        const w = weaponById(chosenId);
-        icon.appendChild(img(w.icon, `${h.name} — ${w.name}`));
-      } else {
-        // Placeholder miniature "?" with subtle text
-        const p = el('div');
-        p.style.opacity = .65;
-        p.style.fontSize = '13px';
-        p.textContent = `${h.name} — icon`;
-        icon.appendChild(p);
-      }
-      if (single && idx > 0) {
-        icon.classList.add('inactive');
-        icon.appendChild(el('div','overlay'));
-        const lock = el('div','lockTag'); lock.textContent = 'Locked';
-        icon.appendChild(lock);
-      } else {
-        icon.addEventListener('click', () => openChooser(idx));
-        icon.title = 'Click to choose class';
-      }
-      rows.icon.appendChild(icon);
-
-      // Option rows (faded like the mock)
-      for (const r of ['optA','optB']){
-        const box = el('div', 'frame option inactive');
-        box.appendChild(el('div','overlay'));
-        const t = el('div'); t.style.opacity = .45; t.style.fontSize = '13px';
-        t.textContent = `${h.name} — option ${r === 'optA' ? 'A' : 'B'}`;
-        box.appendChild(t);
-        rows[r].appendChild(box);
-      }
-    });
-  }
-
-  // ---- Mode notice ----------------------------------------------------------
-  function renderModeBanner(){
-    const pill = $('#modePill');
-    const text = $('#modeText');
-    if (state.mode === 'single'){
-      pill.textContent = 'Single Player';
-      pill.classList.add('no');
-      text.textContent = 'Lobby locked — friends cannot join this run.';
-    } else {
-      pill.textContent = 'Multiplayer';
-      pill.classList.add('ok');
-      text.textContent = 'Friends may join until all 4 slots are filled.';
-    }
-  }
-
-  // ---- Chooser modal --------------------------------------------------------
-  let chooserPlayerIndex = null;
-
-  function openChooser(playerIdx){
-    chooserPlayerIndex = playerIdx;
-    const bg = $('#chooser');
-    const grid = $('#choiceGrid');
-    grid.innerHTML = '';
-    // Show the 4 drawn weapons, greying out those already taken
-    state.drawn.forEach(id => {
-      const w = weaponById(id);
-      const cell = el('div', 'choice' + (isWeaponAvailable(id) ? '' : ' taken'));
-      cell.appendChild(img(w.icon, w.name));
-      const nm = el('span', 'name'); nm.textContent = w.name; cell.appendChild(nm);
-      if (isWeaponAvailable(id)){
-        cell.addEventListener('click', () => chooseWeaponForPlayer(playerIdx, id));
-      }
-      grid.appendChild(cell);
-    });
-    $('#chooserTitle').textContent = `Choose a class for Player ${playerIdx+1}`;
-    bg.style.display = 'flex';
-    bg.setAttribute('aria-hidden','false');
-  }
-  function closeChooser(){
-    const bg = $('#chooser');
-    bg.style.display = 'none';
-    bg.setAttribute('aria-hidden','true');
-    chooserPlayerIndex = null;
-  }
-  $('#closeChooser').addEventListener('click', closeChooser);
-  $('#chooser').addEventListener('click', (e)=>{ if(e.target.id==='chooser') closeChooser(); });
-
-  function chooseWeaponForPlayer(playerIdx, weaponId){
-    // If this player already had a weapon, release it
-    const prev = state.takenByPlayer[playerIdx];
-    if (prev && prev !== weaponId){
-      // releasing simply means it'll be available again since we only block by taken list
-    }
-    // Prevent duplicates by removing the weapon from others
-    state.takenByPlayer = state.takenByPlayer.map((w,i)=> i===playerIdx ? weaponId : (w===weaponId ? null : w));
-    closeChooser();
-    persist();
-    renderGrids();
-  }
-
-  // ---- Persistence (localStorage) -------------------------------------------
-  const LS_KEY = 'ET_partyselect_v1';
-  function persist(){
-    const data = { mode: state.mode, drawn: state.drawn, takenByPlayer: state.takenByPlayer };
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-  }
+  function persist(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
   function restore(){
     try{
       const raw = localStorage.getItem(LS_KEY);
       if(!raw) return false;
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.drawn) && Array.isArray(data.takenByPlayer) && (data.mode==='single' || data.mode==='multi')){
-        state.mode = data.mode;
-        state.drawn = data.drawn;
-        state.takenByPlayer = data.takenByPlayer;
-        return true;
-      }
-    }catch(_){}
-    return false;
+      const d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.drawn) || !Array.isArray(d.players)) return false;
+      state.mode = d.mode || state.mode;
+      state.drawn = [...new Set(d.drawn)].slice(0,4);
+      state.players = [d.players[0]||null, d.players[1]||null, d.players[2]||null, d.players[3]||null];
+      return true;
+    }catch(_){ return false; }
   }
+  function drawWeapons(){
+    const order = shuffle([...WEAPONS]);
+    state.drawn = order.slice(0,4).map(w=>w.id); // unique 4
+  }
+  function heroTaken(hero){
+    return state.players.some(cid => cid && CLASSES.find(c=>c.id===cid)?.hero === hero);
+  }
+  function weaponById(id){ return WEAPONS.find(w => w.id === id); }
+  function classById(id){ return CLASSES.find(c => c.id === id); }
+
+  // Choices allowed for a given player:
+  //  - class.weapon in drawn set
+  //  - class.hero not already used by another player (Master Rules: each Hero only once)
+  function allowedClasses(){
+    return CLASSES.filter(c => state.drawn.includes(c.weapon) && !heroTaken(c.hero));
+  }
+
+  function renderModeBanner(){
+    const pill = document.getElementById('modePill');
+    const text = document.getElementById('modeText');
+    if (state.mode === 'single'){
+      pill.textContent = 'Single Player'; pill.className = 'pill no';
+      text.textContent = 'Lobby locked — friends cannot join this run.';
+    } else {
+      pill.textContent = 'Multiplayer'; pill.className = 'pill ok';
+      text.textContent = 'Friends may join until all 4 slots are filled.';
+    }
+  }
+
+  function render(){
+    renderModeBanner();
+    const rows = {
+      names: document.getElementById('names-row'),
+      hero:  document.getElementById('row-hero'),
+      icon:  document.getElementById('row-icon'),
+      optA:  document.getElementById('row-opt-a'),
+      optB:  document.getElementById('row-opt-b'),
+    };
+    for (const k in rows) rows[k].innerHTML = '';
+
+    const names = ['Ponix','Dikken','Ponix','Chewni']; // labels only
+    const single = state.mode === 'single';
+
+    for (let i=0;i<4;i++){
+      // name
+      const nm = el('div','col-name'); nm.textContent = names[i] || `Player ${i+1}`; rows.names.appendChild(nm);
+
+      // hero/class portrait
+      const box = el('div','frame large'); 
+      const cid = state.players[i];
+      if (cid){
+        const c = classById(cid);
+        box.appendChild(img(c.portrait, c.name));
+        const tag = el('div','label-top'); tag.textContent = c.name; box.appendChild(tag);
+      }else{
+        const ph = el('div'); ph.style.opacity=.5; ph.style.fontSize='14px'; ph.textContent='— choose a class —'; box.appendChild(ph);
+      }
+      if (single && i>0){ box.classList.add('inactive'); box.appendChild(el('div','overlay')); const lock=el('div','lockTag'); lock.textContent='Locked (Single Player)'; box.appendChild(lock); }
+      rows.hero.appendChild(box);
+
+      // icon (weapon or prompt)
+      const ic = el('div','frame icon');
+      const ci = cid ? weaponById(classById(cid).weapon) : null;
+      if (ci){ ic.appendChild(img(ci.icon, ci.name)); }
+      else { const t = el('div'); t.style.opacity=.65; t.style.fontSize='13px'; t.textContent='Click to choose'; ic.appendChild(t); }
+      if (single && i>0){ ic.classList.add('inactive'); ic.appendChild(el('div','overlay')); ic.appendChild(Object.assign(el('div','lockTag'),{textContent:'Locked'})); }
+      else { ic.addEventListener('click', ()=> openChooser(i)); ic.title='Choose class'; }
+      rows.icon.appendChild(ic);
+
+      // faded options
+      for (const r of ['optA','optB']){
+        const b = el('div','frame option inactive'); b.appendChild(el('div','overlay'));
+        rows[r].appendChild(b);
+      }
+    }
+  }
+
+  // ---- Chooser modal --------------------------------------------------------
+  let choosingIndex = null;
+  function openChooser(idx){
+    choosingIndex = idx;
+    const options = allowedClasses();
+    const bg = document.getElementById('chooser');
+    const grid = document.getElementById('choiceGrid');
+    grid.innerHTML='';
+
+    // Indicate drawn weapons across the top (small)
+    const title = document.getElementById('chooserTitle');
+    title.textContent = `Choose a class (Weapons drawn: ${state.drawn.map(w=>weaponById(w).name).join(', ')})`;
+
+    options.forEach(c => {
+      const cell = el('div','choice');
+      cell.appendChild(img(c.portrait, c.name));
+      const nm = el('span','name'); nm.textContent = `${c.name} — ${weaponById(c.weapon).name}`; cell.appendChild(nm);
+      cell.addEventListener('click', () => { state.players[choosingIndex] = c.id; persist(); closeChooser(); render(); });
+      grid.appendChild(cell);
+    });
+
+    // Also render non-allowed classes (greyed) for clarity
+    const disallowed = CLASSES.filter(c => !options.includes(c));
+    disallowed.forEach(c => {
+      const cell = el('div','choice taken');
+      cell.appendChild(img(c.portrait, c.name));
+      const nm = el('span','name'); nm.textContent = `${c.name}`; cell.appendChild(nm);
+      grid.appendChild(cell);
+    });
+
+    bg.style.display='flex'; bg.setAttribute('aria-hidden','false');
+  }
+  function closeChooser(){ const bg=document.getElementById('chooser'); bg.style.display='none'; bg.setAttribute('aria-hidden','true'); choosingIndex=null; }
+  document.getElementById('closeChooser').addEventListener('click', closeChooser);
+  document.getElementById('chooser').addEventListener('click', e=>{ if(e.target.id==='chooser') closeChooser(); });
 
   // ---- Init -----------------------------------------------------------------
   (function init(){
-    if (!restore()){
-      drawWeapons();
-      persist();
-    }
-    renderModeBanner();
-    renderGrids();
+    if (!restore()){ drawWeapons(); persist(); }
+    render();
   })();
   </script>
 </body>
