@@ -10,7 +10,7 @@
       --chip:#0f172a; --chipText:#cbd5e1;
     }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .wrap{max-width:1200px;margin:28px auto;padding:0 16px;display:grid;grid-template-columns:1fr 360px;gap:16px}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 16px;display:grid;grid-template-columns:1fr 380px;gap:16px}
     @media (max-width:1200px){ .wrap{grid-template-columns:1fr} .right{order:-1} }
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;grid-column:1/-1}
     h1{margin:0;font-size:28px}
@@ -28,24 +28,18 @@
     .muted{color:#9aa4b2;font-size:12px}
 
     .profileHeader{position:relative;border-radius:16px;overflow:hidden;background:#0f1220;border:1px solid #2a3147}
-    .profileHeader .bg{width:100%;height:240px;background-size:cover;background-position:center}
-    .profileHeader .name{position:absolute;left:14px;bottom:12px;font-weight:900;font-size:18px;
-      padding:6px 10px;border-radius:999px;background:rgba(5,10,20,.7);backdrop-filter:blur(2px);}
+    .profileHeader .bg{width:100%;aspect-ratio:3/2;height:auto;background-size:cover;background-position:center}
+    .profileHeader .name{position:absolute;left:14px;bottom:12px;font-weight:900;font-size:18px;padding:6px 10px;border-radius:999px;background:rgba(5,10,20,.7);backdrop-filter:blur(2px);}
     .profileHeader .edit{position:absolute;right:12px;bottom:12px}
 
     .friendTile{position:relative;border-radius:14px;overflow:hidden;border:1px solid #2a3147;background:#0f1220}
-    .friendTile .bg{width:100%;height:220px;background-size:cover;background-position:center;opacity:0.96}
+    .friendTile .bg{width:100%;aspect-ratio:3/2;height:auto;background-size:cover;background-position:center;opacity:0.96}
     .friendTile .label{position:absolute;left:14px;bottom:12px;font-weight:800;background:rgba(8,12,20,.75);padding:6px 10px;border-radius:999px}
     .chip{position:absolute;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:8px;background:var(--chip);color:var(--chipText);padding:6px 10px;border-radius:999px;border:1px solid #273148}
     .dot{width:8px;height:8px;border-radius:999px;background:#64748b}
     .dot.online{background:#22c55e}
 
     .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
-    .slots{display:grid;grid-template-columns:1fr;gap:10px}
-    .slot{display:flex;align-items:center;justify-content:space-between;border:1px solid #2a3147;background:#0f1220;border-radius:10px;padding:12px}
-    .slot .left{display:flex;flex-direction:column}
-    .slot .title{font-weight:800}
-
     .field{display:flex;gap:8px}
     .input{flex:1;background:#0f1220;border:1px solid #2a3147;border-radius:12px;padding:10px 12px;color:#e2e8f0;outline:none}
     .input:focus{border-color:#35508f}
@@ -56,6 +50,15 @@
     .avatarGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px}
     .avatar{aspect-ratio:16/10;border-radius:12px;background:#121826;border:1px solid #2a3147;background-size:cover;background-position:center;cursor:pointer}
     .avatar.selected{outline:2px solid var(--accent)}
+
+    /* Saved runs list */
+    .runs{display:grid;gap:12px}
+    .run{border:1px solid #2a3147;background:#0f1220;border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+    .run .title{font-weight:800}
+    .badges{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{border:1px solid #2a3147;border-radius:999px;padding:3px 8px;font-size:12px;background:#101628;color:#cbd5e1}
+    .roster{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .chipMini{border:1px solid #2a3147;border-radius:999px;padding:3px 8px;font-size:12px;background:#141a2a;color:#e5edf8}
   </style>
 </head>
 <body>
@@ -80,7 +83,7 @@
       </div>
 
       <section class="card" style="margin-top:12px">
-        <div class="row">
+        <div class="row" style="margin-bottom:10px">
           <h3 style="margin:0;font-size:16px">Friends</h3>
           <div class="field" style="flex:1;margin-left:12px">
             <input id="friendSearch" class="input" placeholder="Enter username"/>
@@ -93,9 +96,12 @@
 
     <aside class="right">
       <section class="card">
-        <h3 style="margin:0 0 8px;font-size:16px">Your Save Slots</h3>
-        <div id="slots-header" class="muted" style="margin-bottom:10px;">Save Slots — 0/5 used</div>
-        <div id="slots-wrap" class="slots"></div>
+        <div class="row" style="margin-bottom:8px">
+          <h3 style="margin:0;font-size:16px">Your Games</h3>
+          <button id="btnCreateGame" class="btn small primary">Create Game</button>
+        </div>
+        <div id="runs-wrap" class="runs"></div>
+        <div id="runs-empty" class="muted" style="display:none;margin-top:6px">(No saves found)</div>
       </section>
     </aside>
   </main>
@@ -138,27 +144,21 @@
     const SLOT_IDS = ["slot1","slot2","slot3","slot4","slot5"];
 
     const PORTRAITS = [
-      'archer','assassin','barbearian','bard','battlemage','berserker','cleric',
+      'archer','assassin','barbarian','bard','battlemage','berserker','cleric',
       'druid','lancer','monk','myrmidon','ninja','paladin','reaper','samurai',
       'summoner','warrior','wizard'
     ];
     const PORTRAIT_PATH = 'images/class-portraits/';
-    const FALLBACK = PORTRAIT_PATH + 'monk.png';
-
     function portraitUrl(name){ return PORTRAIT_PATH + name + '.png'; }
 
-    // NEW: letters only, 3–20
     const unameLettersOnly = /^[A-Za-z]{3,20}$/;
     const toDisplay = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     const toLower = s => s.toLowerCase();
 
     function slotRef(uid, slotId){ return doc(db, `users/${uid}/slots/${slotId}`); }
-    function routeToPartySelect(roomId, mode){
-      try { localStorage.setItem('ET_mode', (mode==='friends'?'multi':'single')); } catch {}
+    function routeToPartySelect(roomId, visibility){
+      try { localStorage.setItem('ET_mode', (visibility==='private'?'single':'multi')); } catch {}
       window.location.href = `partyselect.html?roomId=${encodeURIComponent(roomId)}`;
-    }
-    function clearLocalForRoom(roomId){
-      try{ ['v2','v3','v4'].forEach(v => localStorage.removeItem(`ET_ps_${v}:${roomId}`)); }catch{}
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -170,8 +170,8 @@
       document.getElementById('btnCloseProfile').addEventListener('click', () => toggleModal(false));
       document.getElementById('btnSaveProfile').addEventListener('click', saveProfile);
       document.getElementById('btnAddFriend').addEventListener('click', addFriendByUsername);
+      document.getElementById('btnCreateGame').addEventListener('click', createGameDefault);
 
-      // Build avatar grid
       const grid = document.getElementById('avatarGrid');
       PORTRAITS.forEach(name => {
         const d = document.createElement('div');
@@ -193,7 +193,7 @@
           document.getElementById('auth-logout').style.display='inline-block';
           await loadMyProfile();
           refreshFriends();
-          refreshSlots();
+          refreshRuns(); // only saved games
         } else {
           document.getElementById('auth-username').style.display='none';
           document.getElementById('auth-login').style.display='inline-block';
@@ -206,12 +206,10 @@
       const me = auth.currentUser; if(!me) return;
       const snap = await getDoc(doc(db,'publicProfiles', me.uid));
       let display = 'User';
-      let lower = 'user';
       let avatarName = 'monk';
       if (snap.exists()){
         const d = snap.data();
         display = d.usernameDisplay || toDisplay(d.usernameLower||'user');
-        lower = d.usernameLower || 'user';
         if (PORTRAITS.includes(d.avatarName)) avatarName = d.avatarName;
       }
       document.getElementById('auth-username').textContent = '@' + display;
@@ -237,7 +235,6 @@
     async function saveProfile(){
       const me = auth.currentUser; if(!me) return;
       const raw = (document.getElementById('usernameInput').value || '').trim();
-      // Validate letters-only and length
       if (!unameLettersOnly.test(raw)){
         alert('Invalid username. Letters A–Z only, 3–20 chars.'); return;
       }
@@ -250,7 +247,6 @@
       const curr = await getDoc(profRef);
       const oldLower = curr.exists() && curr.data().usernameLower ? curr.data().usernameLower : null;
 
-      // Check availability if changing
       if (!oldLower || oldLower !== lower){
         const claim = await getDoc(doc(db,'usernames', lower));
         if (claim.exists() && claim.data().uid !== me.uid){
@@ -267,7 +263,7 @@
       }, { merge: true });
       batch.set(doc(db,'usernames', lower), { uid: me.uid });
       if (oldLower && oldLower !== lower) {
-        batch.set(doc(db,'usernames', oldLower), { uid: null }); // optional soft release
+        batch.set(doc(db,'usernames', oldLower), { uid: null });
       }
       try{
         await batch.commit();
@@ -325,68 +321,28 @@
       }
     }
 
-    async function refreshSlots(){
-      const me = auth.currentUser; if(!me) return;
-      const wrap = document.getElementById('slots-wrap'); wrap.innerHTML='';
-
-      const entries = [];
-      for (const id of SLOT_IDS){
-        const sSnap = await getDoc(slotRef(me.uid, id));
-        const s = sSnap.exists() ? sSnap.data() : {};
-        let room = null;
-        if (s?.roomId){
-          const rSnap = await getDoc(doc(db, 'rooms', s.roomId));
-          if (rSnap.exists()) room = { id: rSnap.id, ...rSnap.data() };
-          else room = { id: s.roomId, missing: true };
-        }
-        entries.push({ id, slot: s, room });
-      }
-      const used = entries.filter(e => e.slot?.roomId).length;
-      document.getElementById('slots-header').textContent = `Save Slots — ${used}/5 used`;
-      entries.forEach(e => renderSlotRow(wrap, e));
-    }
-
-    function renderSlotRow(wrap, e){
-      const row = document.createElement('div');
-      row.className = 'slot';
-      const left = document.createElement('div'); left.className='left';
-      const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
-
-      if (e.room){
-        left.innerHTML = `<div class="title">Slot ${e.id.slice(4)} — Room ${e.room.id.slice(0,6)}…</div>
-                          <div class="muted">${e.room.missing ? '(Missing room doc)' : `Status: ${e.room.status || 'open'} · Visibility: ${e.room.visibility || 'friends'}`}</div>`;
-        const loadBtn = document.createElement('button'); loadBtn.className='btn small'; loadBtn.textContent='Load';
-        loadBtn.onclick = ()=> routeToPartySelect(e.room.id, e.room.visibility || 'friends');
-        const delBtn = document.createElement('button'); delBtn.className='btn ghost small'; delBtn.textContent='Delete';
-        delBtn.onclick = ()=> deleteSlotRoom(e.id, e.room.id);
-        right.appendChild(loadBtn); right.appendChild(delBtn);
-      } else {
-        left.innerHTML = `<div class="title">Slot ${e.id.slice(4)} — Empty</div>
-                          <div class="muted">Create a new run here.</div>`;
-        const mkSolo = document.createElement('button'); mkSolo.className='btn small primary'; mkSolo.textContent='Create Singleplayer';
-        mkSolo.onclick = ()=> createInSlot(e.id, 'private');
-        const mkMulti = document.createElement('button'); mkMulti.className='btn small success'; mkMulti.textContent='Create Multiplayer';
-        mkMulti.onclick = ()=> createInSlot(e.id, 'friends');
-        right.appendChild(mkSolo); right.appendChild(mkMulti);
-      }
-      row.appendChild(left); row.appendChild(right);
-      wrap.appendChild(row);
-    }
-
-    async function createInSlot(slotId, visibility){
+    // ---------- Create Game (default singleplayer) ----------
+    async function createGameDefault(){
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
-      const sSnap = await getDoc(slotRef(me.uid, slotId));
-      if (sSnap.exists() && sSnap.data()?.roomId){
-        alert('That slot is no longer empty. Choose another or delete first.'); return;
+      // ensure a free slot exists
+      let firstEmpty = null;
+      for (const id of SLOT_IDS){
+        const s = await getDoc(slotRef(me.uid, id));
+        if (!s.exists() || !s.data()?.roomId){ firstEmpty = id; break; }
+      }
+      if (!firstEmpty){
+        alert('You already have 5 saved games. Please delete one first.');
+        return;
       }
       const batch = writeBatch(db);
       const roomRef = doc(collection(db,'rooms'));
+      const visibility = 'private'; // singleplayer by default
       batch.set(roomRef, {
         hostUid: me.uid,
-        slotId,
+        slotId: firstEmpty,
         visibility,
         status: 'open',
-        mode: visibility === 'private' ? 'solo' : 'multiplayer',
+        mode: 'solo',
         partyLocked:false,
         maxParty:4,
         participantUids:[me.uid],
@@ -394,20 +350,81 @@
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      batch.set(slotRef(me.uid, slotId), {
-        roomId: roomRef.id,
-        visibility,
-        createdAt: serverTimestamp(),
-      }, { merge: true });
+      batch.set(slotRef(me.uid, firstEmpty), { roomId: roomRef.id, visibility, createdAt: serverTimestamp() }, { merge:true });
       try{
         await batch.commit();
         routeToPartySelect(roomRef.id, visibility);
       }catch(e){
-        alert(e.message || e.code || 'Could not create session.'); await refreshSlots();
+        alert(e.message || e.code || 'Could not create game.');
       }
     }
 
-    async function deleteSlotRoom(slotId, roomId){
+    // ---------- Saved Runs list (only non-empty slots) ----------
+    async function refreshRuns(){
+      const me = auth.currentUser; if(!me) return;
+      const wrap = document.getElementById('runs-wrap'); wrap.innerHTML='';
+      let count = 0;
+      for (const id of SLOT_IDS){
+        const sSnap = await getDoc(slotRef(me.uid, id));
+        const s = sSnap.exists() ? sSnap.data() : {};
+        if (!s?.roomId) continue;
+        const rSnap = await getDoc(doc(db, 'rooms', s.roomId));
+        if (!rSnap.exists()) continue;
+        const room = { id: rSnap.id, ...rSnap.data() };
+        count++;
+        await renderRunRow(wrap, id, room);
+      }
+      document.getElementById('runs-empty').style.display = count ? 'none' : 'block';
+    }
+
+    async function renderRunRow(wrap, slotId, room){
+      const row = document.createElement('div'); row.className='run';
+      const left = document.createElement('div');
+      const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+
+      const vis = room.visibility || 'friends';
+      const modeLabel = (vis === 'private') ? 'Singleplayer' : 'Multiplayer';
+      const badges = `<span class="badge">${modeLabel}</span><span class="badge">Room ${room.id.slice(0,6)}…</span>`;
+
+      // Build roster chip list (username + class if found)
+      const roster = document.createElement('div'); roster.className='roster';
+      const uids = Array.isArray(room.partyUids) ? room.partyUids : (Array.isArray(room.participantUids)? room.participantUids : []);
+      for (const uid of uids){
+        const prof = await getDoc(doc(db,'publicProfiles', uid));
+        let name = 'User';
+        if (prof.exists()){
+          const pd = prof.data();
+          name = pd.usernameDisplay || toDisplay(pd.usernameLower||'user');
+        }
+        // try to find class by uid in common shapes
+        let cls = null;
+        if (room.classByUid && room.classByUid[uid]) cls = room.classByUid[uid];
+        if (!cls && Array.isArray(room.picks)){
+          const hit = room.picks.find(p => p.uid === uid || p.userId === uid);
+          if (hit && (hit.class || hit.className)) cls = hit.class || hit.className;
+        }
+        if (!cls && room.picksByUid && room.picksByUid[uid] && (room.picksByUid[uid].class || room.picksByUid[uid].className)){
+          cls = room.picksByUid[uid].class || room.picksByUid[uid].className;
+        }
+        const chip = document.createElement('div'); chip.className='chipMini';
+        chip.textContent = cls ? `${name} — ${cls}` : name;
+        roster.appendChild(chip);
+      }
+
+      left.innerHTML = `<div class="title">Slot ${slotId.slice(4)}</div><div class="badges">${badges}</div>`;
+      left.appendChild(roster);
+
+      const loadBtn = document.createElement('button'); loadBtn.className='btn small'; loadBtn.textContent='Load';
+      loadBtn.onclick = ()=> routeToPartySelect(room.id, room.visibility || 'friends');
+      const delBtn = document.createElement('button'); delBtn.className='btn ghost small'; delBtn.textContent='Delete';
+      delBtn.onclick = ()=> deleteRun(slotId, room.id);
+      right.appendChild(loadBtn); right.appendChild(delBtn);
+
+      row.appendChild(left); row.appendChild(right);
+      wrap.appendChild(row);
+    }
+
+    async function deleteRun(slotId, roomId){
       const me = auth.currentUser; if(!me){ alert('Sign in first.'); return; }
       if (!confirm('Delete this save? This cannot be undone.')) return;
       const batch = writeBatch(db);
@@ -415,7 +432,7 @@
       batch.set(slotRef(me.uid, slotId), { roomId: null, deletedAt: serverTimestamp() }, { merge: true });
       try{
         await batch.commit();
-        clearLocalForRoom(roomId); await refreshSlots();
+        await refreshRuns();
       }catch(e){
         alert(e.message || e.code || 'Failed to delete save.');
       }
