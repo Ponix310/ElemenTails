@@ -11,6 +11,7 @@
       --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#e55353; --radius:14px;
       --ink:#e9eef5; --ink-dim:#d7dde6;
       --stroke:#2a3147; --tile:#0f1220;
+      --frame:#000;
     }
     html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
     .wrap{max-width:1160px;margin:28px auto;padding:0 16px}
@@ -50,12 +51,22 @@
     .seat.open{opacity:.8;justify-content:center;align-items:center}
     .seat.open .muted{font-size:14px}
 
-    /* Draw + portraits */
-    .weapons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    @media (max-width:800px){ .weapons{grid-template-columns:repeat(2,1fr)} }
-    .weapon{background:var(--tile);border:1px solid var(--stroke);border-radius:12px;padding:10px;text-align:center;cursor:pointer}
-    .weapon.selected{outline:2px solid var(--accent)}
+    /* Top pick order (4 blank squares that fill) */
+    .order-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:14px}
+    .order-cap{font-weight:800;text-align:center;margin-bottom:6px}
+    .order-slot{
+      position:relative; aspect-ratio:4/3; border:8px solid var(--frame); border-radius:12px; background:#0a0f1e;
+      overflow:hidden;
+    }
+    .order-slot .img{position:absolute;inset:0;background-size:cover;background-position:center;filter:contrast(1.02) saturate(1.05)}
+    .order-slot .tag{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:999px;font-size:12px;border:1px solid var(--stroke)}
 
+    /* Weapon icons row */
+    .wep-row{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;justify-items:center;margin:8px 0 10px}
+    .wep-icon{width:96px;height:96px;background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
+    @media (max-width:720px){ .wep-icon{width:72px;height:72px} }
+
+    /* Portrait grid (8 class buttons) */
     .class-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     @media (max-width:1000px){ .class-grid{grid-template-columns:repeat(2,1fr)} }
     .portrait-btn{position:relative;border:1px solid var(--stroke);border-radius:12px;overflow:hidden;background:#0e1323;aspect-ratio:16/10;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35)}
@@ -87,13 +98,7 @@
       </div>
     </header>
 
-    <section id="missing" class="card" style="display:none;">
-      <h2 class="subhead">No room selected</h2>
-      <p class="muted">This page expects a <code>?roomId=XYZ</code> param or an ID saved by your Session code.</p>
-      <p><a href="mainmenu.html" class="btn">Back to Main Menu</a></p>
-    </section>
-
-    <section id="content" class="columns">
+    <section class="columns">
       <div class="card">
         <h3 class="subhead">Players</h3>
         <div id="seats" class="seats"></div>
@@ -106,13 +111,26 @@
 
       <div class="grid">
         <div class="card">
-          <h3 class="subhead">Weapon Draw</h3>
-          <div id="weapons" class="weapons"></div>
-          <div class="muted">Draw is generated once by the Host: 4 of the 9 weapons (Rules Bible).</div>
+          <h3 class="subhead">Selection Order</h3>
+          <div id="orderCaps" class="order-grid">
+            <div class="order-cap" id="cap-0"></div>
+            <div class="order-cap" id="cap-1"></div>
+            <div class="order-cap" id="cap-2"></div>
+            <div class="order-cap" id="cap-3"></div>
+          </div>
+          <div id="order" class="order-grid">
+            <div class="order-slot"></div>
+            <div class="order-slot"></div>
+            <div class="order-slot"></div>
+            <div class="order-slot"></div>
+          </div>
+
+          <div id="wepRow" class="wep-row"></div>
         </div>
+
         <div class="card">
           <h3 class="subhead">Available Classes</h3>
-          <div class="muted" style="margin-bottom:6px">Click a portrait to claim that class. A claimed tile shows the player name.</div>
+          <div class="muted" style="margin-bottom:6px">Click a portrait to claim that class. Claimed tiles show the player name. Top squares fill in the order players select.</div>
           <div id="classes" class="class-grid"></div>
         </div>
       </div>
@@ -187,24 +205,20 @@
       return true;
     }
 
-    function portraitKey(hero, weapon){
-      return `${hero}-${weapon}`.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-    }
-    function portraitUrlFor(hero, weapon){
-      const key = portraitKey(hero, weapon);
-      return `images/class-portraits/${key}.png`;
-    }
+    function slugify(text){ return (text||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+    function weaponIconUrl(w){ return `images/weapon-icons/${slugify(w)}.png`; }
+    function portraitUrl(hero, weapon){ return `images/class-portraits/${slugify(hero)}-${slugify(weapon)}.png`; }
     function gradFrom(text){
       let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0;
       const a=h%360,b=(h>>7)%360;
       return `linear-gradient(135deg, hsl(${a} 50% 18%), hsl(${b} 50% 22%))`;
     }
 
-    const state = { me:null, room:null, players:[], isHost:false, selectedWeapon:null };
+    const state = { me:null, room:null, players:[], isHost:false };
 
     // ---- mount & listeners ----
     async function mount(){
-      if(!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
+      if(!roomId){ $('#banner').textContent='Missing roomId'; return; }
       $('#rid').textContent = roomId;
 
       // room snapshot
@@ -229,8 +243,10 @@
           });
         }
 
-        renderDraw();
+        renderWeapons();
         renderSeats();
+        renderClasses();
+        renderOrder();
         renderControls();
       });
 
@@ -244,6 +260,8 @@
         }
         $('#count').textContent = String(state.players.length);
         renderSeats();
+        renderClasses();
+        renderOrder();
         renderControls();
       });
 
@@ -252,34 +270,44 @@
       await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid), { name: myName, updatedAt: serverTimestamp() }, { merge:true });
     }
 
-    function renderDraw(){
-      const grid = $('#weapons'); if(!grid) return;
-      grid.innerHTML='';
+    function renderWeapons(){
+      const row = $('#wepRow'); if(!row) return;
+      row.innerHTML='';
       const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
-      if(!drawn.length){ grid.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
-
-      drawn.forEach(w=>{
-        const div = document.createElement('div');
-        div.className = 'weapon' + (state.selectedWeapon===w ? ' selected' : '');
-        div.textContent = w;
-        div.onclick = ()=>{ state.selectedWeapon=w; renderDraw(); renderClasses(); };
-        grid.appendChild(div);
-      });
-      if(!state.selectedWeapon && drawn.length){ state.selectedWeapon=drawn[0]; renderDraw(); renderClasses(); }
+      if(!drawn.length){
+        for(let i=0;i<4;i++){ const ph=document.createElement('div'); ph.className='wep-icon'; row.appendChild(ph); }
+        return;
+      }
+      for(const w of drawn){
+        const d=document.createElement('div');
+        d.className='wep-icon';
+        d.style.backgroundImage = `url('${weaponIconUrl(w)}')`;
+        row.appendChild(d);
+      }
     }
 
+    
     function renderClasses(){
       const wrap = $('#classes'); if(!wrap) return;
       wrap.innerHTML='';
       const drawn = Array.isArray(state.room?.draw) ? state.room.draw : [];
       if(!drawn.length){ wrap.innerHTML='<div class="muted">Waiting for host to draw weapons…</div>'; return; }
 
-      // Map of claims
+      // Current player (for allowing them to move their own claim)
+      const me = state.players.find(p=>p.id===state.me?.uid);
+
+      // Map of claims and fast lookups of "others" usage
       const claims = new Map(); // "Hero|Weapon" -> {id,name,isMe}
+      const usedHeroesOther = new Set();
+      const usedWeaponsOther = new Set();
       for(const p of state.players){
         if(p.hero && p.weapon){
           const k = `${p.hero}|${p.weapon}`;
           claims.set(k, { id:p.id, name:p.name||p.id.slice(0,6), isMe: state.me && p.id===state.me.uid });
+          if(!me || p.id !== me.id){
+            usedHeroesOther.add(p.hero);
+            usedWeaponsOther.add(p.weapon);
+          }
         }
       }
 
@@ -289,14 +317,16 @@
           const k = `${h}|${w}`;
           const claim = claims.get(k);
           const takenByOther = !!(claim && !claim.isMe);
+
+          // Disable if: claimed by someone else, OR some other player already uses this hero, OR some other player already uses this weapon
+          const disabled = takenByOther || usedHeroesOther.has(h) || usedWeaponsOther.has(w);
           const isMe = !!(claim && claim.isMe);
-          const disabled = takenByOther;
 
           const btn = document.createElement('div');
           btn.className = 'portrait-btn' + (disabled? ' disabled' : '') + (isMe? ' me' : '');
           btn.dataset.claimed = claim ? `Claimed by @${claim.isMe ? 'You' : claim.name}` : '';
           const img = document.createElement('div'); img.className='img';
-          const url = portraitUrlFor(h, w);
+          const url = portraitUrl(h, w);
           img.style.background = `${gradFrom(k)}, url('${url}') center/cover no-repeat`;
           btn.appendChild(img);
 
@@ -308,13 +338,13 @@
             if(isMe){
               try{
                 await updateDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
-                  { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() });
+                  { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
               }catch{ toast('Could not unchoose'); }
               return;
             }
             try{
               await setDoc(doc(db,'rooms', roomId, 'players', state.me.uid),
-                { hero:h, weapon:w, className:(CLASS_NAME[k] || `${h} + ${w}`), ready:false, updatedAt: serverTimestamp() },
+                { hero:h, weapon:w, className:(CLASS_NAME[k] || `${h} + ${w}`), pickAt: serverTimestamp(), ready:false, updatedAt: serverTimestamp() },
                 { merge:true });
             }catch{ toast('Could not choose'); }
           };
@@ -323,6 +353,34 @@
           wrap.appendChild(btn);
         }
       }
+    }
+
+    }
+
+    function renderOrder(){
+      const caps = ['cap-0','cap-1','cap-2','cap-3'].map(id=>document.getElementById(id));
+      const grid = $('#order'); if(!grid) return;
+      // Clear
+      Array.from(grid.children).forEach(el=>{ el.innerHTML=''; el.style.background=''; el.classList.remove('filled'); });
+      caps.forEach(el=>{ if(el) el.textContent=''; });
+
+      const chosen = state.players.filter(p=>p.hero && p.weapon).sort((a,b)=>{
+        const ta=a.pickAt?.seconds||0, tb=b.pickAt?.seconds||0;
+        if(ta!==tb) return ta-tb;
+        return (a.updatedAt?.seconds||0)-(b.updatedAt?.seconds||0);
+      }).slice(0,4);
+
+      chosen.forEach((p,idx)=>{
+        const slot = grid.children[idx];
+        if(!slot) return;
+        const img = document.createElement('div'); img.className='img';
+        img.style.background = `${gradFrom(p.hero+'|'+p.weapon)}, url('${portraitUrl(p.hero,p.weapon)}') center/cover no-repeat`;
+        slot.appendChild(img);
+        const tag = document.createElement('div'); tag.className='tag'; tag.textContent='@'+(p.name||p.id.slice(0,6));
+        slot.appendChild(tag);
+        slot.classList.add('filled');
+        if(caps[idx]) caps[idx].textContent = (p.name||p.id.slice(0,6));
+      });
     }
 
     function renderSeats(){
@@ -362,7 +420,7 @@
           const leave = document.createElement('button'); leave.className='btn ghost small'; leave.textContent='Unchoose';
           leave.onclick = async ()=>{
             try{
-              await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() });
+              await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() });
             }catch{ toast('Could not unchoose'); }
           };
           right.appendChild(leave);
@@ -372,7 +430,7 @@
           const kick = document.createElement('button'); kick.className='btn warn small'; kick.textContent='Kick';
           kick.onclick = async ()=>{
             if(!confirm(`Remove @${p.name||p.id.slice(0,6)} from party?`)) return;
-            try{ await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), ready:false, updatedAt: serverTimestamp() }); }
+            try{ await updateDoc(doc(db,'rooms', roomId, 'players', p.id), { hero: deleteField(), weapon: deleteField(), className: deleteField(), pickAt: deleteField(), ready:false, updatedAt: serverTimestamp() }); }
             catch{ toast('Could not update'); }
           };
           right.appendChild(kick);
@@ -385,8 +443,6 @@
         div.appendChild(container);
         grid.appendChild(div);
       }
-
-      renderClasses();
     }
 
     function renderControls(){
@@ -434,7 +490,7 @@
 
     // ---- boot ----
     document.addEventListener('DOMContentLoaded', ()=>{
-      if(!roomId){ $('#missing').style.display='block'; $('#content').style.display='none'; return; }
+      if(!roomId){ $('#banner').textContent='Missing roomId'; return; }
       $('#rid').textContent = roomId;
       $('#copy-code').addEventListener('click', copyCode);
       $('#ready').addEventListener('click', toggleReady);
