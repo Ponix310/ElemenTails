@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>ElemenTails — Party Select</title>
   <style>
-    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#ef4444; }
+    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#ef4444; --line:#2a3147; }
     html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
     .shell{max-width:1180px;margin:24px auto;padding:0 16px}
     header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -19,9 +19,21 @@
     .badge{padding:4px 8px;border-radius:999px;background:#0f1220;border:1px solid #273148;font-weight:700;font-size:12px}
     .badge.green{background:#0f2a21;border-color:#1c4532;color:#9be4c5}
     .card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid #263149}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .slot{height:140px;border-radius:10px;background:#0f1220;border:1px dashed #2a3147;display:flex;align-items:center;justify-content:center;color:#718096}
-    @media (max-width:900px){ .grid{grid-template-columns:repeat(2,1fr)} }
+    .notice{background:#0f1220;border:1px solid var(--line);padding:10px;border-radius:10px;color:#cbd5e1}
+    .board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .cell{background:#0f1220;border-radius:10px;border:1px solid var(--line);overflow:hidden;position:relative;min-height:120px;display:flex;align-items:center;justify-content:center}
+    .slotlabel{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #273148;padding:4px 8px;border-radius:999px;font-size:12px}
+    .placeholder{color:#95a2b3;font-size:14px}
+    .img{width:100%;height:140px;object-fit:cover;display:block}
+    .img.weapon{height:160px;object-fit:contain;background:#0b0f1a}
+    .picktile{cursor:pointer;transition:transform .05s ease;min-height:160px}
+    .picktile:hover{transform:translateY(-1px)}
+    .picktile.disabled{opacity:.45;cursor:not-allowed;filter:grayscale(40%)}
+    .pickedBy{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55);border:1px solid #273148;padding:4px 8px;border-radius:999px;font-size:12px}
+    .toprow .cell{min-height:200px}
+    .weapons .cell{min-height:180px}
+    .hint{grid-column:1/-1;text-align:center;font-size:12px;color:#8fa1b8;margin-top:6px}
+    @media (max-width:900px){ .board{grid-template-columns:repeat(2,1fr)} }
   </style>
 </head>
 <body>
@@ -40,17 +52,15 @@
       </div>
     </header>
 
-    <div class="card muted" style="margin-bottom:10px">
-      Pick 4 unique heroes. Toggle between Singleplayer and Multiplayer before you start. Once you press <b>Start Run</b>, the roster is locked and only those players can re-enter this run.
+    <div class="card notice" style="margin-bottom:10px">
+      Pick 4 unique heroes — exactly one from each column. Classes are limited to the 4 drawn weapons. Click again to unclaim your pick.
     </div>
 
-    <section class="card">
-      <div class="grid">
-        <div class="slot">— choose a class —</div>
-        <div class="slot">— choose a class —</div>
-        <div class="slot">— choose a class —</div>
-        <div class="slot">— choose a class —</div>
-      </div>
+    <section id="boardWrap" class="card">
+      <div id="boardTop" class="board toprow"></div>
+      <div id="boardWeapons" class="board weapons" style="margin-top:10px"></div>
+      <div id="boardChoices" class="board" style="margin-top:10px"></div>
+      <div id="hint" class="hint"></div>
     </section>
   </div>
 
@@ -58,7 +68,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp, arrayUnion
+      getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp, arrayUnion, runTransaction
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -74,109 +84,230 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // ----- utils
+    // ---------- Game data ----------
+    const PORTRAIT_PATH = 'images/class-portraits/';
+    const WEAPON_PATH = 'images/weapons/';
+    const classesByWeapon = {
+      katana: ['samurai','battlemage'],
+      tome: ['cleric','summoner'],
+      swordshield: ['paladin','warrior'],
+      knuckles: ['monk','berserker'],
+      daggers: ['ninja','assassin'],
+      staff: ['druid','reaper'],
+      spear: ['lancer','myrmidon'],
+      bow: ['archer','bard']
+    };
+    const allWeapons = Object.keys(classesByWeapon);
+    function classImg(name){ return PORTRAIT_PATH + name + '.png'; }
+    function weaponImg(name){ return WEAPON_PATH + name + '.png'; }
+
+    // ---------- DOM helpers ----------
+    const $ = (sel) => document.querySelector(sel);
+    function setBadge(el, text, cls){ el.textContent = text; el.className = 'badge' + (cls ? ' ' + cls : ''); }
+    function el(tag, cls, html){ const d = document.createElement(tag); if(cls) d.className = cls; if(html!=null) d.innerHTML = html; return d; }
+
+    // ---------- Room / State ----------
     const qs = new URLSearchParams(location.search);
     const roomId = qs.get('roomId');
-    if (!roomId) {
-      alert('Missing room id.');
-    }
+    if (!roomId) alert('Missing room id.');
     const roomRef = doc(db, 'rooms', roomId);
-    const $ = (sel) => document.querySelector(sel);
+    const state = { me:null, room:null, profiles:{} };
 
-    function setBadge(el, text, cls){
-      el.textContent = text;
-      el.className = 'badge' + (cls ? ' ' + cls : '');
+    // ---------- Profiles cache ----------
+    async function getDisplayName(uid){
+      if (state.profiles[uid]) return state.profiles[uid];
+      const snap = await getDoc(doc(db,'publicProfiles', uid));
+      const disp = snap.exists() ? (snap.data().usernameDisplay || 'User') : 'User';
+      state.profiles[uid] = disp;
+      return disp;
     }
 
-    // ----- state
-    const state = {
-      room: null,
-      me: null,
-    };
-
-    // ----- auth
+    // ---------- Auth ----------
     onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        await signInWithPopup(auth, new GoogleAuthProvider());
-        return;
-      }
+      if (!user) { await signInWithPopup(auth, new GoogleAuthProvider()); return; }
       state.me = user;
       boot();
     });
 
-    // ----- boot: subscribe room, enforce locks
+    // ---------- Boot (subscribe room) ----------
     function boot(){
       onSnapshot(roomRef, async (snap) => {
         if (!snap.exists()) { alert('Room not found.'); return; }
         state.room = snap.data();
 
-        // Fill badges
+        // Badges
         $('#roomBadge').textContent = 'Room ' + roomId.slice(0,6) + '…';
         const isMulti = (state.room.visibility === 'friends' || state.room.visibility === 'public');
         setBadge($('#modeBadge'), isMulti ? 'Multiplayer' : 'Singleplayer', 'green');
         setBadge($('#lockBadge'), state.room.rosterLocked ? 'Roster Locked' : 'Unlocked');
+        $('#btnToggleMode').textContent = isMulti ? 'Switch to Singleplayer' : 'Switch to Multiplayer';
+        $('#btnToggleMode').disabled = !!state.room.rosterLocked;
+        $('#btnStart').disabled = !!state.room.rosterLocked || !(Array.isArray(state.room.picks) && state.room.picks.length===4);
 
-        // Toggle button label + disabled when locked
-        const btnToggle = $('#btnToggleMode');
-        btnToggle.textContent = isMulti ? 'Switch to Singleplayer' : 'Switch to Multiplayer';
-        btnToggle.disabled = !!state.room.rosterLocked;
-
-        // Start button disabled when already started
-        $('#btnStart').disabled = !!state.room.rosterLocked;
-
-        // ---- roster lock enforcement
-        if (state.room.rosterLocked) {
-          const locked = state.room.lockedPartyUids || [];
-          if (!locked.includes(state.me.uid)) {
-            alert('This run is locked to its original party.');
-            // Soft redirect back to main menu
-            location.href = 'mainmenu.html';
-            return;
+        // Ensure current user is participant pre-start
+        if (!state.room.rosterLocked) {
+          if (!Array.isArray(state.room.participantUids) || !state.room.participantUids.includes(state.me.uid)) {
+            try{ await updateDoc(roomRef, { participantUids: arrayUnion(state.me.uid) }); }catch{}
           }
         } else {
-          // Before start: ensure user is in participants
-          if (!Array.isArray(state.room.participantUids) || !state.room.participantUids.includes(state.me.uid)) {
-            try {
-              await updateDoc(roomRef, {
-                participantUids: arrayUnion(state.me.uid)
-              });
-            } catch {}
+          const locked = state.room.lockedPartyUids || [];
+          if (!locked.includes(state.me.uid)) {
+            alert('This run is locked to its original party.'); location.href='mainmenu.html'; return;
           }
         }
+
+        // Drawn weapons: host generates if missing
+        if (!Array.isArray(state.room.drawnWeapons) || state.room.drawnWeapons.length!==4) {
+          if (state.room.hostUid === state.me.uid && !state.room.rosterLocked) {
+            const drawn = []; // allow duplicates to match original feel
+            while (drawn.length < 4) drawn.push(allWeapons[Math.floor(Math.random()*allWeapons.length)]);
+            try{ await updateDoc(roomRef, { drawnWeapons: drawn, updatedAt: serverTimestamp() }); }catch(e){ console.warn(e); }
+          }
+        }
+
+        renderBoard();
       });
     }
 
-    // ----- UI actions
+    // ---------- UI: render board ----------
+    function renderBoard(){
+      const top = $('#boardTop'); const wep = $('#boardWeapons'); const cho = $('#boardChoices');
+      top.innerHTML=''; wep.innerHTML=''; cho.innerHTML=''; $('#hint').textContent='';
+
+      const drawn = (state.room.drawnWeapons && state.room.drawnWeapons.length===4) ? state.room.drawnWeapons : ['?','?','?','?'];
+      const picks = Array.isArray(state.room.picks) ? state.room.picks.slice() : [];
+
+      // Sort picks by time for top row
+      const ordered = picks.slice().sort((a,b)=>(a.t||0)-(b.t||0));
+
+      // --- Top row: selected classes ---
+      for (let i=0;i<4;i++){
+        const cell = el('div','cell');
+        cell.style.minHeight = '200px';
+        const found = ordered[i];
+        if (found){
+          const img = el('img','img',null); img.src = classImg(found.class); img.alt = found.class; cell.appendChild(img);
+          const lab = el('div','slotlabel',''); getDisplayName(found.uid).then(name => lab.textContent = name); cell.appendChild(lab);
+        } else {
+          cell.appendChild(el('div','placeholder','— choose a class —'));
+        }
+        top.appendChild(cell);
+      }
+
+      // --- Second row: weapons ---
+      for (let c=0;c<4;c++){
+        const cell = el('div','cell');
+        const w = drawn[c];
+        if (w && w!=='?'){
+          const img = el('img','img weapon',null); img.src = weaponImg(w); img.alt = w; cell.appendChild(img);
+        } else {
+          cell.appendChild(el('div','placeholder','(waiting for host to draw weapons)'));
+        }
+        wep.appendChild(cell);
+      }
+
+      // --- Bottom rows: clickable choices ---
+      for (let c=0;c<4;c++){
+        const w = drawn[c];
+        const pair = classesByWeapon[w] || [];
+        for (let r=0;r<2;r++){
+          const className = pair[r] || null;
+          const cell = el('div','cell picktile');
+          if (!className){ cell.classList.add('disabled'); cell.appendChild(el('div','placeholder','—')); cho.appendChild(cell); continue; }
+          const img = el('img','img',null); img.src = classImg(className); img.alt = className; cell.appendChild(img);
+
+          // Is this column already claimed?
+          const existing = picks.find(p=>p.col===c);
+          if (existing){
+            const label = el('div','pickedBy',''); getDisplayName(existing.uid).then(n => label.textContent = 'Picked by ' + n);
+            cell.appendChild(label);
+            // Only the owner can click to unclaim/swap before start
+            if (!state.room.rosterLocked && existing.uid===state.me.uid){
+              cell.addEventListener('click', () => {
+                if (existing.class===className) togglePick(c, className, true); // unclaim
+                else togglePick(c, className, false); // swap
+              });
+            } else {
+              cell.classList.add('disabled');
+            }
+          } else {
+            // No claim yet on this column
+            const disabled = state.room.rosterLocked || picks.length>=4 || w==='?';
+            if (disabled){
+              cell.classList.add('disabled');
+            } else {
+              cell.addEventListener('click', () => togglePick(c, className, false));
+            }
+          }
+
+          cho.appendChild(cell);
+        }
+      }
+
+      // Hint footer
+      if (Array.isArray(state.room.picks) && state.room.picks.length<4){
+        $('#hint').textContent = 'Click a class tile to claim it. You can click again to unclaim your own choice.';
+      } else if (Array.isArray(state.room.picks) && state.room.picks.length===4 && !state.room.rosterLocked){
+        $('#hint').textContent = 'All set! Press Start Run to lock this party.';
+      }
+    }
+
+    // ---------- Actions ----------
     $('#btnBack').addEventListener('click', () => history.back());
 
     $('#btnToggleMode').addEventListener('click', async () => {
       if (!state.room || state.room.rosterLocked) return;
       const isMulti = (state.room.visibility === 'friends' || state.room.visibility === 'public');
       const nextVis = isMulti ? 'private' : 'friends';
-      try {
-        await updateDoc(roomRef, { visibility: nextVis, updatedAt: serverTimestamp() });
-      } catch (e) {
-        alert(e.message || e.code || 'Failed to change mode.');
-      }
+      try { await updateDoc(roomRef, { visibility: nextVis, updatedAt: serverTimestamp() }); } catch (e) { alert(e.message||e.code); }
     });
 
     $('#btnStart').addEventListener('click', async () => {
       if (!state.room) return;
-      // Lock the roster to current participants; mark in progress
-      const participants = Array.isArray(state.room.participantUids) ? state.room.participantUids : [state.me.uid];
+      const picks = Array.isArray(state.room.picks) ? state.room.picks : [];
+      if (picks.length !== 4){ alert('Pick 4 classes first.'); return; }
+      const partyUidsOrdered = picks.sort((a,b)=>(a.t||0)-(b.t||0)).map(p=>p.uid);
+      const classByUid = {}; picks.forEach(p => { classByUid[p.uid] = p.class; });
       try {
         await updateDoc(roomRef, {
-          rosterLocked: true,
-          lockedPartyUids: participants,
-          status: 'in_progress',
+          rosterLocked:true,
+          lockedPartyUids: Array.from(new Set(partyUidsOrdered)),
+          status:'in_progress',
           startedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          classByUid
         });
         alert('Run started. Roster locked.');
-      } catch (e) {
-        alert(e.message || e.code || 'Failed to start run.');
-      }
+      } catch (e) { alert(e.message||e.code); }
     });
+
+    async function togglePick(col, className, unclaim){
+      if (!state.me || !state.room || state.room.rosterLocked) return;
+      try {
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(roomRef);
+          if (!snap.exists()) throw new Error('Room missing');
+          const d = snap.data();
+          const drawn = d.drawnWeapons || [];
+          let picks = Array.isArray(d.picks) ? d.picks.slice() : [];
+          const idx = picks.findIndex(p=>p.col===col);
+          if (idx>=0){
+            const owned = picks[idx].uid === state.me.uid;
+            if (!owned) return; // not yours
+            if (unclaim){
+              picks.splice(idx,1);
+            } else {
+              picks[idx].class = className;
+              picks[idx].t = Date.now();
+            }
+          } else {
+            if (picks.length>=4) return;
+            picks.push({ col, weapon: drawn[col], class: className, uid: state.me.uid, t: Date.now() });
+          }
+          tx.update(roomRef, { picks, updatedAt: serverTimestamp() });
+        });
+      } catch (e) { alert(e.message||e.code); }
+    }
   </script>
 </body>
 </html>
