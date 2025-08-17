@@ -1,39 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>ElemenTails — Party Select</title>
   <style>
-    :root{ --bg:#0b0c10; --panel:#121520; --muted:#9aa4b2; --accent:#20c997; --danger:#ef4444; --line:#2a3147; }
-    html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;}
-    .shell{max-width:1180px;margin:24px auto;padding:0 16px}
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-    .title{font-size:22px;font-weight:900}
-    .muted{color:var(--muted)}
-    .btn{appearance:none;border:0;border-radius:10px;padding:10px 12px;font-weight:800;background:#1e2433;color:#fff;cursor:pointer}
-    .btn.primary{background:var(--accent);color:#042a22}
-    .btn.danger{background:#2b1e22;color:#fecaca;border:1px solid #7f1d1d}
-    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    :root{--bg:#0b0c10;--panel:#121520;--muted:#9aa4b2;--accent:#20c997;--radius:12px}
+    html,body{height:100%;margin:0;background:var(--bg);color:#e9eef5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    .shell{max-width:1200px;margin:22px auto;padding:0 16px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .title{font-size:22px;font-weight:900}
     .badge{padding:4px 8px;border-radius:999px;background:#0f1220;border:1px solid #273148;font-weight:700;font-size:12px}
     .badge.green{background:#0f2a21;border-color:#1c4532;color:#9be4c5}
-    .card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid #263149}
-    .notice{background:#0f1220;border:1px solid var(--line);padding:10px;border-radius:10px;color:#cbd5e1}
-    .board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .cell{background:#0f1220;border-radius:10px;border:1px solid var(--line);overflow:hidden;position:relative;min-height:120px;display:flex;align-items:center;justify-content:center}
-    .slotlabel{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #273148;padding:4px 8px;border-radius:999px;font-size:12px}
-    .placeholder{color:#95a2b3;font-size:14px}
-    .img{width:100%;height:140px;object-fit:cover;display:block}
-    .img.weapon{height:160px;object-fit:contain;background:#0b0f1a}
-    .picktile{cursor:pointer;transition:transform .05s ease;min-height:160px}
-    .picktile:hover{transform:translateY(-1px)}
-    .picktile.disabled{opacity:.45;cursor:not-allowed;filter:grayscale(40%)}
-    .pickedBy{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55);border:1px solid #273148;padding:4px 8px;border-radius:999px;font-size:12px}
-    .toprow .cell{min-height:200px}
-    .weapons .cell{min-height:180px}
-    .hint{grid-column:1/-1;text-align:center;font-size:12px;color:#8fa1b8;margin-top:6px}
-    @media (max-width:900px){ .board{grid-template-columns:repeat(2,1fr)} }
+    .btn{appearance:none;border:0;border-radius:10px;padding:10px 12px;font-weight:800;background:#1e2433;color:#fff;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#032922}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    .card{background:var(--panel);border:1px solid #263149;border-radius:12px;padding:12px}
+    .muted{color:#9aa4b2}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .slot,.weapon,.opt{position:relative;border-radius:12px;background:#0f1220;border:1px solid #263149;overflow:hidden}
+    .slot{height:160px;display:flex;align-items:center;justify-content:center;color:#9aa4b2}
+    .weapon{height:160px;display:flex;align-items:center;justify-content:center;background:#0b1020}
+    .opt{height:160px;cursor:pointer}
+    .opt.disabled{opacity:.45;filter:grayscale(0.9);cursor:not-allowed}
+    .img{width:100%;height:100%;background-size:cover;background-position:center}
+    .tag{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:999px;font-weight:800;font-size:12px}
   </style>
 </head>
 <body>
@@ -41,7 +33,7 @@
     <header>
       <div class="row">
         <div class="title">Party Select</div>
-        <span id="modeBadge" class="badge">Mode</span>
+        <span id="modeBadge" class="badge">Singleplayer</span>
         <span id="lockBadge" class="badge">Unlocked</span>
         <span id="roomBadge" class="badge"></span>
       </div>
@@ -52,15 +44,34 @@
       </div>
     </header>
 
-    <div class="card notice" style="margin-bottom:10px">
+    <div class="card muted" style="margin-bottom:10px">
       Pick 4 unique heroes — exactly one from each column. Classes are limited to the 4 drawn weapons. Click again to unclaim your pick.
     </div>
 
-    <section id="boardWrap" class="card">
-      <div id="boardTop" class="board toprow"></div>
-      <div id="boardWeapons" class="board weapons" style="margin-top:10px"></div>
-      <div id="boardChoices" class="board" style="margin-top:10px"></div>
-      <div id="hint" class="hint"></div>
+    <section id="board" class="card">
+      <div id="grid" class="grid">
+        <!-- Column 1 -->
+        <div id="slot0" class="slot"><span>— choose a class —</span></div>
+        <div id="slot1" class="slot"><span>— choose a class —</span></div>
+        <div id="slot2" class="slot"><span>— choose a class —</span></div>
+        <div id="slot3" class="slot"><span>— choose a class —</span></div>
+
+        <div id="weapon0" class="weapon"></div>
+        <div id="weapon1" class="weapon"></div>
+        <div id="weapon2" class="weapon"></div>
+        <div id="weapon3" class="weapon"></div>
+
+        <div id="opt0a" class="opt"></div>
+        <div id="opt1a" class="opt"></div>
+        <div id="opt2a" class="opt"></div>
+        <div id="opt3a" class="opt"></div>
+
+        <div id="opt0b" class="opt"></div>
+        <div id="opt1b" class="opt"></div>
+        <div id="opt2b" class="opt"></div>
+        <div id="opt3b" class="opt"></div>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:8px">Click a class tile to claim it. You can click again to unclaim your own choice.</div>
     </section>
   </div>
 
@@ -84,229 +95,241 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // ---------- Game data ----------
-    const PORTRAIT_PATH = 'images/class-portraits/';
-    const WEAPON_PATH = 'images/weapons/';
-    const classesByWeapon = {
-      katana: ['samurai','battlemage'],
-      tome: ['cleric','summoner'],
-      swordshield: ['paladin','warrior'],
-      knuckles: ['monk','berserker'],
-      daggers: ['ninja','assassin'],
-      staff: ['druid','reaper'],
-      spear: ['lancer','myrmidon'],
-      bow: ['archer','bard']
+    // --- assets
+    const IMG = (name) => `images/class-portraits/${name}.png`;
+    const ICON = (name) => `images/weapons/${name}.png`; // adjust if different
+
+    // classes -> hero + weapon
+    const CLASSES = {
+      monk:       { title:"Monk",       hero:"fox",    weapon:"knuckles", img:"monk" },
+      berserker:  { title:"Berserker",  hero:"frog",   weapon:"knuckles", img:"berserker" },
+      battlemage: { title:"Battlemage", hero:"raven",  weapon:"katana",   img:"battlemage" },
+      samurai:    { title:"Samurai",    hero:"wolf",   weapon:"katana",   img:"samurai" },
+      cleric:     { title:"Cleric",     hero:"rabbit", weapon:"tome",     img:"cleric" },
+      summoner:   { title:"Summoner",   hero:"fox",    weapon:"tome",     img:"summoner" },
+      paladin:    { title:"Paladin",    hero:"wolf",   weapon:"swordshield", img:"paladin" },
+      warrior:    { title:"Warrior",    hero:"bear",   weapon:"warrior",  img:"warrior", weaponOverride:"swordshield" },
+      ninja:      { title:"Ninja",      hero:"frog",   weapon:"daggers",  img:"ninja" },
+      assassin:   { title:"Assassin",   hero:"raccoon",weapon:"daggers",  img:"assassin" },
+      druid:      { title:"Druid",      hero:"rabbit", weapon:"staff",    img:"druid" },
+      wizard:     { title:"Wizard",     hero:"lizard", weapon:"staff",    img:"wizard" },
     };
-    const allWeapons = Object.keys(classesByWeapon);
-    function classImg(name){ return PORTRAIT_PATH + name + '.png'; }
-    function weaponImg(name){ return WEAPON_PATH + name + '.png'; }
+    // weapon -> classes (two vertically)
+    const W2C = {
+      knuckles: ["monk","berserker"],
+      katana:   ["battlemage","samurai"],
+      tome:     ["cleric","summoner"],
+      daggers:  ["ninja","assassin"],
+      swordshield: ["paladin","warrior"],
+      staff: ["druid","wizard"],
+    };
+    const WEAPON_ICON = {
+      knuckles:"knuckles",
+      katana:"katana",
+      tome:"tome",
+      daggers:"daggers",
+      swordshield:"sword_shield",
+      staff:"orb_staff"
+    };
 
-    // ---------- DOM helpers ----------
-    const $ = (sel) => document.querySelector(sel);
-    function setBadge(el, text, cls){ el.textContent = text; el.className = 'badge' + (cls ? ' ' + cls : ''); }
-    function el(tag, cls, html){ const d = document.createElement(tag); if(cls) d.className = cls; if(html!=null) d.innerHTML = html; return d; }
-
-    // ---------- Room / State ----------
+    // --- helpers
+    const $ = sel => document.querySelector(sel);
     const qs = new URLSearchParams(location.search);
     const roomId = qs.get('roomId');
-    if (!roomId) alert('Missing room id.');
-    const roomRef = doc(db, 'rooms', roomId);
-    const state = { me:null, room:null, profiles:{} };
+    const roomRef = doc(db,'rooms', roomId);
 
-    // ---------- Profiles cache ----------
-    async function getDisplayName(uid){
-      if (state.profiles[uid]) return state.profiles[uid];
-      const snap = await getDoc(doc(db,'publicProfiles', uid));
-      const disp = snap.exists() ? (snap.data().usernameDisplay || 'User') : 'User';
-      state.profiles[uid] = disp;
-      return disp;
+    function uniqRand(arr, n){
+      const pool = arr.slice();
+      const out = [];
+      while (out.length < n && pool.length){
+        const i = Math.floor(Math.random()*pool.length);
+        out.push(pool.splice(i,1)[0]);
+      }
+      return out;
     }
 
-    // ---------- Auth ----------
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { await signInWithPopup(auth, new GoogleAuthProvider()); return; }
+    const state = {
+      me:null,
+      room:null,
+      columns:[], // [{weapon, aClass, bClass}]
+      picks:[],   // [{col, classKey, uid}]
+    };
+
+    function setBadge(el, text, cls){ el.textContent=text; el.className='badge'+(cls?' '+cls:''); }
+
+    // --- auth/bootstrap
+    onAuthStateChanged(auth, async (user)=>{
+      if (!user){ await signInWithPopup(auth, new GoogleAuthProvider()); return; }
       state.me = user;
-      boot();
+      initRoom();
     });
 
-    // ---------- Boot (subscribe room) ----------
-    function boot(){
-      onSnapshot(roomRef, async (snap) => {
-        if (!snap.exists()) { alert('Room not found.'); return; }
-        state.room = snap.data();
+    function classesConflict(classKey, pickedSet){
+      const c = CLASSES[classKey];
+      // conflict if any picked class shares the same hero or same weapon
+      for (const k of pickedSet){
+        const pc = CLASSES[k];
+        const w = (CLASSES[classKey].weaponOverride || c.weapon);
+        const pw = (pc.weaponOverride || pc.weapon);
+        if (pc.hero === c.hero) return true;
+        if (pw === w) return true;
+      }
+      return false;
+    }
 
-        // Badges
-        $('#roomBadge').textContent = 'Room ' + roomId.slice(0,6) + '…';
-        const isMulti = (state.room.visibility === 'friends' || state.room.visibility === 'public');
-        setBadge($('#modeBadge'), isMulti ? 'Multiplayer' : 'Singleplayer', 'green');
-        setBadge($('#lockBadge'), state.room.rosterLocked ? 'Roster Locked' : 'Unlocked');
-        $('#btnToggleMode').textContent = isMulti ? 'Switch to Singleplayer' : 'Switch to Multiplayer';
-        $('#btnToggleMode').disabled = !!state.room.rosterLocked;
-        $('#btnStart').disabled = !!state.room.rosterLocked || !(Array.isArray(state.room.picks) && state.room.picks.length===4);
+    function renderBoard(){
+      // top slot labels
+      for (let i=0;i<4;i++){
+        const s = $(`#slot${i}`);
+        s.innerHTML = '<span>— choose a class —</span>';
+      }
+      // weapons
+      for (let i=0;i<4;i++){
+        const col = state.columns[i];
+        const wKey = col.weapon;
+        const iconName = WEAPON_ICON[wKey] || wKey;
+        $(`#weapon${i}`).innerHTML = `<div class="img" style="background-image:url('images/weapons/${iconName}.png')"></div>`;
+      }
+      // options vertically under each weapon
+      for (let i=0;i<4;i++){
+        const col = state.columns[i];
+        const [a,b] = W2C[col.weapon];
+        const aEl = $(`#opt${i}a`);
+        const bEl = $(`#opt${i}b`);
+        aEl.innerHTML = `<div class="img" style="background-image:url('${IMG(CLASSES[a].img)}')"></div><div class="tag">${CLASSES[a].title}</div>`;
+        bEl.innerHTML = `<div class="img" style="background-image:url('${IMG(CLASSES[b].img)}')"></div><div class="tag">${CLASSES[b].title}</div>`;
+        aEl.onclick = ()=> tryPick(i,a);
+        bEl.onclick = ()=> tryPick(i,b);
+        aEl.classList.remove('disabled');
+        bEl.classList.remove('disabled');
+      }
+      // apply existing picks
+      applyPicksToUI();
+    }
 
-        // Ensure current user is participant pre-start
-        if (!state.room.rosterLocked) {
-          if (!Array.isArray(state.room.participantUids) || !state.room.participantUids.includes(state.me.uid)) {
-            try{ await updateDoc(roomRef, { participantUids: arrayUnion(state.me.uid) }); }catch{}
-          }
+    function applyPicksToUI(){
+      const pickedByCol = new Map();
+      const pickedClassSet = new Set();
+      for (const p of state.picks){
+        pickedByCol.set(p.col, p);
+        pickedClassSet.add(p.classKey);
+      }
+      // set slot images
+      for (let i=0;i<4;i++){
+        const slotEl = $(`#slot${i}`);
+        if (pickedByCol.has(i)){
+          const p = pickedByCol.get(i);
+          const c = CLASSES[p.classKey];
+          slotEl.innerHTML = `<div class="img" style="background-image:url('${IMG(c.img)}')"></div><div class="tag">${p.name||'Picked'}</div>`;
         } else {
-          const locked = state.room.lockedPartyUids || [];
-          if (!locked.includes(state.me.uid)) {
-            alert('This run is locked to its original party.'); location.href='mainmenu.html'; return;
-          }
+          slotEl.innerHTML = `<span>— choose a class —</span>`;
         }
-
-        // Drawn weapons: host generates if missing
-        if (!Array.isArray(state.room.drawnWeapons) || state.room.drawnWeapons.length!==4) {
-          if (state.room.hostUid === state.me.uid && !state.room.rosterLocked) {
-            const drawn = []; // allow duplicates to match original feel
-            while (drawn.length < 4) drawn.push(allWeapons[Math.floor(Math.random()*allWeapons.length)]);
-            try{ await updateDoc(roomRef, { drawnWeapons: drawn, updatedAt: serverTimestamp() }); }catch(e){ console.warn(e); }
-          }
+      }
+      // disable options:
+      for (let i=0;i<4;i++){
+        const col = state.columns[i];
+        const [a,b] = W2C[col.weapon];
+        const aEl = $(`#opt${i}a`);
+        const bEl = $(`#opt${i}b`);
+        // if column already picked by someone: disable both except allow owner to unpick by clicking slot? We'll allow clicking same tile again to unclaim
+        const p = state.picks.find(x=>x.col===i);
+        aEl.classList.remove('disabled'); bEl.classList.remove('disabled');
+        if (p){
+          // disable opposite tile and also disable same tile for others
+          if (p.classKey===a){ bEl.classList.add('disabled'); }
+          if (p.classKey===b){ aEl.classList.add('disabled'); }
         }
+        // global conflicts (hero/weapon) — only disable if not already the chosen one
+        const conflictA = classesConflict(a, pickedClassSet) && !state.picks.find(x=>x.classKey===a);
+        const conflictB = classesConflict(b, pickedClassSet) && !state.picks.find(x=>x.classKey===b);
+        if (conflictA) aEl.classList.add('disabled');
+        if (conflictB) bEl.classList.add('disabled');
+      }
+    }
 
-        renderBoard();
+    async function tryPick(col, classKey){
+      const me = state.me;
+      if (!me) return;
+      // unclaim if already mine on this col
+      const myPick = state.picks.find(p=>p.col===col && p.uid===me.uid);
+      if (myPick && myPick.classKey===classKey){
+        await runTransaction(db, async tx=>{
+          const r = await tx.get(roomRef);
+          if (!r.exists()) throw new Error('room');
+          const picks = (r.data().picks||[]).filter(x=>!(x.col===col && x.uid===me.uid));
+          tx.update(roomRef,{ picks, updatedAt: serverTimestamp() });
+        });
+        return;
+      }
+      // else claim
+      await runTransaction(db, async tx=>{
+        const r = await tx.get(roomRef);
+        if (!r.exists()) throw new Error('room');
+        const d = r.data();
+        const picks = d.picks || [];
+        // column already claimed by someone else?
+        if (picks.some(x=>x.col===col && x.uid!==me.uid)) return;
+        // enforce hero uniqueness and weapon uniqueness globally
+        const pickedClasses = new Set(picks.map(x=>x.classKey));
+        if (classesConflict(classKey, pickedClasses)) return;
+
+        // clear my previous pick in this column if any
+        const filtered = picks.filter(x=>!(x.col===col && x.uid===me.uid));
+        filtered.push({ col, classKey, uid: me.uid, name: (d.displayNames?.[me.uid]||'You'), t: Date.now() });
+        tx.update(roomRef,{ picks: filtered, updatedAt: serverTimestamp() });
       });
     }
 
-    // ---------- UI: render board ----------
-    function renderBoard(){
-      const top = $('#boardTop'); const wep = $('#boardWeapons'); const cho = $('#boardChoices');
-      top.innerHTML=''; wep.innerHTML=''; cho.innerHTML=''; $('#hint').textContent='';
+    async function initRoom(){
+      if (!roomId){ alert('Missing room id'); return; }
+      onSnapshot(roomRef, (snap)=>{
+        if (!snap.exists()){ alert('Room not found'); return; }
+        const d = snap.data();
+        state.room = d;
+        // badges
+        const isMulti = (d.visibility==='friends' || d.visibility==='public');
+        setBadge($('#modeBadge'), isMulti?'Multiplayer':'Singleplayer', 'green');
+        setBadge($('#lockBadge'), d.rosterLocked?'Locked':'Unlocked');
+        $('#btnToggleMode').disabled = !!d.rosterLocked;
+        $('#btnStart').disabled = !!d.rosterLocked;
+        $('#roomBadge').textContent = 'Room ' + roomId.slice(0,6)+'…';
 
-      const drawn = (state.room.drawnWeapons && state.room.drawnWeapons.length===4) ? state.room.drawnWeapons : ['?','?','?','?'];
-      const picks = Array.isArray(state.room.picks) ? state.room.picks.slice() : [];
-
-      // Sort picks by time for top row
-      const ordered = picks.slice().sort((a,b)=>(a.t||0)-(b.t||0));
-
-      // --- Top row: selected classes ---
-      for (let i=0;i<4;i++){
-        const cell = el('div','cell');
-        cell.style.minHeight = '200px';
-        const found = ordered[i];
-        if (found){
-          const img = el('img','img',null); img.src = classImg(found.class); img.alt = found.class; cell.appendChild(img);
-          const lab = el('div','slotlabel',''); getDisplayName(found.uid).then(name => lab.textContent = name); cell.appendChild(lab);
-        } else {
-          cell.appendChild(el('div','placeholder','— choose a class —'));
+        // ensure drawnWeapons (unique)
+        let dw = d.drawnWeapons;
+        const allW = Object.keys(W2C);
+        if (!Array.isArray(dw) || dw.length!==4){
+          const chosen = uniqRand(allW,4);
+          updateDoc(roomRef,{ drawnWeapons: chosen, updatedAt: serverTimestamp() });
+          return; // will re-render on next snapshot
         }
-        top.appendChild(cell);
-      }
+        // build columns based on weapons with vertical pairs
+        state.columns = dw.map(w=>({ weapon:w }));
+        // picks
+        state.picks = (d.picks||[]);
+        renderBoard();
+      });
 
-      // --- Second row: weapons ---
-      for (let c=0;c<4;c++){
-        const cell = el('div','cell');
-        const w = drawn[c];
-        if (w && w!=='?'){
-          const img = el('img','img weapon',null); img.src = weaponImg(w); img.alt = w; cell.appendChild(img);
-        } else {
-          cell.appendChild(el('div','placeholder','(waiting for host to draw weapons)'));
-        }
-        wep.appendChild(cell);
-      }
-
-      // --- Bottom rows: clickable choices ---
-      for (let c=0;c<4;c++){
-        const w = drawn[c];
-        const pair = classesByWeapon[w] || [];
-        for (let r=0;r<2;r++){
-          const className = pair[r] || null;
-          const cell = el('div','cell picktile');
-          if (!className){ cell.classList.add('disabled'); cell.appendChild(el('div','placeholder','—')); cho.appendChild(cell); continue; }
-          const img = el('img','img',null); img.src = classImg(className); img.alt = className; cell.appendChild(img);
-
-          // Is this column already claimed?
-          const existing = picks.find(p=>p.col===c);
-          if (existing){
-            const label = el('div','pickedBy',''); getDisplayName(existing.uid).then(n => label.textContent = 'Picked by ' + n);
-            cell.appendChild(label);
-            // Only the owner can click to unclaim/swap before start
-            if (!state.room.rosterLocked && existing.uid===state.me.uid){
-              cell.addEventListener('click', () => {
-                if (existing.class===className) togglePick(c, className, true); // unclaim
-                else togglePick(c, className, false); // swap
-              });
-            } else {
-              cell.classList.add('disabled');
-            }
-          } else {
-            // No claim yet on this column
-            const disabled = state.room.rosterLocked || picks.length>=4 || w==='?';
-            if (disabled){
-              cell.classList.add('disabled');
-            } else {
-              cell.addEventListener('click', () => togglePick(c, className, false));
-            }
-          }
-
-          cho.appendChild(cell);
-        }
-      }
-
-      // Hint footer
-      if (Array.isArray(state.room.picks) && state.room.picks.length<4){
-        $('#hint').textContent = 'Click a class tile to claim it. You can click again to unclaim your own choice.';
-      } else if (Array.isArray(state.room.picks) && state.room.picks.length===4 && !state.room.rosterLocked){
-        $('#hint').textContent = 'All set! Press Start Run to lock this party.';
-      }
-    }
-
-    // ---------- Actions ----------
-    $('#btnBack').addEventListener('click', () => history.back());
-
-    $('#btnToggleMode').addEventListener('click', async () => {
-      if (!state.room || state.room.rosterLocked) return;
-      const isMulti = (state.room.visibility === 'friends' || state.room.visibility === 'public');
-      const nextVis = isMulti ? 'private' : 'friends';
-      try { await updateDoc(roomRef, { visibility: nextVis, updatedAt: serverTimestamp() }); } catch (e) { alert(e.message||e.code); }
-    });
-
-    $('#btnStart').addEventListener('click', async () => {
-      if (!state.room) return;
-      const picks = Array.isArray(state.room.picks) ? state.room.picks : [];
-      if (picks.length !== 4){ alert('Pick 4 classes first.'); return; }
-      const partyUidsOrdered = picks.sort((a,b)=>(a.t||0)-(b.t||0)).map(p=>p.uid);
-      const classByUid = {}; picks.forEach(p => { classByUid[p.uid] = p.class; });
-      try {
-        await updateDoc(roomRef, {
+      $('#btnToggleMode').addEventListener('click', async ()=>{
+        const d = state.room; if (!d || d.rosterLocked) return;
+        const isMulti = (d.visibility==='friends' || d.visibility==='public');
+        const next = isMulti ? 'private' : 'friends';
+        await updateDoc(roomRef,{ visibility: next, updatedAt: serverTimestamp() });
+      });
+      $('#btnBack').addEventListener('click', ()=> history.back());
+      $('#btnStart').addEventListener('click', async ()=>{
+        const d = state.room; if (!d) return;
+        const participants = Array.isArray(d.participantUids)?d.participantUids:[auth.currentUser.uid];
+        const classByUid = {};
+        for (const p of (d.picks||[])){ classByUid[p.uid]=p.classKey; }
+        await updateDoc(roomRef,{
           rosterLocked:true,
-          lockedPartyUids: Array.from(new Set(partyUidsOrdered)),
+          lockedPartyUids:participants,
+          classByUid,
           status:'in_progress',
           startedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          classByUid
+          updatedAt: serverTimestamp()
         });
-        alert('Run started. Roster locked.');
-      } catch (e) { alert(e.message||e.code); }
-    });
-
-    async function togglePick(col, className, unclaim){
-      if (!state.me || !state.room || state.room.rosterLocked) return;
-      try {
-        await runTransaction(db, async (tx) => {
-          const snap = await tx.get(roomRef);
-          if (!snap.exists()) throw new Error('Room missing');
-          const d = snap.data();
-          const drawn = d.drawnWeapons || [];
-          let picks = Array.isArray(d.picks) ? d.picks.slice() : [];
-          const idx = picks.findIndex(p=>p.col===col);
-          if (idx>=0){
-            const owned = picks[idx].uid === state.me.uid;
-            if (!owned) return; // not yours
-            if (unclaim){
-              picks.splice(idx,1);
-            } else {
-              picks[idx].class = className;
-              picks[idx].t = Date.now();
-            }
-          } else {
-            if (picks.length>=4) return;
-            picks.push({ col, weapon: drawn[col], class: className, uid: state.me.uid, t: Date.now() });
-          }
-          tx.update(roomRef, { picks, updatedAt: serverTimestamp() });
-        });
-      } catch (e) { alert(e.message||e.code); }
+      });
     }
   </script>
 </body>
