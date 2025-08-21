@@ -38,6 +38,9 @@
 
       // Start button (go Party Select)
       this._button(W/2-130, H-100, 'Start (Party Select)', 260, () => this.scene.start('PartySelect'));
+      
+      // Market button
+      this._button(W/2-100, H-150, 'Market', 200, () => this.scene.start('Market'));
 
       // Friends panel
       this.add.text(W-380, 150, 'Friends', { fontFamily:'system-ui, Arial', fontSize:'20px', color:'#e5e7eb' });

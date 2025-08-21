@@ -7,6 +7,7 @@
       this.load.image('logo', 'source/phaser/assets/logo.png');
       // data examples
       this.load.json('elements', 'source/data/elements.json');
+      this.load.json('spells', 'source/data/spells.json');
 
       // simple progress bar
       const w = this.scale.width, h = this.scale.height;

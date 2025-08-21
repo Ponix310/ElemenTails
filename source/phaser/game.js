@@ -24,6 +24,7 @@
   addScene('Load', window.ETScenes.LoadScene);
   addScene('Menu', window.ETScenes.MenuScene);
   addScene('PartySelect', window.ETScenes.PartySelectScene);
+  addScene('Market', window.ETScenes.MarketScene);
   addScene('Combat', window.ETScenes.CombatScene);
 
   // Start boot

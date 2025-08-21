@@ -1,0 +1,494 @@
+{
+  "spells": {
+    "major": {
+      "exactedfury": {
+        "name": "Exacted Fury",
+        "type": "Attack",
+        "cost": { "fire": 1, "water": 1, "lightning": 2 },
+        "energyCost": 4,
+        "area": "Single Target",
+        "effect": "Deal 6 Damage",
+        "effect2": ""
+      },
+      "incendiarychain": {
+        "name": "Incendiary Chain",
+        "type": "Attack",
+        "cost": { "fire": 2, "plant": 1, "lightning": 1 },
+        "energyCost": 5,
+        "area": "Single Target",
+        "effect": "Chain 3",
+        "effect2": "Apply 1 Burn to each target hit"
+      },
+      "whirlpoolburst": {
+        "name": "Whirlpool Burst",
+        "type": "Attack",
+        "cost": { "fire": 1, "water": 2, "earth": 1 },
+        "energyCost": 6,
+        "area": "Burst 2",
+        "effect": "Pull 1",
+        "effect2": "Deal 3 Damage"
+      },
+      "stormpiercearrow": {
+        "name": "Stormpierce Arrow",
+        "type": "Attack",
+        "cost": { "fire": 1, "air": 2, "lightning": 1 },
+        "energyCost": 4,
+        "area": "Line 4",
+        "effect": "Teleport 2",
+        "effect2": "Deal 3 Damage, Apply 1 Burn"
+      },
+      "tempesttether": {
+        "name": "Tempest Tether",
+        "type": "Attack",
+        "cost": { "water": 1, "plant": 1, "lightning": 2 },
+        "energyCost": 5,
+        "area": "Range 3",
+        "effect": "Pull 2",
+        "effect2": "Chain 3"
+      },
+      "scorchwindtangle": {
+        "name": "Scorchwind Tangle",
+        "type": "Attack",
+        "cost": { "fire": 1, "water": 1, "plant": 1, "air": 1 },
+        "energyCost": 5,
+        "area": "Cone 3",
+        "effect": "Deal 2 Damage then Push 1",
+        "effect2": "Apply 2 Burn and 1 Rooted"
+      },
+      "blazingcomet": {
+        "name": "Blazing Comet",
+        "type": "Attack",
+        "cost": { "fire": 1, "air": 2, "earth": 1 },
+        "energyCost": 4,
+        "area": "Single Target",
+        "effect": "Deal 4 Damage then Push 2",
+        "effect2": "If target hits a wall, damage x2"
+      },
+      "stoneveilward": {
+        "name": "Stoneveil Ward",
+        "type": "Defense",
+        "cost": { "water": 1, "plant": 1, "earth": 2 },
+        "energyCost": 4,
+        "area": "",
+        "effect": "Gain 3 Shield",
+        "effect2": "and 1 Aegis"
+      },
+      "zephyrgrace": {
+        "name": "Zephyr Grace",
+        "type": "Defense",
+        "cost": { "plant": 1, "air": 2, "lightning": 1 },
+        "energyCost": 4,
+        "area": "Cleave 2",
+        "effect": "Push 2",
+        "effect2": "Gain 2 Evade"
+      },
+      "tidalshelter": {
+        "name": "Tidal Shelter",
+        "type": "Defense",
+        "cost": { "water": 2, "plant": 1, "earth": 1 },
+        "energyCost": 6,
+        "area": "Burst 1",
+        "effect": "Give 1 Aegis",
+        "effect2": "and 2 Shield"
+      },
+      "emberguard": {
+        "name": "Emberguard",
+        "type": "Defense",
+        "cost": { "fire": 1, "lightning": 1, "earth": 2 },
+        "energyCost": 5,
+        "area": "",
+        "effect": "Gain 3 Shield Apply 2 Burn",
+        "effect2": "to melee attackers this round"
+      },
+      "verdantshell": {
+        "name": "Verdant Shell",
+        "type": "Defense",
+        "cost": { "water": 2, "plant": 1, "air": 1 },
+        "energyCost": 5,
+        "area": "",
+        "effect": "Gain 3 Shield",
+        "effect2": "and 2 Renew"
+      },
+      "emeraldoverbloom": {
+        "name": "Emerald Overbloom",
+        "type": "Utility",
+        "cost": { "water": 1, "plant": 2, "lightning": 1 },
+        "energyCost": 5,
+        "area": "Burst 3",
+        "effect": "Give 2 Renew",
+        "effect2": "and 1 Energized"
+      },
+      "cycloneswirl": {
+        "name": "Cyclone Swirl",
+        "type": "Utility",
+        "cost": { "plant": 1, "air": 2, "earth": 1 },
+        "energyCost": 6,
+        "area": "Burst 2",
+        "effect": "Give Allies 1 Inspired then",
+        "effect2": "Push 2 all Enemies"
+      },
+      "shroudedcoil": {
+        "name": "Shrouded Coil",
+        "type": "Utility",
+        "cost": { "fire": 1, "plant": 1, "air": 2 },
+        "energyCost": 4,
+        "area": "",
+        "effect": "Give 2 Inspired",
+        "effect2": "and Stealth"
+      },
+      "arcwavesnare": {
+        "name": "Arcwave Snare",
+        "type": "Utility",
+        "cost": { "water": 2, "air": 1, "lightning": 1 },
+        "energyCost": 5,
+        "area": "Area 3",
+        "effect": "Pull all enemies to center then",
+        "effect2": "Apply 1 Weaken and 1 Rooted"
+      },
+      "phoenixaccord": {
+        "name": "Phoenix Accord",
+        "type": "Utility",
+        "cost": { "fire": 1, "water": 1, "plant": 2 },
+        "energyCost": 5,
+        "area": "",
+        "effect": "Give 2 Renew and 2 Thorns",
+        "effect2": "to 2 Allies"
+      },
+      "surgingtailwind": {
+        "name": "Surging Tailwind",
+        "type": "Utility",
+        "cost": { "water": 1, "plant": 1, "air": 1, "lightning": 1 },
+        "energyCost": 5,
+        "area": "",
+        "effect": "Give 3 Energized",
+        "effect2": "to 2 Allies"
+      }
+    },
+    "minor": {
+      "arcingflame": {
+        "name": "Arcing Flame",
+        "type": "Attack",
+        "cost": { "fire": 1 },
+        "energyCost": 2,
+        "area": "Arc 2",
+        "effect": "Deal 2 Fire damage",
+        "effect2": ""
+      },
+      "blazeheart": {
+        "name": "Blaze Heart",
+        "type": "Defense",
+        "cost": { "fire": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Gain 2 Shield",
+        "effect2": "Apply 1 Burn to attackers"
+      },
+      "blazingslash": {
+        "name": "Blazing Slash",
+        "type": "Attack",
+        "cost": { "fire": 1 },
+        "energyCost": 2,
+        "area": "Melee",
+        "effect": "Deal 3 Fire damage",
+        "effect2": "Apply 1 Burn"
+      },
+      "boilingguard": {
+        "name": "Boiling Guard",
+        "type": "Defense",
+        "cost": { "fire": 1, "water": 1 },
+        "energyCost": 3,
+        "area": "",
+        "effect": "Gain 3 Shield",
+        "effect2": "Heal 1 Corruption"
+      },
+      "bramblebulwark": {
+        "name": "Bramble Bulwark",
+        "type": "Defense",
+        "cost": { "plant": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Gain 2 Shield",
+        "effect2": "and 1 Thorns"
+      },
+      "breezelightaid": {
+        "name": "Breezelight Aid",
+        "type": "Utility",
+        "cost": { "air": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Give 1 Inspired",
+        "effect2": "and 1 Move"
+      },
+      "cinderstep": {
+        "name": "Cinderstep",
+        "type": "Utility",
+        "cost": { "fire": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Move 2",
+        "effect2": "Leave 1 Burn trail"
+      },
+      "earthenshell": {
+        "name": "Earthen Shell",
+        "type": "Defense",
+        "cost": { "earth": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Gain 3 Shield",
+        "effect2": ""
+      },
+      "flarebloom": {
+        "name": "Flare Bloom",
+        "type": "Utility",
+        "cost": { "fire": 1, "plant": 1 },
+        "energyCost": 3,
+        "area": "Burst 1",
+        "effect": "Give 1 Renew",
+        "effect2": "Deal 1 Fire damage to enemies"
+      },
+      "flashbrand": {
+        "name": "Flash Brand",
+        "type": "Attack",
+        "cost": { "fire": 1, "lightning": 1 },
+        "energyCost": 3,
+        "area": "Range 3",
+        "effect": "Deal 2 damage",
+        "effect2": "Apply 1 Mark"
+      },
+      "flickerveil": {
+        "name": "Flicker Veil",
+        "type": "Utility",
+        "cost": { "air": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Gain 1 Evade",
+        "effect2": "and Stealth"
+      },
+      "kindlestrike": {
+        "name": "Kindle Strike",
+        "type": "Attack",
+        "cost": { "fire": 1 },
+        "energyCost": 2,
+        "area": "Melee",
+        "effect": "Deal 2 Fire damage",
+        "effect2": "Apply 1 Burn"
+      },
+      "magmasmash": {
+        "name": "Magma Smash",
+        "type": "Attack",
+        "cost": { "fire": 1, "earth": 1 },
+        "energyCost": 3,
+        "area": "Melee",
+        "effect": "Deal 4 damage",
+        "effect2": "Push 1"
+      },
+      "mistcutter": {
+        "name": "Mist Cutter",
+        "type": "Attack",
+        "cost": { "water": 1, "air": 1 },
+        "energyCost": 3,
+        "area": "Line 3",
+        "effect": "Deal 2 damage",
+        "effect2": "Ignore Shield"
+      },
+      "mistwalk": {
+        "name": "Mistwalk",
+        "type": "Utility",
+        "cost": { "water": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Move 2",
+        "effect2": "Gain Stealth"
+      },
+      "moltenstand": {
+        "name": "Molten Stand",
+        "type": "Defense",
+        "cost": { "fire": 1, "earth": 1 },
+        "energyCost": 3,
+        "area": "",
+        "effect": "Gain 2 Shield",
+        "effect2": "Cannot be moved"
+      },
+      "mudsweep": {
+        "name": "Mudsweep",
+        "type": "Attack",
+        "cost": { "water": 1, "earth": 1 },
+        "energyCost": 3,
+        "area": "Cone 2",
+        "effect": "Deal 2 damage",
+        "effect2": "Apply Slowed"
+      },
+      "pulsevine": {
+        "name": "Pulse Vine",
+        "type": "Utility",
+        "cost": { "plant": 1 },
+        "energyCost": 2,
+        "area": "Range 3",
+        "effect": "Give 2 Renew",
+        "effect2": ""
+      },
+      "rallyingbloom": {
+        "name": "Rallying Bloom",
+        "type": "Utility",
+        "cost": { "plant": 1 },
+        "energyCost": 2,
+        "area": "Burst 1",
+        "effect": "Give 1 Inspired",
+        "effect2": "and 1 Renew"
+      },
+      "reedwhiprescue": {
+        "name": "Reedwhip Rescue",
+        "type": "Utility",
+        "cost": { "plant": 1, "water": 1 },
+        "energyCost": 3,
+        "area": "Range 4",
+        "effect": "Pull ally 2",
+        "effect2": "Give 1 Shield"
+      },
+      "rootedprovocation": {
+        "name": "Rooted Provocation",
+        "type": "Utility",
+        "cost": { "plant": 1, "earth": 1 },
+        "energyCost": 3,
+        "area": "Range 2",
+        "effect": "Taunt enemy",
+        "effect2": "Apply Rooted"
+      },
+      "scorchinggale": {
+        "name": "Scorching Gale",
+        "type": "Attack",
+        "cost": { "fire": 1, "air": 1 },
+        "energyCost": 3,
+        "area": "Cone 3",
+        "effect": "Deal 2 Fire damage",
+        "effect2": "Push 1"
+      },
+      "sharedgrowth": {
+        "name": "Shared Growth",
+        "type": "Utility",
+        "cost": { "plant": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Give 1 Renew",
+        "effect2": "to 2 allies"
+      },
+      "shocksnap": {
+        "name": "Shock Snap",
+        "type": "Attack",
+        "cost": { "lightning": 1 },
+        "energyCost": 2,
+        "area": "Range 2",
+        "effect": "Deal 2 Lightning damage",
+        "effect2": "Apply 1 Mark"
+      },
+      "sparkstepbarrier": {
+        "name": "Sparkstep Barrier",
+        "type": "Defense",
+        "cost": { "lightning": 1, "air": 1 },
+        "energyCost": 3,
+        "area": "",
+        "effect": "Gain 2 Shield",
+        "effect2": "Move 1"
+      },
+      "steamjab": {
+        "name": "Steam Jab",
+        "type": "Attack",
+        "cost": { "fire": 1, "water": 1 },
+        "energyCost": 3,
+        "area": "Range 2",
+        "effect": "Deal 3 damage",
+        "effect2": "Push 1"
+      },
+      "stoneflowward": {
+        "name": "Stoneflow Ward",
+        "type": "Defense",
+        "cost": { "water": 1, "earth": 1 },
+        "energyCost": 3,
+        "area": "",
+        "effect": "Gain 2 Shield",
+        "effect2": "and 1 Renew"
+      },
+      "stormpiercrer": {
+        "name": "Storm Piercer",
+        "type": "Attack",
+        "cost": { "air": 1, "lightning": 1 },
+        "energyCost": 3,
+        "area": "Line 3",
+        "effect": "Deal 3 Lightning damage",
+        "effect2": "Ignore Shield"
+      },
+      "sylphwindsurge": {
+        "name": "Sylph Wind Surge",
+        "type": "Utility",
+        "cost": { "air": 1 },
+        "energyCost": 2,
+        "area": "Burst 2",
+        "effect": "Push enemies 1",
+        "effect2": "Give allies 1 Move"
+      },
+      "thornlashspark": {
+        "name": "Thornlash Spark",
+        "type": "Attack",
+        "cost": { "plant": 1, "lightning": 1 },
+        "energyCost": 3,
+        "area": "Range 3",
+        "effect": "Deal 2 damage",
+        "effect2": "Apply 1 Thorns and 1 Mark"
+      },
+      "thunderlash": {
+        "name": "Thunder Lash",
+        "type": "Attack",
+        "cost": { "lightning": 1 },
+        "energyCost": 2,
+        "area": "Range 3",
+        "effect": "Deal 2 Lightning damage",
+        "effect2": "Chain 1"
+      },
+      "tidalanchor": {
+        "name": "Tidal Anchor",
+        "type": "Utility",
+        "cost": { "water": 1, "earth": 1 },
+        "energyCost": 3,
+        "area": "Range 3",
+        "effect": "Pull enemy 2",
+        "effect2": "Apply Rooted"
+      },
+      "tideburst": {
+        "name": "Tide Burst",
+        "type": "Attack",
+        "cost": { "water": 1 },
+        "energyCost": 2,
+        "area": "Burst 1",
+        "effect": "Deal 2 Water damage",
+        "effect2": "Push 1"
+      },
+      "verdantshell": {
+        "name": "Verdant Shell",
+        "type": "Defense",
+        "cost": { "plant": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Gain 2 Shield",
+        "effect2": "and 1 Renew"
+      },
+      "vitalwaters": {
+        "name": "Vital Waters",
+        "type": "Utility",
+        "cost": { "water": 1 },
+        "energyCost": 2,
+        "area": "",
+        "effect": "Give 2 Renew",
+        "effect2": "Heal 1 Corruption"
+      },
+      "windflare": {
+        "name": "Wind Flare",
+        "type": "Attack",
+        "cost": { "air": 1, "fire": 1 },
+        "energyCost": 3,
+        "area": "Cone 2",
+        "effect": "Deal 2 damage",
+        "effect2": "Apply 1 Burn"
+      }
+    }
+  }
+}
