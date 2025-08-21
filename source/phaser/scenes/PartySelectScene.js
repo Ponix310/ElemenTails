@@ -9,6 +9,7 @@
       this.usedWeapons = new Set();
       this.gameData = {};
       this.classCards = [];
+      this.isMultiplayer = false;
     }
     
     preload(){
@@ -36,7 +37,16 @@
       this.generateRandomWeapons();
       
       // Title
-      this.add.text(W/2, 30, 'Choose classes', { fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#e5e7eb' }).setOrigin(0.5);
+      this.add.text(W/2, 30, 'Choose Classes', { fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#e5e7eb' }).setOrigin(0.5);
+      
+      // Singleplayer/Multiplayer toggle
+      this.modeToggle = this.add.rectangle(W/2, 70, 200, 30, this.isMultiplayer ? 0x374151 : 0x22c55e)
+        .setInteractive({useHandCursor: true});
+      this.modeText = this.add.text(W/2, 70, this.isMultiplayer ? 'Multiplayer Lobby' : 'Singleplayer', { 
+        fontFamily: 'system-ui, Arial', fontSize: '14px', color: '#e5e7eb' 
+      }).setOrigin(0.5);
+      
+      this.modeToggle.on('pointerdown', () => this.toggleMode());
       
       // Display weapon columns with class selection
       this.displayWeaponColumns();
@@ -114,48 +124,19 @@
         .setStrokeStyle(2, 0x475569)
         .setInteractive({useHandCursor: true});
       
-      // Class name (main text)
-      const classText = this.add.text(x, y + 35, className, {
+      // Class name (only text needed)
+      const classText = this.add.text(x, y + 45, className, {
         fontFamily: 'system-ui, Arial',
-        fontSize: '14px',
+        fontSize: '16px',
         color: '#fbbf24',
         stroke: '#000000',
         strokeThickness: 2
       }).setOrigin(0.5);
       
-      // Hero name
-      const heroText = this.add.text(x, y - 35, hero.name, {
-        fontFamily: 'system-ui, Arial',
-        fontSize: '12px',
-        color: '#e5e7eb',
-        stroke: '#000000',
-        strokeThickness: 1
-      }).setOrigin(0.5);
-      
-      // Elements
-      const elementsText = `${classData.primaryElement} + ${classData.secondaryElement}`;
-      const elementsDisplay = this.add.text(x, y + 15, elementsText, {
-        fontFamily: 'system-ui, Arial',
-        fontSize: '10px',
-        color: '#6ee7b7',
-        stroke: '#000000',
-        strokeThickness: 1
-      }).setOrigin(0.5);
-      
-      // Stats
-      const statsText = `Speed: ${classData.speed} | Range: ${classData.range}`;
-      const statsDisplay = this.add.text(x, y - 15, statsText, {
-        fontFamily: 'system-ui, Arial',
-        fontSize: '10px',
-        color: '#94a3b8',
-        stroke: '#000000',
-        strokeThickness: 1
-      }).setOrigin(0.5);
-      
       const cardData = {
         portrait,
         bg: cardBg,
-        texts: [classText, heroText, elementsDisplay, statsDisplay],
+        texts: [classText],
         className,
         heroKey: hero.key || Object.keys(this.gameData.heroes).find(k => this.gameData.heroes[k].name === hero.name),
         weaponKey,
@@ -243,16 +224,65 @@
         // Update visual state if availability changed
         if(wasAvailable !== card.available && !card.selected) {
           if(card.available) {
-            // Make available
-            card.bg.setFillStyle(0x1e293b).setStrokeStyle(2, 0x475569);
+            // Make available - restore color
+            card.portrait.clearTint();
+            card.bg.setFillStyle(0x000000, 0.4).setStrokeStyle(2, 0x475569);
             card.texts.forEach(text => text.clearTint());
           } else {
-            // Grey out
-            card.bg.setFillStyle(0x0f172a).setStrokeStyle(2, 0x334155);
-            card.texts.forEach(text => text.setTint(0x64748b));
+            // Make monochrome instead of grey
+            card.portrait.setTint(0x666666);
+            card.bg.setFillStyle(0x000000, 0.6).setStrokeStyle(2, 0x334155);
+            card.texts.forEach(text => text.setTint(0x888888));
           }
         }
       });
+    }
+    
+    toggleMode(){
+      this.isMultiplayer = !this.isMultiplayer;
+      this.modeToggle.setFillStyle(this.isMultiplayer ? 0x374151 : 0x22c55e);
+      this.modeText.setText(this.isMultiplayer ? 'Multiplayer Lobby' : 'Singleplayer');
+      
+      if(this.isMultiplayer) {
+        // Show multiplayer features (friend list, lobby info, etc.)
+        this.showMultiplayerFeatures();
+      } else {
+        // Hide multiplayer features
+        this.hideMultiplayerFeatures();
+      }
+    }
+    
+    showMultiplayerFeatures(){
+      // Create lobby info display
+      if(!this.lobbyInfo) {
+        const { width: W } = this.scale;
+        this.lobbyInfo = this.add.text(W - 200, 100, 'Lobby: Open to Friends', { 
+          fontFamily: 'system-ui, Arial', fontSize: '14px', color: '#34d399' 
+        });
+        
+        // Show online friends who can join
+        this.friendsList = this.add.text(W - 200, 130, 'Friends Online:', { 
+          fontFamily: 'system-ui, Arial', fontSize: '12px', color: '#e5e7eb' 
+        });
+        
+        // Note: In a full implementation, this would show actual online friends
+        // For now, just show placeholder
+        this.friendsPlaceholder = this.add.text(W - 200, 150, '(No friends online)', { 
+          fontFamily: 'system-ui, Arial', fontSize: '10px', color: '#64748b' 
+        });
+      }
+    }
+    
+    hideMultiplayerFeatures(){
+      // Remove multiplayer UI elements
+      if(this.lobbyInfo) {
+        this.lobbyInfo.destroy();
+        this.friendsList.destroy();
+        this.friendsPlaceholder.destroy();
+        this.lobbyInfo = null;
+        this.friendsList = null;
+        this.friendsPlaceholder = null;
+      }
     }
     
     startCombat(){
@@ -274,8 +304,9 @@
         };
       });
       
-      // Store party data and start combat
+      // Store party data and game mode
       this.registry.set('selectedParty', selectedParty);
+      this.registry.set('isMultiplayer', this.isMultiplayer);
       this.scene.start('Combat');
     }
   }
