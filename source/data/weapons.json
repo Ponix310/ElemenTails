@@ -1,0 +1,112 @@
+{
+  "weapons": {
+    "monkWeapon": {
+      "name": "Celestial Fists",
+      "heroType": "fox",
+      "className": "Monk",
+      "elements": ["Fire", "Air"]
+    },
+    "summonerWeapon": {
+      "name": "Binding Tome",
+      "heroType": "fox", 
+      "className": "Summoner",
+      "elements": ["Fire", "Plant"]
+    },
+    "assassinWeapon": {
+      "name": "Shadow Blade",
+      "heroType": "fox",
+      "className": "Assassin", 
+      "elements": ["Fire", "Lightning"]
+    },
+    "wizardWeapon": {
+      "name": "Arcane Staff",
+      "heroType": "frog",
+      "className": "Wizard",
+      "elements": ["Water", "Air"]
+    },
+    "berserkerWeapon": {
+      "name": "Rage Axe",
+      "heroType": "frog",
+      "className": "Berserker",
+      "elements": ["Water", "Fire"]
+    },
+    "myrmidonWeapon": {
+      "name": "Tidal Spear",
+      "heroType": "frog",
+      "className": "Myrmidon",
+      "elements": ["Water", "Earth"]
+    },
+    "clericWeapon": {
+      "name": "Sacred Mace",
+      "heroType": "rabbit",
+      "className": "Cleric",
+      "elements": ["Plant", "Air"]
+    },
+    "druidWeapon": {
+      "name": "Nature's Staff",
+      "heroType": "rabbit",
+      "className": "Druid",
+      "elements": ["Plant", "Earth"]
+    },
+    "bardWeapon": {
+      "name": "Harmony Lute",
+      "heroType": "rabbit",
+      "className": "Bard",
+      "elements": ["Plant", "Water"]
+    },
+    "archerWeapon": {
+      "name": "Storm Bow",
+      "heroType": "raven",
+      "className": "Archer",
+      "elements": ["Air", "Lightning"]
+    },
+    "reaperWeapon": {
+      "name": "Soul Scythe",
+      "heroType": "raven",
+      "className": "Reaper",
+      "elements": ["Air", "Earth"]
+    },
+    "battlemageWeapon": {
+      "name": "War Catalyst",
+      "heroType": "raven",
+      "className": "Battlemage",
+      "elements": ["Air", "Fire"]
+    },
+    "ninjaWeapon": {
+      "name": "Thunder Shuriken",
+      "heroType": "wolf",
+      "className": "Ninja",
+      "elements": ["Lightning", "Air"]
+    },
+    "samuraiWeapon": {
+      "name": "Lightning Katana",
+      "heroType": "wolf",
+      "className": "Samurai",
+      "elements": ["Lightning", "Fire"]
+    },
+    "paladinWeapon": {
+      "name": "Divine Hammer",
+      "heroType": "wolf",
+      "className": "Paladin",
+      "elements": ["Lightning", "Plant"]
+    },
+    "lancerWeapon": {
+      "name": "Earthshaker Lance",
+      "heroType": "bear",
+      "className": "Lancer",
+      "elements": ["Earth", "Water"]
+    },
+    "barberarianWeapon": {
+      "name": "Primal Club",
+      "heroType": "bear",
+      "className": "Barbearian",
+      "elements": ["Earth", "Fire"]
+    },
+    "warriorWeapon": {
+      "name": "Stone Sword",
+      "heroType": "bear",
+      "className": "Warrior",
+      "elements": ["Earth", "Lightning"]
+    }
+  }
+}

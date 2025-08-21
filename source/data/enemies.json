@@ -1,0 +1,49 @@
+{
+  "enemies": {
+    "corruptedWolf": {
+      "name": "Corrupted Wolf",
+      "maxCorruption": 8,
+      "speed": 3,
+      "range": 1,
+      "element": "Earth",
+      "attacks": {
+        "bite": {
+          "name": "Savage Bite",
+          "damage": 3,
+          "range": 1,
+          "description": "Lunges forward with corrupted fangs"
+        },
+        "howl": {
+          "name": "Corrupting Howl", 
+          "damage": 1,
+          "range": 3,
+          "effect": "burn",
+          "effectStacks": 2,
+          "description": "Howls, spreading corruption to nearby enemies"
+        }
+      }
+    },
+    "shadowSprite": {
+      "name": "Shadow Sprite",
+      "maxCorruption": 5,
+      "speed": 4,
+      "range": 2,
+      "element": "Air",
+      "attacks": {
+        "shadowBolt": {
+          "name": "Shadow Bolt",
+          "damage": 2,
+          "range": 3,
+          "description": "Fires a bolt of dark energy"
+        },
+        "phase": {
+          "name": "Phase Step",
+          "damage": 1,
+          "range": 1,
+          "effect": "teleport",
+          "description": "Phases through space to strike"
+        }
+      }
+    }
+  }
+}

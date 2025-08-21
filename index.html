@@ -2,25 +2,36 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>ElemenTails — Loading…</title>
-    <meta http-equiv="refresh" content="0; url=mainmenu.html">
-    <script>
-      (function() {
-        var target = 'mainmenu.html' + window.location.search + window.location.hash;
-        // Use replace so the back button doesn't come back here
-        window.location.replace(target);
-      })();
-    </script>
+    <title>ElemenTails</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Phaser -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+
+    <!-- Firebase (Compat SDK for simplicity with non-module scripts) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase init for ElemenTails -->
+    <script src="source/phaser/firebase.js"></script>
+
+    <!-- Scenes -->
+    <script src="source/phaser/scenes/_ns.js"></script>
+    <script src="source/phaser/scenes/BootScene.js"></script>
+    <script src="source/phaser/scenes/LoadScene.js"></script>
+    <script src="source/phaser/scenes/MenuScene.js"></script>
+    <script src="source/phaser/scenes/PartySelectScene.js"></script>
+    <script src="source/phaser/scenes/CombatScene.js"></script>
+
+    <!-- Game bootstrap -->
+    <script src="source/phaser/game.js" defer></script>
+
     <style>
-      html,body{height:100%;margin:0;background:#0b1220;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
-      .wrap{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem}
-      a{color:#7dd3fc}
+      html, body { height: 100%; margin: 0; background: #0b1220; color: #e5e7eb; font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial; overflow: hidden; }
+      #game-container { width: 100%; height: 100%; }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <div>Redirecting to Main Menu…</div>
-      <a href="mainmenu.html">Click here if you aren't redirected</a>
-    </div>
+    <div id="game-container"></div>
   </body>
 </html>

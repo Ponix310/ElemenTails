@@ -1,0 +1,166 @@
+{
+  "classes": {
+    "Monk": {
+      "hero": "Fox",
+      "weapon": "Celestial Fists",
+      "primaryElement": "Fire",
+      "secondaryElement": "Air",
+      "speed": 3,
+      "range": 1,
+      "description": "Swift martial artist with fire-enhanced strikes"
+    },
+    "Summoner": {
+      "hero": "Fox",
+      "weapon": "Binding Tome",
+      "primaryElement": "Fire",
+      "secondaryElement": "Plant",
+      "speed": 2,
+      "range": 3,
+      "description": "Conjures elemental allies and nature magic"
+    },
+    "Assassin": {
+      "hero": "Fox",
+      "weapon": "Shadow Blade",
+      "primaryElement": "Fire",
+      "secondaryElement": "Lightning",
+      "speed": 4,
+      "range": 2,
+      "description": "Lightning-fast strikes from the shadows"
+    },
+    "Wizard": {
+      "hero": "Frog",
+      "weapon": "Arcane Staff",
+      "primaryElement": "Water",
+      "secondaryElement": "Air",
+      "speed": 2,
+      "range": 4,
+      "description": "Master of water and wind magic"
+    },
+    "Berserker": {
+      "hero": "Frog",
+      "weapon": "Rage Axe",
+      "primaryElement": "Water",
+      "secondaryElement": "Fire",
+      "speed": 3,
+      "range": 1,
+      "description": "Unleashes steam-powered fury in close combat"
+    },
+    "Myrmidon": {
+      "hero": "Frog",
+      "weapon": "Tidal Spear",
+      "primaryElement": "Water",
+      "secondaryElement": "Earth",
+      "speed": 3,
+      "range": 2,
+      "description": "Disciplined warrior wielding earth and sea"
+    },
+    "Cleric": {
+      "hero": "Rabbit",
+      "weapon": "Sacred Mace",
+      "primaryElement": "Plant",
+      "secondaryElement": "Air",
+      "speed": 2,
+      "range": 2,
+      "description": "Divine healer channeling wind and growth"
+    },
+    "Druid": {
+      "hero": "Rabbit",
+      "weapon": "Nature's Staff",
+      "primaryElement": "Plant",
+      "secondaryElement": "Earth",
+      "speed": 2,
+      "range": 3,
+      "description": "Guardian of nature's primal forces"
+    },
+    "Bard": {
+      "hero": "Rabbit",
+      "weapon": "Harmony Lute",
+      "primaryElement": "Plant",
+      "secondaryElement": "Water",
+      "speed": 3,
+      "range": 3,
+      "description": "Inspiring musician weaving life and flow"
+    },
+    "Archer": {
+      "hero": "Raven",
+      "weapon": "Storm Bow",
+      "primaryElement": "Air",
+      "secondaryElement": "Lightning",
+      "speed": 3,
+      "range": 5,
+      "description": "Long-range striker with electrified arrows"
+    },
+    "Reaper": {
+      "hero": "Raven",
+      "weapon": "Soul Scythe",
+      "primaryElement": "Air",
+      "secondaryElement": "Earth",
+      "speed": 3,
+      "range": 2,
+      "description": "Harvests souls with wind and stone"
+    },
+    "Battlemage": {
+      "hero": "Raven",
+      "weapon": "War Catalyst",
+      "primaryElement": "Air",
+      "secondaryElement": "Fire",
+      "speed": 2,
+      "range": 3,
+      "description": "Combines aerial magic with explosive fire"
+    },
+    "Ninja": {
+      "hero": "Wolf",
+      "weapon": "Thunder Shuriken",
+      "primaryElement": "Lightning",
+      "secondaryElement": "Air",
+      "speed": 4,
+      "range": 3,
+      "description": "Silent assassin striking like thunder"
+    },
+    "Samurai": {
+      "hero": "Wolf",
+      "weapon": "Lightning Katana",
+      "primaryElement": "Lightning",
+      "secondaryElement": "Fire",
+      "speed": 3,
+      "range": 1,
+      "description": "Honorable warrior with electrified blade"
+    },
+    "Paladin": {
+      "hero": "Wolf",
+      "weapon": "Divine Hammer",
+      "primaryElement": "Lightning",
+      "secondaryElement": "Plant",
+      "speed": 2,
+      "range": 1,
+      "description": "Holy protector wielding divine lightning"
+    },
+    "Lancer": {
+      "hero": "Bear",
+      "weapon": "Earthshaker Lance",
+      "primaryElement": "Earth",
+      "secondaryElement": "Water",
+      "speed": 2,
+      "range": 2,
+      "description": "Cavalry fighter commanding earth and tide"
+    },
+    "Barbearian": {
+      "hero": "Bear",
+      "weapon": "Primal Club",
+      "primaryElement": "Earth",
+      "secondaryElement": "Fire",
+      "speed": 2,
+      "range": 1,
+      "description": "Savage warrior of stone and flame"
+    },
+    "Warrior": {
+      "hero": "Bear",
+      "weapon": "Stone Sword",
+      "primaryElement": "Earth",
+      "secondaryElement": "Lightning",
+      "speed": 2,
+      "range": 1,
+      "description": "Steadfast defender with shocking strikes"
+    }
+  }
+}

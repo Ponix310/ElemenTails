@@ -1,0 +1,34 @@
+{
+  "heroes": {
+    "fox": {
+      "name": "Fox",
+      "baseElement": "Fire",
+      "classes": ["Monk", "Summoner", "Assassin"]
+    },
+    "frog": {
+      "name": "Frog", 
+      "baseElement": "Water",
+      "classes": ["Wizard", "Berserker", "Myrmidon"]
+    },
+    "rabbit": {
+      "name": "Rabbit",
+      "baseElement": "Plant", 
+      "classes": ["Cleric", "Druid", "Bard"]
+    },
+    "raven": {
+      "name": "Raven",
+      "baseElement": "Air",
+      "classes": ["Archer", "Reaper", "Battlemage"]
+    },
+    "wolf": {
+      "name": "Wolf",
+      "baseElement": "Lightning",
+      "classes": ["Ninja", "Samurai", "Paladin"]
+    },
+    "bear": {
+      "name": "Bear",
+      "baseElement": "Earth",
+      "classes": ["Lancer", "Barbearian", "Warrior"]
+    }
+  }
+}
