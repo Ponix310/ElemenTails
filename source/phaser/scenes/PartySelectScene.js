@@ -16,6 +16,12 @@
       this.load.json('heroes', 'source/data/heroes.json');
       this.load.json('weapons', 'source/data/weapons.json');
       this.load.json('classes', 'source/data/classes.json');
+      
+      // Load class portraits
+      const classNames = ['Monk', 'Berserker', 'Wizard', 'Druid', 'Cleric', 'Summoner', 'Archer', 'Bard', 'Ninja', 'Assassin', 'Lancer', 'Myrmidon', 'Barbearian', 'Reaper', 'Samurai', 'Battlemage', 'Paladin', 'Warrior'];
+      classNames.forEach(className => {
+        this.load.image(className.toLowerCase() + 'portrait', `source/phaser/assets/ClassPortraits/${className.toLowerCase()}portrait.png`);
+      });
     }
     
     create(){
@@ -99,43 +105,55 @@
       const cardWidth = 200;
       const cardHeight = 120;
       
-      // Card background
-      const cardBg = this.add.rectangle(x, y, cardWidth, cardHeight, 0x1e293b)
+      // Class portrait as background
+      const portrait = this.add.image(x, y, className.toLowerCase() + 'portrait')
+        .setDisplaySize(cardWidth - 10, cardHeight - 10);
+      
+      // Semi-transparent overlay for readability
+      const cardBg = this.add.rectangle(x, y, cardWidth, cardHeight, 0x000000, 0.4)
         .setStrokeStyle(2, 0x475569)
         .setInteractive({useHandCursor: true});
       
-      // Class name (remove hero prefix if present)
-      const displayClassName = className.includes(' ') ? className.split(' ').slice(1).join(' ') : className;
-      const classText = this.add.text(x, y - 35, displayClassName, {
+      // Class name (main text)
+      const classText = this.add.text(x, y + 35, className, {
         fontFamily: 'system-ui, Arial',
         fontSize: '14px',
-        color: '#e5e7eb'
+        color: '#fbbf24',
+        stroke: '#000000',
+        strokeThickness: 2
       }).setOrigin(0.5);
       
-      // Hero name and elements
-      const heroText = this.add.text(x, y - 15, hero.name, {
+      // Hero name
+      const heroText = this.add.text(x, y - 35, hero.name, {
         fontFamily: 'system-ui, Arial',
         fontSize: '12px',
-        color: '#94a3b8'
+        color: '#e5e7eb',
+        stroke: '#000000',
+        strokeThickness: 1
       }).setOrigin(0.5);
       
       // Elements
       const elementsText = `${classData.primaryElement} + ${classData.secondaryElement}`;
-      const elementsDisplay = this.add.text(x, y + 5, elementsText, {
+      const elementsDisplay = this.add.text(x, y + 15, elementsText, {
         fontFamily: 'system-ui, Arial',
-        fontSize: '11px',
-        color: '#6ee7b7'
+        fontSize: '10px',
+        color: '#6ee7b7',
+        stroke: '#000000',
+        strokeThickness: 1
       }).setOrigin(0.5);
       
       // Stats
       const statsText = `Speed: ${classData.speed} | Range: ${classData.range}`;
-      const statsDisplay = this.add.text(x, y + 25, statsText, {
+      const statsDisplay = this.add.text(x, y - 15, statsText, {
         fontFamily: 'system-ui, Arial',
         fontSize: '10px',
-        color: '#64748b'
+        color: '#94a3b8',
+        stroke: '#000000',
+        strokeThickness: 1
       }).setOrigin(0.5);
       
       const cardData = {
+        portrait,
         bg: cardBg,
         texts: [classText, heroText, elementsDisplay, statsDisplay],
         className,
