@@ -4,8 +4,11 @@
     constructor(){ 
       super('PartySelect'); 
       this.selectedWeapons = [];
-      this.selectedParty = [];
+      this.selectedClasses = [];
+      this.usedHeroes = new Set();
+      this.usedWeapons = new Set();
       this.gameData = {};
+      this.classCards = [];
     }
     
     preload(){
@@ -23,22 +26,29 @@
       this.gameData.weapons = this.cache.json.get('weapons').weapons;
       this.gameData.classes = this.cache.json.get('classes').classes;
       
-      // Title
-      this.add.text(W/2, 40, 'Sun Dragon\'s Gift', { fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#fbbf24' }).setOrigin(0.5);
-      this.add.text(W/2, 70, 'Choose 4 Legendary Weapons', { fontFamily: 'system-ui, Arial', fontSize: '16px', color: '#e5e7eb' }).setOrigin(0.5);
-      
-      // Generate 4 random weapons for this run
+      // Generate random weapons
       this.generateRandomWeapons();
       
-      // Display weapon selection
-      this.displayWeaponSelection();
+      // Title
+      this.add.text(W/2, 30, 'Choose classes', { fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#e5e7eb' }).setOrigin(0.5);
       
-      // Hero selection area (initially hidden)
-      this.heroSelectionGroup = this.add.group();
+      // Display weapon columns with class selection
+      this.displayWeaponColumns();
       
       // Back button
       const back = this.add.text(24, 20, '← Back', { fontFamily:'system-ui, Arial', fontSize:'16px', color:'#93c5fd' })
         .setInteractive({useHandCursor:true}).on('pointerdown', ()=> this.scene.start('Menu'));
+        
+      // Continue button (initially hidden)
+      this.continueButton = this.add.rectangle(W/2, H - 60, 200, 50, 0x34d399)
+        .setInteractive({useHandCursor:true}).setVisible(false);
+      this.continueText = this.add.text(W/2, H - 60, 'Begin Adventure', { 
+        fontFamily: 'system-ui, Arial', fontSize: '16px', color: '#0b1220' 
+      }).setOrigin(0.5).setVisible(false);
+      
+      this.continueButton.on('pointerover', () => this.continueButton.setFillStyle(0x6ee7b7));
+      this.continueButton.on('pointerout', () => this.continueButton.setFillStyle(0x34d399));
+      this.continueButton.on('pointerdown', () => this.startCombat());
     }
     
     generateRandomWeapons(){
@@ -54,156 +64,201 @@
       }
     }
     
-    displayWeaponSelection(){
+    displayWeaponColumns(){
       const { width: W, height: H } = this.scale;
-      const startY = 120;
+      const columnWidth = W / 4;
+      const startY = 80;
       
       this.selectedWeapons.forEach((weaponKey, index) => {
         const weapon = this.gameData.weapons[weaponKey];
-        const x = W/2 + (index - 1.5) * 200;
-        const y = startY;
+        const x = columnWidth * (index + 0.5);
         
-        // Weapon card
-        const card = this.add.rectangle(x, y, 180, 120, 0x1f2937).setStrokeStyle(2, 0x374151);
-        
-        // Weapon name
-        this.add.text(x, y - 35, weapon.name, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '14px', 
-          color: '#fbbf24',
-          align: 'center'
-        }).setOrigin(0.5);
-        
-        // Class name
-        this.add.text(x, y - 15, weapon.className, { 
+        // Weapon header
+        const headerBg = this.add.rectangle(x, startY, columnWidth - 20, 40, 0x374151);
+        this.add.text(x, startY, weapon.name, { 
           fontFamily: 'system-ui, Arial', 
           fontSize: '16px', 
-          color: '#e5e7eb',
-          align: 'center'
-        }).setOrigin(0.5);
-        
-        // Elements
-        const elementsText = weapon.elements.join(' + ');
-        this.add.text(x, y + 10, elementsText, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '12px', 
-          color: '#94a3b8',
-          align: 'center'
-        }).setOrigin(0.5);
-        
-        // Required hero
-        const heroName = this.gameData.heroes[weapon.heroType].name;
-        this.add.text(x, y + 35, `Requires: ${heroName}`, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '11px', 
-          color: '#6b7280',
-          align: 'center'
-        }).setOrigin(0.5);
-      });
-      
-      // Continue button
-      const continueBtn = this.add.rectangle(W/2, startY + 180, 200, 50, 0x34d399).setInteractive({useHandCursor:true});
-      this.add.text(W/2, startY + 180, 'Form Party', { fontFamily: 'system-ui, Arial', fontSize: '16px', color: '#0b1220' }).setOrigin(0.5);
-      continueBtn.on('pointerover', ()=> continueBtn.setFillStyle(0x6ee7b7));
-      continueBtn.on('pointerout', ()=> continueBtn.setFillStyle(0x34d399));
-      continueBtn.on('pointerdown', ()=> this.showHeroSelection());
-    }
-    
-    showHeroSelection(){
-      // Clear weapon display
-      this.children.removeAll();
-      
-      const { width: W, height: H } = this.scale;
-      
-      // Title
-      this.add.text(W/2, 40, 'Form Your Party', { fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#fbbf24' }).setOrigin(0.5);
-      this.add.text(W/2, 70, 'Assign heroes to weapons', { fontFamily: 'system-ui, Arial', fontSize: '16px', color: '#e5e7eb' }).setOrigin(0.5);
-      
-      // Auto-assign heroes to weapons (for prototype - later this could be interactive)
-      this.selectedParty = this.selectedWeapons.map(weaponKey => {
-        const weapon = this.gameData.weapons[weaponKey];
-        const heroKey = weapon.heroType;
-        const hero = this.gameData.heroes[heroKey];
-        
-        return {
-          heroKey,
-          heroName: hero.name,
-          weaponKey,
-          weaponName: weapon.name,
-          className: weapon.className,
-          elements: weapon.elements
-        };
-      });
-      
-      // Display party
-      this.displayParty();
-      
-      // Continue to combat button
-      const toCombat = this.add.rectangle(W/2, H - 80, 240, 56, 0x34d399).setInteractive({useHandCursor:true});
-      this.add.text(W/2, H - 80, 'Begin Adventure', { fontFamily: 'system-ui, Arial', fontSize: '18px', color: '#0b1220' }).setOrigin(0.5);
-      toCombat.on('pointerover', ()=> toCombat.setFillStyle(0x6ee7b7));
-      toCombat.on('pointerout', ()=> toCombat.setFillStyle(0x34d399));
-      toCombat.on('pointerdown', ()=> {
-        // Store party data for combat scene
-        this.registry.set('selectedParty', this.selectedParty);
-        this.scene.start('Combat');
-      });
-      
-      // Back button
-      const back = this.add.text(24, 20, '← Back', { fontFamily:'system-ui, Arial', fontSize:'16px', color:'#93c5fd' })
-        .setInteractive({useHandCursor:true}).on('pointerdown', ()=> this.scene.start('Menu'));
-    }
-    
-    displayParty(){
-      const { width: W, height: H } = this.scale;
-      const startY = 140;
-      
-      this.selectedParty.forEach((member, index) => {
-        const x = W/4 + (index % 2) * W/2;
-        const y = startY + Math.floor(index / 2) * 160;
-        
-        // Party member card
-        const card = this.add.rectangle(x, y, 300, 140, 0x1f2937).setStrokeStyle(2, 0x374151);
-        
-        // Hero name
-        this.add.text(x, y - 50, member.heroName, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '18px', 
           color: '#e5e7eb'
         }).setOrigin(0.5);
         
-        // Class name
-        this.add.text(x, y - 25, member.className, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '20px', 
-          color: '#fbbf24'
-        }).setOrigin(0.5);
+        // Class 1 card
+        const class1Data = this.gameData.classes[weapon.class1.className];
+        const hero1 = this.gameData.heroes[weapon.class1.hero];
+        const class1Card = this.createClassCard(x, startY + 100, weapon.class1.className, hero1, class1Data, weaponKey, 1);
         
-        // Weapon
-        this.add.text(x, y, member.weaponName, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '14px', 
-          color: '#94a3b8'
-        }).setOrigin(0.5);
+        // Class 2 card
+        const class2Data = this.gameData.classes[weapon.class2.className];
+        const hero2 = this.gameData.heroes[weapon.class2.hero];
+        const class2Card = this.createClassCard(x, startY + 240, weapon.class2.className, hero2, class2Data, weaponKey, 2);
         
-        // Elements
-        const elementsText = member.elements.join(' + ');
-        this.add.text(x, y + 25, elementsText, { 
-          fontFamily: 'system-ui, Arial', 
-          fontSize: '16px', 
-          color: '#34d399'
-        }).setOrigin(0.5);
-        
-        // Get class stats
-        const classData = this.gameData.classes[member.className];
-        if(classData){
-          this.add.text(x, y + 45, `Speed: ${classData.speed} | Range: ${classData.range}`, { 
-            fontFamily: 'system-ui, Arial', 
-            fontSize: '12px', 
-            color: '#6b7280'
-          }).setOrigin(0.5);
+        this.classCards.push(class1Card, class2Card);
+      });
+    }
+    
+    createClassCard(x, y, className, hero, classData, weaponKey, classIndex){
+      const cardWidth = 200;
+      const cardHeight = 120;
+      
+      // Card background
+      const cardBg = this.add.rectangle(x, y, cardWidth, cardHeight, 0x1e293b)
+        .setStrokeStyle(2, 0x475569)
+        .setInteractive({useHandCursor: true});
+      
+      // Class name (remove hero prefix if present)
+      const displayClassName = className.includes(' ') ? className.split(' ').slice(1).join(' ') : className;
+      const classText = this.add.text(x, y - 35, displayClassName, {
+        fontFamily: 'system-ui, Arial',
+        fontSize: '14px',
+        color: '#e5e7eb'
+      }).setOrigin(0.5);
+      
+      // Hero name and elements
+      const heroText = this.add.text(x, y - 15, hero.name, {
+        fontFamily: 'system-ui, Arial',
+        fontSize: '12px',
+        color: '#94a3b8'
+      }).setOrigin(0.5);
+      
+      // Elements
+      const elementsText = `${classData.primaryElement} + ${classData.secondaryElement}`;
+      const elementsDisplay = this.add.text(x, y + 5, elementsText, {
+        fontFamily: 'system-ui, Arial',
+        fontSize: '11px',
+        color: '#6ee7b7'
+      }).setOrigin(0.5);
+      
+      // Stats
+      const statsText = `Speed: ${classData.speed} | Range: ${classData.range}`;
+      const statsDisplay = this.add.text(x, y + 25, statsText, {
+        fontFamily: 'system-ui, Arial',
+        fontSize: '10px',
+        color: '#64748b'
+      }).setOrigin(0.5);
+      
+      const cardData = {
+        bg: cardBg,
+        texts: [classText, heroText, elementsDisplay, statsDisplay],
+        className,
+        heroKey: hero.key || Object.keys(this.gameData.heroes).find(k => this.gameData.heroes[k].name === hero.name),
+        weaponKey,
+        classIndex,
+        selected: false,
+        available: true
+      };
+      
+      cardBg.on('pointerdown', () => this.selectClass(cardData));
+      cardBg.on('pointerover', () => {
+        if(cardData.available && !cardData.selected) {
+          cardBg.setStrokeStyle(2, 0x6ee7b7);
         }
       });
+      cardBg.on('pointerout', () => {
+        if(cardData.available && !cardData.selected) {
+          cardBg.setStrokeStyle(2, 0x475569);
+        }
+      });
+      
+      return cardData;
+    }
+    
+    selectClass(cardData){
+      if(!cardData.available) return;
+      
+      // If already selected, deselect
+      if(cardData.selected) {
+        this.deselectClass(cardData);
+        return;
+      }
+      
+      // Check if we can select this class
+      if(this.selectedClasses.length >= 4) return;
+      
+      // Select the class
+      cardData.selected = true;
+      cardData.bg.setFillStyle(0x065f46).setStrokeStyle(2, 0x10b981);
+      cardData.texts.forEach(text => text.setTint(0xffffff));
+      
+      this.selectedClasses.push(cardData);
+      this.usedHeroes.add(cardData.heroKey);
+      this.usedWeapons.add(cardData.weaponKey);
+      
+      // Update availability of other cards
+      this.updateCardAvailability();
+      
+      // Show continue button if 4 classes selected
+      if(this.selectedClasses.length === 4) {
+        this.continueButton.setVisible(true);
+        this.continueText.setVisible(true);
+      }
+    }
+    
+    deselectClass(cardData){
+      cardData.selected = false;
+      cardData.bg.setFillStyle(0x1e293b).setStrokeStyle(2, 0x475569);
+      cardData.texts.forEach(text => text.clearTint());
+      
+      // Remove from selected arrays
+      this.selectedClasses = this.selectedClasses.filter(c => c !== cardData);
+      this.usedHeroes.delete(cardData.heroKey);
+      this.usedWeapons.delete(cardData.weaponKey);
+      
+      // Update availability
+      this.updateCardAvailability();
+      
+      // Hide continue button if less than 4 selected
+      if(this.selectedClasses.length < 4) {
+        this.continueButton.setVisible(false);
+        this.continueText.setVisible(false);
+      }
+    }
+    
+    updateCardAvailability(){
+      this.classCards.forEach(card => {
+        const wasAvailable = card.available;
+        
+        // Check if this card conflicts with selected classes
+        const heroConflict = this.usedHeroes.has(card.heroKey) && !card.selected;
+        const weaponConflict = this.usedWeapons.has(card.weaponKey) && !card.selected;
+        
+        card.available = !heroConflict && !weaponConflict;
+        
+        // Update visual state if availability changed
+        if(wasAvailable !== card.available && !card.selected) {
+          if(card.available) {
+            // Make available
+            card.bg.setFillStyle(0x1e293b).setStrokeStyle(2, 0x475569);
+            card.texts.forEach(text => text.clearTint());
+          } else {
+            // Grey out
+            card.bg.setFillStyle(0x0f172a).setStrokeStyle(2, 0x334155);
+            card.texts.forEach(text => text.setTint(0x64748b));
+          }
+        }
+      });
+    }
+    
+    startCombat(){
+      if(this.selectedClasses.length !== 4) return;
+      
+      // Convert selected classes to party format
+      const selectedParty = this.selectedClasses.map(card => {
+        const hero = this.gameData.heroes[card.heroKey];
+        const weapon = this.gameData.weapons[card.weaponKey];
+        const classData = this.gameData.classes[card.className];
+        
+        return {
+          heroKey: card.heroKey,
+          heroName: hero.name,
+          weaponKey: card.weaponKey,
+          weaponName: weapon.name,
+          className: card.className,
+          elements: [classData.primaryElement, classData.secondaryElement]
+        };
+      });
+      
+      // Store party data and start combat
+      this.registry.set('selectedParty', selectedParty);
+      this.scene.start('Combat');
     }
   }
   window.ETScenes.PartySelectScene = PartySelectScene;

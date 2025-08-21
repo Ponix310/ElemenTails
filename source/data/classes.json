@@ -2,165 +2,597 @@
   "classes": {
     "Monk": {
       "hero": "Fox",
-      "weapon": "Celestial Fists",
+      "weapon": "Knuckles",
       "primaryElement": "Fire",
-      "secondaryElement": "Air",
+      "secondaryElement": "Fire",
       "speed": 3,
       "range": 1,
-      "description": "Swift martial artist with fire-enhanced strikes"
-    },
-    "Summoner": {
-      "hero": "Fox",
-      "weapon": "Binding Tome",
-      "primaryElement": "Fire",
-      "secondaryElement": "Plant",
-      "speed": 2,
-      "range": 3,
-      "description": "Conjures elemental allies and nature magic"
-    },
-    "Assassin": {
-      "hero": "Fox",
-      "weapon": "Shadow Blade",
-      "primaryElement": "Fire",
-      "secondaryElement": "Lightning",
-      "speed": 4,
-      "range": 2,
-      "description": "Lightning-fast strikes from the shadows"
-    },
-    "Wizard": {
-      "hero": "Frog",
-      "weapon": "Arcane Staff",
-      "primaryElement": "Water",
-      "secondaryElement": "Air",
-      "speed": 2,
-      "range": 4,
-      "description": "Master of water and wind magic"
+      "description": "Swift martial artist with fire-enhanced strikes",
+      "diceSystem": "Adaptive",
+      "energyRule": "Roll 1 extra dice, choose one dice to lose after rolling",
+      "passive": {
+        "name": "Flow State",
+        "description": "When you Attack, gain 1🛡️"
+      },
+      "powers": {
+        "basic": {
+          "name": "Energized Strike",
+          "cost": "🔥",
+          "effect": "Gain 1 Energized"
+        },
+        "advanced": {
+          "name": "Lightning Combo",
+          "cost": "🔥⚡",
+          "effect": "Give 2 Inspired"
+        },
+        "epic": {
+          "name": "Flaming Barrage",
+          "cost": "🔥💧",
+          "effect": "Untap 1 Attack card, then play it again for free"
+        }
+      },
+      "weaponPassive": "When you deal 🔥with an Attack, also apply 1 Burn"
     },
     "Berserker": {
       "hero": "Frog",
-      "weapon": "Rage Axe",
+      "weapon": "Knuckles",
       "primaryElement": "Water",
       "secondaryElement": "Fire",
       "speed": 3,
       "range": 1,
-      "description": "Unleashes steam-powered fury in close combat"
+      "description": "Unleashes steam-powered fury in close combat",
+      "diceSystem": "Tactical",
+      "energyRule": "You may save 1 dice roll and use its Energy next turn",
+      "passive": {
+        "name": "Thrill of Battle",
+        "description": "At start of turn gain 1 Inspired for every 3 Corruption you have"
+      },
+      "powers": {
+        "basic": {
+          "name": "Dual Strike",
+          "cost": "🔥💧",
+          "effect": "Move then attack once for 1🔥and once for 1💧"
+        },
+        "advanced": {
+          "name": "Fury",
+          "cost": "🔥💧",
+          "effect": "Gain 1 Corruption and 2 Energy"
+        },
+        "epic": {
+          "name": "Rampage",
+          "cost": "🔥💧🌿",
+          "effect": "Attack all enemies in range for: \"1🔥1🔥\"or \"2💧, Cleanse self 1 per target hit\""
+        }
+      },
+      "weaponPassive": "When you deal 🔥with an Attack, also apply 1 Burn"
     },
-    "Myrmidon": {
+    "Wizard": {
       "hero": "Frog",
-      "weapon": "Tidal Spear",
+      "weapon": "Staff",
       "primaryElement": "Water",
-      "secondaryElement": "Earth",
-      "speed": 3,
-      "range": 2,
-      "description": "Disciplined warrior wielding earth and sea"
-    },
-    "Cleric": {
-      "hero": "Rabbit",
-      "weapon": "Sacred Mace",
-      "primaryElement": "Plant",
-      "secondaryElement": "Air",
+      "secondaryElement": "Water",
       "speed": 2,
-      "range": 2,
-      "description": "Divine healer channeling wind and growth"
+      "range": 3,
+      "description": "Master of water magic",
+      "diceSystem": "Tactical",
+      "energyRule": "You may save 1 dice roll and use its Energy next turn",
+      "passive": {
+        "name": "Overflowing Potential",
+        "description": "When you deal non💧damage generate 1💧Mana (once per Attack)"
+      },
+      "powers": {
+        "basic": {
+          "name": "Elemental Blast",
+          "cost": "💧",
+          "effect": "Cone 2: Deal 1🔥, 1🌿, 1💨, 1⚡, or 1🪨"
+        },
+        "advanced": {
+          "name": "Elemental Burst",
+          "cost": "💧⚡",
+          "effect": "Burst 2: Deal 2🔥, 2🌿, 2💨, 2⚡, or 2🪨"
+        },
+        "epic": {
+          "name": "Mana Torrent",
+          "cost": "🔥🌿💨⚡🪨",
+          "effect": "Deal💧equal to your remaining unspent💧Mana"
+        }
+      },
+      "weaponPassive": "When you would generate 💧 mana, generate 1 extra 💧"
     },
     "Druid": {
       "hero": "Rabbit",
-      "weapon": "Nature's Staff",
-      "primaryElement": "Plant",
-      "secondaryElement": "Earth",
-      "speed": 2,
-      "range": 3,
-      "description": "Guardian of nature's primal forces"
-    },
-    "Bard": {
-      "hero": "Rabbit",
-      "weapon": "Harmony Lute",
+      "weapon": "Staff",
       "primaryElement": "Plant",
       "secondaryElement": "Water",
-      "speed": 3,
+      "speed": 2,
       "range": 3,
-      "description": "Inspiring musician weaving life and flow"
+      "description": "Guardian of nature's primal forces",
+      "diceSystem": "Generous",
+      "energyRule": "Roll 1 extra dice Donate the lowest roll to one ally",
+      "passive": {
+        "name": "Nourishing Waters",
+        "description": "You may spend 1💧 mana to grant 1🛡️ to your summons"
+      },
+      "powers": {
+        "basic": {
+          "name": "Summon Healsprout",
+          "cost": "💧🌿",
+          "effect": "Summon or Channel a Healsprout (Limit 2)"
+        },
+        "advanced": {
+          "name": "Summon Thornwall",
+          "cost": "💧🌿",
+          "effect": "Summon or Channel a Thornwall (Limit 3)"
+        },
+        "epic": {
+          "name": "Summon Lifetree",
+          "cost": "💧🌿",
+          "effect": "Summon or Channel the Lifetree (Limit 1)"
+        }
+      },
+      "weaponPassive": "When you would generate 💧 mana, generate 1 extra 💧"
+    },
+    "Cleric": {
+      "hero": "Rabbit",
+      "weapon": "Tome",
+      "primaryElement": "Plant",
+      "secondaryElement": "Plant",
+      "speed": 2,
+      "range": 3,
+      "description": "Divine healer channeling growth magic",
+      "diceSystem": "Generous",
+      "energyRule": "Roll 1 extra dice Donate the lowest roll to one ally",
+      "passive": {
+        "name": "Graceful Embrace",
+        "description": "Applying Rejuvenate to an ally with 5 or more Corruption also grants 1🛡️"
+      },
+      "powers": {
+        "basic": {
+          "name": "Heal",
+          "cost": "🌿",
+          "effect": "Give 1 ally 2 Rejuvenate"
+        },
+        "advanced": {
+          "name": "Cleanse",
+          "cost": "💧🌿💨",
+          "effect": "Remove one condition from an ally"
+        },
+        "epic": {
+          "name": "Mass Blessing",
+          "cost": "💧🌿🪨",
+          "effect": "Give Rejuvenate 1 and 2🛡️ to all allies"
+        }
+      },
+      "weaponPassive": "You may save any number of unspent Energy you generated this turn"
+    },
+    "Summoner": {
+      "hero": "Fox",
+      "weapon": "Tome",
+      "primaryElement": "Fire",
+      "secondaryElement": "Plant",
+      "speed": 2,
+      "range": 3,
+      "description": "Conjures elemental allies and nature magic",
+      "diceSystem": "Adaptive",
+      "energyRule": "Roll 1 extra dice, choose one dice to lose after rolling",
+      "passive": {
+        "name": "Symbiotic Growth",
+        "description": "Any positive buffs or healing you receive can instead be given to 1 of your summons"
+      },
+      "powers": {
+        "basic": {
+          "name": "Summon Thornling",
+          "cost": "🔥🌿",
+          "effect": "Summon or Channel 1 Thornling (Limit 2)"
+        },
+        "advanced": {
+          "name": "Summon Scarcher",
+          "cost": "🔥🌿💨",
+          "effect": "Summon or Channel 1 Scarcher (Limit 2)"
+        },
+        "epic": {
+          "name": "Summon Charred Behemoth",
+          "cost": "🔥🌿🪨",
+          "effect": "Summon or Channel the Charred Behemoth (Limit 1)"
+        }
+      },
+      "weaponPassive": "You may save any number of unspent Energy you generated this turn"
     },
     "Archer": {
       "hero": "Raven",
-      "weapon": "Storm Bow",
+      "weapon": "Bow",
       "primaryElement": "Air",
-      "secondaryElement": "Lightning",
+      "secondaryElement": "Air",
       "speed": 3,
-      "range": 5,
-      "description": "Long-range striker with electrified arrows"
+      "range": 4,
+      "description": "Long-range striker with wind arrows",
+      "diceSystem": "Mobile",
+      "energyRule": "After your first move each turn, roll 1 more dice",
+      "passive": {
+        "name": "Eagle Eye",
+        "description": "Your first Attack each turn before moving deals +2 damage"
+      },
+      "powers": {
+        "basic": {
+          "name": "Aimed Shot",
+          "cost": "💨",
+          "effect": "Move 1, then Add +1 damage to your next attack"
+        },
+        "advanced": {
+          "name": "Quick Draw",
+          "cost": "💨⚡",
+          "effect": "Untap 1 Attack card"
+        },
+        "epic": {
+          "name": "Piercing Shot",
+          "cost": "🔥💨⚡",
+          "effect": "Your next attack ignore's Resistance and deals +2 damage"
+        }
+      },
+      "weaponPassive": "When you attack an Adjacent enemy, you may move 1 for free"
     },
-    "Reaper": {
-      "hero": "Raven",
-      "weapon": "Soul Scythe",
-      "primaryElement": "Air",
-      "secondaryElement": "Earth",
+    "Bard": {
+      "hero": "Rabbit",
+      "weapon": "Bow",
+      "primaryElement": "Plant",
+      "secondaryElement": "Air",
       "speed": 3,
-      "range": 2,
-      "description": "Harvests souls with wind and stone"
-    },
-    "Battlemage": {
-      "hero": "Raven",
-      "weapon": "War Catalyst",
-      "primaryElement": "Air",
-      "secondaryElement": "Fire",
-      "speed": 2,
-      "range": 3,
-      "description": "Combines aerial magic with explosive fire"
+      "range": 4,
+      "description": "Inspiring musician weaving life and wind",
+      "diceSystem": "Generous",
+      "energyRule": "Roll 1 extra dice Donate the lowest roll to one ally",
+      "passive": {
+        "name": "Encouragement",
+        "description": "Spend 2🌿 to Give 1 Rejuvenate; Spend 2💨 to Give 1 Inspired"
+      },
+      "powers": {
+        "basic": {
+          "name": "Evasion Song",
+          "cost": "🌿💨",
+          "effect": "Give 1 Evade"
+        },
+        "advanced": {
+          "name": "Inspiring Melody",
+          "cost": "💨⚡",
+          "effect": "Untap 1 Utility card and Give 1 free Move"
+        },
+        "epic": {
+          "name": "Battle Hymn",
+          "cost": "🔥🌿💨⚡",
+          "effect": "Give 2 allies 1 Inspired and 1 Energized"
+        }
+      },
+      "weaponPassive": "When you attack an Adjacent enemy, you may move 1 for free"
     },
     "Ninja": {
       "hero": "Wolf",
-      "weapon": "Thunder Shuriken",
+      "weapon": "Daggers",
       "primaryElement": "Lightning",
-      "secondaryElement": "Air",
+      "secondaryElement": "Lightning",
       "speed": 4,
-      "range": 3,
-      "description": "Silent assassin striking like thunder"
+      "range": 1,
+      "description": "Silent assassin striking like thunder",
+      "diceSystem": "Disciplined",
+      "energyRule": "If no dice rolls match, gain 1 Energy",
+      "passive": {
+        "name": "Static Rush",
+        "description": "You can move through enemies. When you do add 1 Mark to them"
+      },
+      "powers": {
+        "basic": {
+          "name": "Mark Target",
+          "cost": "⚡",
+          "effect": "Apply 1 Mark to an enemy and gain 1 Energized"
+        },
+        "advanced": {
+          "name": "Cleansing Strike",
+          "cost": "⚡⚡",
+          "effect": "Cleansing enemy Corruption this turn also applies 1 Mark"
+        },
+        "epic": {
+          "name": "Lightning Rush",
+          "cost": "💨⚡",
+          "effect": "Move 3, then Untap 1 Attack and gain 2 Energy"
+        }
+      },
+      "weaponPassive": "Spend 1 Energy to Chain \"X⚡\" (X = Mark Stacks) Then remove that target's Marks"
     },
-    "Samurai": {
-      "hero": "Wolf",
-      "weapon": "Lightning Katana",
-      "primaryElement": "Lightning",
+    "Assassin": {
+      "hero": "Fox",
+      "weapon": "Daggers",
+      "primaryElement": "Fire",
+      "secondaryElement": "Lightning",
+      "speed": 4,
+      "range": 1,
+      "description": "Lightning-fast strikes from the shadows",
+      "diceSystem": "Adaptive",
+      "energyRule": "Roll 1 extra dice, choose one dice to lose after rolling",
+      "passive": {
+        "name": "Relentless Assault",
+        "description": "Your melee Attacks each add 1 Mark to enemies"
+      },
+      "powers": {
+        "basic": {
+          "name": "Mark for Death",
+          "cost": "🔥⚡",
+          "effect": "Apply 2 Mark to an enemy"
+        },
+        "advanced": {
+          "name": "Multi-Mark",
+          "cost": "🔥⚡",
+          "effect": "Apply 1 Mark to up to 3 enemies"
+        },
+        "epic": {
+          "name": "Burning Marks",
+          "cost": "🔥💨⚡",
+          "effect": "Convert all Marks on any number of enemies into Burn, then Gain Stealth"
+        }
+      },
+      "weaponPassive": "Spend 1 Energy to Chain \"X⚡\" (X = Mark Stacks) Then remove that target's Marks"
+    },
+    "Lancer": {
+      "hero": "Bear",
+      "weapon": "Spear",
+      "primaryElement": "Earth",
+      "secondaryElement": "Earth",
+      "speed": 2,
+      "range": 2,
+      "description": "Cavalry fighter commanding earth",
+      "diceSystem": "Reckless",
+      "energyRule": "You may reroll all dice but must keep new roll",
+      "passive": {
+        "name": "Defensive Utility",
+        "description": "Gain 1🛡️ when you play a Utility card"
+      },
+      "powers": {
+        "basic": {
+          "name": "Shield Break",
+          "cost": "⚡🪨",
+          "effect": "Lose up to 3🛡️. Add that much damage to next Attack"
+        },
+        "advanced": {
+          "name": "Earth Wall",
+          "cost": "🌿🪨",
+          "effect": "Create 1 wall with 5🪨 HP within 3 range"
+        },
+        "epic": {
+          "name": "Charge",
+          "cost": "💧💨🪨",
+          "effect": "Charge 2 hexes, pushing the first enemy in the path. If they collide with a wall or another enemy, they both take 5🪨"
+        }
+      },
+      "weaponPassive": "Your single target attacks can also hit an enemy between you and the target"
+    },
+    "Myrmidon": {
+      "hero": "Frog",
+      "weapon": "Spear",
+      "primaryElement": "Water",
+      "secondaryElement": "Earth",
+      "speed": 3,
+      "range": 2,
+      "description": "Disciplined warrior wielding earth and sea",
+      "diceSystem": "Tactical",
+      "energyRule": "You may save 1 dice roll and use its Energy next turn",
+      "passive": {
+        "name": "Muddy Strikes",
+        "description": "Your melee attacks deal +1💧and, to non-adjacent enemies, apply Slowed"
+      },
+      "powers": {
+        "basic": {
+          "name": "Extended Reach",
+          "cost": "💧🪨",
+          "effect": "Gain +1 range for this round"
+        },
+        "advanced": {
+          "name": "Defensive Stance",
+          "cost": "💧🪨",
+          "effect": "Gain 2🛡️and Taunt 1 enemy"
+        },
+        "epic": {
+          "name": "Mudslide",
+          "cost": "🔥💧🪨",
+          "effect": "Deal 2 damage and apply Slowed to all enemies in range"
+        }
+      },
+      "weaponPassive": "Your single target attacks can also hit an enemy between you and the target"
+    },
+    "Barbearian": {
+      "hero": "Bear",
+      "weapon": "Greataxe",
+      "primaryElement": "Earth",
+      "secondaryElement": "Fire",
+      "speed": 2,
+      "range": 1,
+      "description": "Savage warrior of stone and flame",
+      "diceSystem": "Reckless",
+      "energyRule": "You may reroll all dice but must keep new roll",
+      "passive": {
+        "name": "Rampage",
+        "description": "Gain 1 Inspired when you use an Attack. At 3 Inspired, your next Attack deals x2 damage and removes all Inspired. (Limit 3 Inspired)"
+      },
+      "powers": {
+        "basic": {
+          "name": "Battle Fury",
+          "cost": "🔥⚡",
+          "effect": "Gain 1 Inspired"
+        },
+        "advanced": {
+          "name": "Defensive Rage",
+          "cost": "🔥🪨",
+          "effect": "Remove all Inspired, then gain 2🛡️ per stack removed"
+        },
+        "epic": {
+          "name": "Elemental Devastation",
+          "cost": "🔥⚡",
+          "effect": "Deal either 4🔥or 4🪨 damage to all enemies in range. Heal 1 Corruption per target hit"
+        }
+      },
+      "weaponPassive": "When you play a card that hits 2+ enemies, gain 1 Energy"
+    },
+    "Reaper": {
+      "hero": "Raven",
+      "weapon": "Greataxe",
+      "primaryElement": "Air",
       "secondaryElement": "Fire",
       "speed": 3,
       "range": 1,
-      "description": "Honorable warrior with electrified blade"
+      "description": "Harvests souls with wind and flame",
+      "diceSystem": "Mobile",
+      "energyRule": "After your first move each turn, roll 1 more dice",
+      "passive": {
+        "name": "Bloodthirsty",
+        "description": "When Corruption is 5 or more, your Attacks apply 1 Rejuvenation to self"
+      },
+      "powers": {
+        "basic": {
+          "name": "Life Steal",
+          "cost": "🔥💨",
+          "effect": "Your next attack grants 1 Rejuvenate per target hit"
+        },
+        "advanced": {
+          "name": "Swift Strike",
+          "cost": "💨⚡",
+          "effect": "Move 1 then Gain 1 Energy"
+        },
+        "epic": {
+          "name": "Corruption Harvest",
+          "cost": "🔥🌿💨",
+          "effect": "Gain up to 3 Corruption. Deal 1🔥or 1💨 damage to all adjacent enemies equal to your Corruption"
+        }
+      },
+      "weaponPassive": "When you play a card that hits 2+ enemies, gain 1 Energy"
+    },
+    "Samurai": {
+      "hero": "Wolf",
+      "weapon": "Katana",
+      "primaryElement": "Lightning",
+      "secondaryElement": "Water",
+      "speed": 3,
+      "range": 1,
+      "description": "Honorable warrior with electrified blade",
+      "diceSystem": "Disciplined",
+      "energyRule": "If no dice rolls match, gain 1 Energy",
+      "passive": {
+        "name": "Patient Offense",
+        "description": "When using an Attack, if no enemies are within range you may end your turn, then immediately use that Attack on the first enemy to enter your Range"
+      },
+      "powers": {
+        "basic": {
+          "name": "Water Push",
+          "cost": "💧⚡",
+          "effect": "2💧push 1"
+        },
+        "advanced": {
+          "name": "Lightning Taunt",
+          "cost": "⚡🪨",
+          "effect": "Taunt 1 Enemy (range 3) then gain 1 Inspired"
+        },
+        "epic": {
+          "name": "Chain Lightning",
+          "cost": "💧💨⚡",
+          "effect": "Your next Attack gains +3 damage and Chain"
+        }
+      },
+      "weaponPassive": "Gain 2 Inspired, but set Speed to 0 for this turn"
+    },
+    "Battlemage": {
+      "hero": "Raven",
+      "weapon": "Katana",
+      "primaryElement": "Air",
+      "secondaryElement": "Water",
+      "speed": 2,
+      "range": 1,
+      "description": "Combines aerial magic with flowing strikes",
+      "diceSystem": "Mobile",
+      "energyRule": "After your first move each turn, roll 1 more dice",
+      "passive": {
+        "name": "Elemental Adaptability",
+        "description": "Once per turn, you may change 1 Attack's type to match a Mana you generated this turn"
+      },
+      "powers": {
+        "basic": {
+          "name": "Extended Strike",
+          "cost": "💧💨",
+          "effect": "Add +1 range to your next Attack"
+        },
+        "advanced": {
+          "name": "Untap",
+          "cost": "💧⚡",
+          "effect": "Untap 1 card"
+        },
+        "epic": {
+          "name": "Elemental Shift",
+          "cost": "💧💨",
+          "effect": "You may change one of your Affinities for this Encounter"
+        }
+      },
+      "weaponPassive": "Gain 2 Inspired, but set Speed to 0 for this turn"
     },
     "Paladin": {
       "hero": "Wolf",
-      "weapon": "Divine Hammer",
+      "weapon": "Sword & Shield",
       "primaryElement": "Lightning",
       "secondaryElement": "Plant",
       "speed": 2,
       "range": 1,
-      "description": "Holy protector wielding divine lightning"
-    },
-    "Lancer": {
-      "hero": "Bear",
-      "weapon": "Earthshaker Lance",
-      "primaryElement": "Earth",
-      "secondaryElement": "Water",
-      "speed": 2,
-      "range": 2,
-      "description": "Cavalry fighter commanding earth and tide"
-    },
-    "Barbearian": {
-      "hero": "Bear",
-      "weapon": "Primal Club",
-      "primaryElement": "Earth",
-      "secondaryElement": "Fire",
-      "speed": 2,
-      "range": 1,
-      "description": "Savage warrior of stone and flame"
+      "description": "Holy protector wielding divine lightning",
+      "diceSystem": "Disciplined",
+      "energyRule": "If no dice rolls match, gain 1 Energy",
+      "passive": {
+        "name": "Stalwart Protector",
+        "description": "You may keep up to 3 of your🛡️between turns"
+      },
+      "powers": {
+        "basic": {
+          "name": "Shield Up",
+          "cost": "⚡🪨",
+          "effect": "Gain 2🛡️and 1 Energized"
+        },
+        "advanced": {
+          "name": "Chain Shield",
+          "cost": "⚡🪨",
+          "effect": "Your next attack has Chain. Gain 1🛡️+1🛡️per target hit"
+        },
+        "epic": {
+          "name": "Shield to Heal",
+          "cost": "🌿⚡",
+          "effect": "Convert up to 10🛡️to Give up to 5 Rejuvenate (2🛡️= 1 Rejuvenate)"
+        }
+      },
+      "weaponPassive": "Donate any amount of your🛡️ to an adjacent player for 1 Energy"
     },
     "Warrior": {
       "hero": "Bear",
-      "weapon": "Stone Sword",
+      "weapon": "Sword & Shield",
       "primaryElement": "Earth",
-      "secondaryElement": "Lightning",
+      "secondaryElement": "Plant",
       "speed": 2,
       "range": 1,
-      "description": "Steadfast defender with shocking strikes"
+      "description": "Steadfast defender of nature and stone",
+      "diceSystem": "Reckless",
+      "energyRule": "You may reroll all dice but must keep new roll",
+      "passive": {
+        "name": "Immovable Object",
+        "description": "When you generate🛡️on yourself, Gain double. While you have 3 or more🛡️you are immune to forced movement"
+      },
+      "powers": {
+        "basic": {
+          "name": "Shield Wall",
+          "cost": "🌿🪨",
+          "effect": "Gain 1🛡️and 1 Aegis"
+        },
+        "advanced": {
+          "name": "Protective Aura",
+          "cost": "🌿🪨",
+          "effect": "Your next Defense Power also affects adjacent allies"
+        },
+        "epic": {
+          "name": "Taunt All",
+          "cost": "💧🌿🪨",
+          "effect": "Taunt all enemies in 3 range, gain 1🛡️per enemy Taunted"
+        }
+      },
+      "weaponPassive": "Donate any amount of your🛡️ to an adjacent player for 1 Energy"
     }
   }
 }

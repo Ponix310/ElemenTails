@@ -30,6 +30,14 @@
       "Plant": 2,
       "Air": 1,
       "Earth": 1,
+      "Lightning": .5
+    },
+    "Lightning": {
+      "Fire": 1,
+      "Water": 2,
+      "Plant": 0.5,
+      "Air": 2,
+      "Earth": 0,
       "Lightning": 0.5
     },
     "Earth": {
@@ -39,18 +47,13 @@
       "Air": 0,
       "Earth": 1,
       "Lightning": 2
-    },
-    "Lightning": {
-      "Fire": 1,
-      "Water": 2,
-      "Plant": 0.5,
-      "Air": 2,
-      "Earth": 0,
-      "Lightning": 0.5
     }
   },
+  "immunities": {
+    "Earth": ["Air"],
+    "Air": ["Earth"]
+  },
   "notes": [
-    "Air immune to Earth",
-    "Earth immune to Lightning"
+    "Dual-element classes take damage multipliers for both elements - stronger multiplier applies"
   ]
 }

@@ -1,0 +1,69 @@
+{
+  "statusEffects": {
+    "Burn": {
+      "name": "Burn",
+      "type": "damage_over_time",
+      "description": "Takes fire damage each turn",
+      "element": "Fire"
+    },
+    "Rejuvenate": {
+      "name": "Rejuvenate", 
+      "type": "healing_over_time",
+      "description": "Heals corruption each turn",
+      "element": "Plant"
+    },
+    "Inspired": {
+      "name": "Inspired",
+      "type": "buff",
+      "description": "Increases damage or effectiveness",
+      "cancels": "Weakened"
+    },
+    "Weakened": {
+      "name": "Weakened",
+      "type": "debuff", 
+      "description": "Reduces damage or effectiveness",
+      "cancels": "Inspired"
+    },
+    "Energized": {
+      "name": "Energized",
+      "type": "buff",
+      "description": "Provides bonus energy"
+    },
+    "Shield": {
+      "name": "Shield",
+      "type": "protection",
+      "description": "Absorbs incoming damage",
+      "symbol": "🛡️"
+    },
+    "Mark": {
+      "name": "Mark",
+      "type": "debuff",
+      "description": "Stacking debuff for combo attacks"
+    },
+    "Stealth": {
+      "name": "Stealth",
+      "type": "buff",
+      "description": "Cannot be targeted by enemies"
+    },
+    "Slowed": {
+      "name": "Slowed",
+      "type": "debuff",
+      "description": "Reduced movement speed"
+    },
+    "Taunt": {
+      "name": "Taunt",
+      "type": "control",
+      "description": "Forces enemy to target the taunter"
+    },
+    "Evade": {
+      "name": "Evade",
+      "type": "protection",
+      "description": "Next attack misses"
+    },
+    "Aegis": {
+      "name": "Aegis",
+      "type": "protection",
+      "description": "Advanced shield effect"
+    }
+  }
+}

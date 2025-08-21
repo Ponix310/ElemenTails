@@ -1,0 +1,34 @@
+{
+  "diceSystems": {
+    "Adaptive": {
+      "name": "Adaptive",
+      "description": "Roll 1 extra dice, choose one dice to lose after rolling",
+      "mechanic": "extra_dice_choice"
+    },
+    "Tactical": {
+      "name": "Tactical", 
+      "description": "You may save 1 dice roll and use its Energy next turn",
+      "mechanic": "save_dice"
+    },
+    "Generous": {
+      "name": "Generous",
+      "description": "Roll 1 extra dice Donate the lowest roll to one ally",
+      "mechanic": "extra_dice_donate"
+    },
+    "Mobile": {
+      "name": "Mobile",
+      "description": "After your first move each turn, roll 1 more dice",
+      "mechanic": "move_bonus_dice"
+    },
+    "Disciplined": {
+      "name": "Disciplined",
+      "description": "If no dice rolls match, gain 1 Energy",
+      "mechanic": "no_match_bonus"
+    },
+    "Reckless": {
+      "name": "Reckless",
+      "description": "You may reroll all dice but must keep new roll",
+      "mechanic": "reroll_all"
+    }
+  }
+}

@@ -1,112 +1,58 @@
 {
   "weapons": {
-    "monkWeapon": {
-      "name": "Celestial Fists",
-      "heroType": "fox",
-      "className": "Monk",
-      "elements": ["Fire", "Air"]
+    "knuckles": {
+      "name": "Knuckles",
+      "element": "Fire",
+      "class1": { "hero": "fox", "className": "Monk" },
+      "class2": { "hero": "frog", "className": "Berserker" }
     },
-    "summonerWeapon": {
-      "name": "Binding Tome",
-      "heroType": "fox", 
-      "className": "Summoner",
-      "elements": ["Fire", "Plant"]
+    "staff": {
+      "name": "Staff", 
+      "element": "Water",
+      "class1": { "hero": "frog", "className": "Wizard" },
+      "class2": { "hero": "rabbit", "className": "Druid" }
     },
-    "assassinWeapon": {
-      "name": "Shadow Blade",
-      "heroType": "fox",
-      "className": "Assassin", 
-      "elements": ["Fire", "Lightning"]
+    "tome": {
+      "name": "Tome",
+      "element": "Plant",
+      "class1": { "hero": "rabbit", "className": "Cleric" },
+      "class2": { "hero": "fox", "className": "Summoner" }
     },
-    "wizardWeapon": {
-      "name": "Arcane Staff",
-      "heroType": "frog",
-      "className": "Wizard",
-      "elements": ["Water", "Air"]
+    "bow": {
+      "name": "Bow",
+      "element": "Air",
+      "class1": { "hero": "raven", "className": "Archer" },
+      "class2": { "hero": "rabbit", "className": "Bard" }
     },
-    "berserkerWeapon": {
-      "name": "Rage Axe",
-      "heroType": "frog",
-      "className": "Berserker",
-      "elements": ["Water", "Fire"]
+    "daggers": {
+      "name": "Daggers",
+      "element": "Lightning",
+      "class1": { "hero": "wolf", "className": "Ninja" },
+      "class2": { "hero": "fox", "className": "Assassin" }
     },
-    "myrmidonWeapon": {
-      "name": "Tidal Spear",
-      "heroType": "frog",
-      "className": "Myrmidon",
-      "elements": ["Water", "Earth"]
+    "spear": {
+      "name": "Spear",
+      "element": "Earth",
+      "class1": { "hero": "bear", "className": "Lancer" },
+      "class2": { "hero": "frog", "className": "Myrmidon" }
     },
-    "clericWeapon": {
-      "name": "Sacred Mace",
-      "heroType": "rabbit",
-      "className": "Cleric",
-      "elements": ["Plant", "Air"]
+    "greataxe": {
+      "name": "Greataxe",
+      "element": "Fire",
+      "class1": { "hero": "bear", "className": "Barbearian" },
+      "class2": { "hero": "raven", "className": "Reaper" }
     },
-    "druidWeapon": {
-      "name": "Nature's Staff",
-      "heroType": "rabbit",
-      "className": "Druid",
-      "elements": ["Plant", "Earth"]
+    "katana": {
+      "name": "Katana",
+      "element": "Water",
+      "class1": { "hero": "wolf", "className": "Samurai" },
+      "class2": { "hero": "raven", "className": "Battlemage" }
     },
-    "bardWeapon": {
-      "name": "Harmony Lute",
-      "heroType": "rabbit",
-      "className": "Bard",
-      "elements": ["Plant", "Water"]
-    },
-    "archerWeapon": {
-      "name": "Storm Bow",
-      "heroType": "raven",
-      "className": "Archer",
-      "elements": ["Air", "Lightning"]
-    },
-    "reaperWeapon": {
-      "name": "Soul Scythe",
-      "heroType": "raven",
-      "className": "Reaper",
-      "elements": ["Air", "Earth"]
-    },
-    "battlemageWeapon": {
-      "name": "War Catalyst",
-      "heroType": "raven",
-      "className": "Battlemage",
-      "elements": ["Air", "Fire"]
-    },
-    "ninjaWeapon": {
-      "name": "Thunder Shuriken",
-      "heroType": "wolf",
-      "className": "Ninja",
-      "elements": ["Lightning", "Air"]
-    },
-    "samuraiWeapon": {
-      "name": "Lightning Katana",
-      "heroType": "wolf",
-      "className": "Samurai",
-      "elements": ["Lightning", "Fire"]
-    },
-    "paladinWeapon": {
-      "name": "Divine Hammer",
-      "heroType": "wolf",
-      "className": "Paladin",
-      "elements": ["Lightning", "Plant"]
-    },
-    "lancerWeapon": {
-      "name": "Earthshaker Lance",
-      "heroType": "bear",
-      "className": "Lancer",
-      "elements": ["Earth", "Water"]
-    },
-    "barberarianWeapon": {
-      "name": "Primal Club",
-      "heroType": "bear",
-      "className": "Barbearian",
-      "elements": ["Earth", "Fire"]
-    },
-    "warriorWeapon": {
-      "name": "Stone Sword",
-      "heroType": "bear",
-      "className": "Warrior",
-      "elements": ["Earth", "Lightning"]
+    "swordAndShield": {
+      "name": "Sword & Shield",
+      "element": "Plant",
+      "class1": { "hero": "wolf", "className": "Paladin" },
+      "class2": { "hero": "bear", "className": "Warrior" }
     }
   }
 }
