@@ -17,6 +17,10 @@
     };
     app = firebase.initializeApp(cfg);
     auth = firebase.auth();
+    // Ensure auth persists across reloads so users don't need to login every time
+    try {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    } catch(e) { /* ignore if unsupported or already set */ }
     db = firebase.firestore();
     provider = new firebase.auth.GoogleAuthProvider();
   } else {

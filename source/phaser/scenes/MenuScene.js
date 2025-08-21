@@ -38,9 +38,16 @@
 
       // Start button (go Party Select)
       this._button(W/2-130, H-100, 'Start (Party Select)', 260, () => this.scene.start('PartySelect'));
-      
-      // Market button
-      this._button(W/2-100, H-150, 'Market', 200, () => this.scene.start('Market'));
+
+      // Auto-detect existing session and render when ready
+      if (ETFirebase && ETFirebase.auth && ETFirebase.auth.onAuthStateChanged){
+        ETFirebase.auth.onAuthStateChanged((u)=>{
+          if (u){
+            ETFirebase.startPresenceHeartbeat();
+            this._afterLogin();
+          }
+        });
+      }
 
       // Friends panel
       this.add.text(W-380, 150, 'Friends', { fontFamily:'system-ui, Arial', fontSize:'20px', color:'#e5e7eb' });
