@@ -230,14 +230,12 @@
         // Update visual state if availability changed
         if(wasAvailable !== card.available && !card.selected) {
           if(card.available) {
-            // Make available - restore color
+            // Restore color only (no bg/border changes)
             card.portrait.clearTint();
-            card.bg.setFillStyle(0x000000, 0.4).setStrokeStyle(2, 0x475569);
             card.texts.forEach(text => text.clearTint());
           } else {
-            // Make monochrome instead of grey
+            // Monochrome portrait only (no bg/border changes)
             card.portrait.setTint(0x666666);
-            card.bg.setFillStyle(0x000000, 0.6).setStrokeStyle(2, 0x334155);
             card.texts.forEach(text => text.setTint(0x888888));
           }
         }
