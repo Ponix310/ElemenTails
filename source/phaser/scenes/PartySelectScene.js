@@ -174,8 +174,9 @@
       
       // Select the class
       cardData.selected = true;
-      cardData.bg.setFillStyle(0x065f46).setStrokeStyle(2, 0x10b981);
-      cardData.texts.forEach(text => text.setTint(0xffffff));
+      // Only green border to indicate selection; keep original fill and colors
+      cardData.bg.setStrokeStyle(3, 0x10b981);
+      cardData.texts.forEach(text => text.clearTint());
       
       this.selectedClasses.push(cardData);
       this.usedHeroes.add(cardData.heroKey);
@@ -193,8 +194,13 @@
     
     deselectClass(cardData){
       cardData.selected = false;
-      cardData.bg.setFillStyle(0x1e293b).setStrokeStyle(2, 0x475569);
+      // Revert to default styling (no fill color change beyond base, normal border)
+      cardData.bg.setFillStyle(0x000000, 0.4).setStrokeStyle(2, 0x475569);
       cardData.texts.forEach(text => text.clearTint());
+      // Ensure the portrait is in color when available
+      if (cardData.available && cardData.portrait) {
+        cardData.portrait.clearTint();
+      }
       
       // Remove from selected arrays
       this.selectedClasses = this.selectedClasses.filter(c => c !== cardData);
