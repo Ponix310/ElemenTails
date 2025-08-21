@@ -306,11 +306,20 @@
       
       if(allEnemiesCleansed){
         this.turnText.setText('Victory! All enemies cleansed!');
+        // Return to Map after victory
+        this.time.delayedCall(2000, () => {
+          // Award CP and refresh market
+          const currentCP = this.registry.get('cleansePoints') || 10;
+          this.registry.set('cleansePoints', currentCP + 3); // Award 3 CP for victory
+          this.scene.start('Map');
+        });
         return true;
       }
       
       if(allPlayersExhausted){
         this.turnText.setText('Defeat! All party members exhausted!');
+        // Return to Map after defeat (no CP reward)
+        this.time.delayedCall(2000, () => this.scene.start('Map'));
         return true;
       }
       

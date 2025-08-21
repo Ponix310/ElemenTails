@@ -307,7 +307,7 @@
       // Store party data and game mode
       this.registry.set('selectedParty', selectedParty);
       this.registry.set('isMultiplayer', this.isMultiplayer);
-      this.scene.start('Combat');
+      this.scene.start('Map');
     }
   }
   window.ETScenes.PartySelectScene = PartySelectScene;
