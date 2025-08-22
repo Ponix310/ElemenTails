@@ -1,7 +1,7 @@
 // source/phaser/game.js
 import MapScene from './scenes/MapScene.js';
 import CombatScene from './scenes/CombatScene.js';
-import { gameState } from './data/game_state.js';
+import { gameState } from '../data/game_state.js';
 
 // Initialize game configuration
 const config = {

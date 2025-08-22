@@ -456,3 +456,4 @@ class MapScene extends Phaser.Scene {
     }
   }
 
+export default MapScene;
