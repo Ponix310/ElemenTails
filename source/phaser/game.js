@@ -1,5 +1,6 @@
 // source/phaser/game.js
 import MapScene from './scenes/MapScene.js';
+import CombatScene from './scenes/CombatScene.js';
 import { gameState } from './data/game_state.js';
 
 // Initialize game configuration
@@ -14,8 +15,8 @@ const config = {
     height: 720
   },
   scene: [
-    // We'll add other scenes here as we convert them to ES modules
-    MapScene
+    MapScene,
+    CombatScene
   ]
 };
 

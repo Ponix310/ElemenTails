@@ -14,9 +14,23 @@ class MapScene extends Phaser.Scene {
     create() {
       const { width: W, height: H } = this.scale;
       
-      // Get party data from registry
+      // Get party data from registry and ensure it has all required fields
       this.selectedParty = this.registry.get('selectedParty') || [];
       this.isMultiplayer = this.registry.get('isMultiplayer') || false;
+      
+      // Ensure party data has all required fields
+      this.selectedParty = this.selectedParty.map((member, index) => ({
+        heroName: member.heroName || `Hero ${index + 1}`,
+        className: member.className || 'Adventurer',
+        weaponName: member.weaponName || 'Basic Weapon',
+        elements: member.elements || [],
+        corruption: member.corruption || 0,
+        health: member.health || 10,
+        maxHealth: member.maxHealth || 10,
+        energy: member.energy || '0/3',
+        spells: member.spells || [],
+        buffs: member.buffs || []
+      }));
       
       // Background
       this.add.rectangle(W/2, H/2, W, H, 0x0f172a);
@@ -213,42 +227,145 @@ class MapScene extends Phaser.Scene {
     }
     
     displayParty(){
-      const { width: W } = this.scale;
+      const { width: W, height: H } = this.scale;
       
-      // Party header
-      this.add.text(W/2, 100, 'Your Party', { 
-        fontFamily: 'system-ui, Arial', fontSize: '18px', color: '#fbbf24' 
-      }).setOrigin(0.5);
+      // Panel dimensions and positions
+      const panelWidth = 180;
+      const panelHeight = 300;
+      const padding = 20;
       
-      // Display each party member
+      // Panel positions (top-left, top-right, bottom-left, bottom-right)
+      const positions = [
+        { x: padding, y: padding },                     // Top-left
+        { x: W - panelWidth - padding, y: padding },    // Top-right
+        { x: padding, y: H - panelHeight - padding },   // Bottom-left
+        { x: W - panelWidth - padding, y: H - panelHeight - padding } // Bottom-right
+      ];
+      
+      // Display each party member in their own panel
       this.selectedParty.forEach((member, index) => {
-        const x = (W/2) - 150 + (index * 100);
-        const y = 150;
+        if (index >= 4) return; // Max 4 party members
         
-        // Member card background
-        this.add.rectangle(x, y, 90, 120, 0x1e293b)
-          .setStrokeStyle(1, 0x475569);
+        const pos = positions[index];
+        const centerX = pos.x + (panelWidth / 2);
         
-        // Class name
-        this.add.text(x, y - 40, member.className, { 
-          fontFamily: 'system-ui, Arial', fontSize: '12px', color: '#fbbf24' 
+        // Panel background
+        const bg = this.add.rectangle(
+          centerX, 
+          pos.y + (panelHeight / 2), 
+          panelWidth, 
+          panelHeight, 
+          0x1e293b
+        ).setStrokeStyle(2, 0x475569);
+        
+        // Character portrait area (top half)
+        const portraitHeight = 120;
+        this.add.rectangle(
+          centerX,
+          pos.y + (portraitHeight / 2) + 10,
+          panelWidth - 20,
+          portraitHeight,
+          0x0f172a
+        ).setStrokeStyle(1, 0x475569);
+        
+        // Character name and class
+        this.add.text(centerX, pos.y + 20, member.heroName, {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '16px',
+          color: '#e5e7eb'
         }).setOrigin(0.5);
         
-        // Hero name
-        this.add.text(x, y - 20, member.heroName, { 
-          fontFamily: 'system-ui, Arial', fontSize: '10px', color: '#e5e7eb' 
+        this.add.text(centerX, pos.y + 40, member.className, {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '14px',
+          color: '#fbbf24'
         }).setOrigin(0.5);
         
-        // Weapon
-        this.add.text(x, y + 20, member.weaponName, { 
-          fontFamily: 'system-ui, Arial', fontSize: '9px', color: '#94a3b8' 
-        }).setOrigin(0.5);
+        // Stats area (bottom half)
+        const statsY = pos.y + portraitHeight + 20;
+        const statYSpacing = 25;
+        
+        // Corruption
+        this.add.text(pos.x + 10, statsY, 'Corruption:', {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '12px',
+          color: '#ef4444'
+        });
+        
+        // Corruption bar
+        const corruptionWidth = 100;
+        const corruptionHeight = 8;
+        const corruptionBg = this.add.rectangle(
+          pos.x + panelWidth - 60,
+          statsY + 5,
+          corruptionWidth,
+          corruptionHeight,
+          0x4b5563
+        ).setOrigin(0, 0.5);
+        
+        const corruptionFill = this.add.rectangle(
+          corruptionBg.x,
+          corruptionBg.y,
+          (member.corruption || 0) * (corruptionWidth / 10), // Assuming max 10 corruption
+          corruptionHeight,
+          0xef4444
+        ).setOrigin(0, 0.5);
         
         // Elements
+        this.add.text(pos.x + 10, statsY + statYSpacing, 'Elements:', {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '12px',
+          color: '#6ee7b7'
+        });
+        
         const elementsText = member.elements.join(' + ');
-        this.add.text(x, y + 40, elementsText, { 
-          fontFamily: 'system-ui, Arial', fontSize: '8px', color: '#6ee7b7' 
-        }).setOrigin(0.5);
+        this.add.text(pos.x + 80, statsY + statYSpacing, elementsText, {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '12px',
+          color: '#e5e7eb'
+        });
+        
+        // Weapon
+        this.add.text(pos.x + 10, statsY + (statYSpacing * 2), 'Weapon:', {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '12px',
+          color: '#93c5fd'
+        });
+        
+        this.add.text(pos.x + 80, statsY + (statYSpacing * 2), member.weaponName, {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '12px',
+          color: '#e5e7eb'
+        });
+        
+        // Stats (example - customize based on your game's stats)
+        const stats = [
+          { label: 'HP:', value: `${member.health || 10}/${member.maxHealth || 10}`, color: '#ef4444' },
+          { label: 'Energy:', value: member.energy || '0/3', color: '#fbbf24' },
+          { label: 'Spells:', value: member.spells ? member.spells.length : '0', color: '#93c5fd' },
+          { label: 'Buffs:', value: member.buffs ? member.buffs.length : '0', color: '#6ee7b7' }
+        ];
+        
+        stats.forEach((stat, i) => {
+          const y = statsY + (statYSpacing * (i + 3));
+          this.add.text(pos.x + 10, y, stat.label, {
+            fontFamily: 'system-ui, Arial',
+            fontSize: '12px',
+            color: stat.color
+          });
+          
+          this.add.text(pos.x + 80, y, stat.value, {
+            fontFamily: 'system-ui, Arial',
+            fontSize: '12px',
+            color: '#e5e7eb'
+          });
+        });
+        
+        // Add click handler for future mobile integration
+        bg.setInteractive().on('pointerdown', () => {
+          // Will be used for mobile interaction
+          console.log('Character selected:', member.heroName);
+        });
       });
     }
     
@@ -338,6 +455,4 @@ class MapScene extends Phaser.Scene {
       this.scene.start('Combat');
     }
   }
-  
-// Export the MapScene class
-export default MapScene;
+
