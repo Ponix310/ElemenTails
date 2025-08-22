@@ -1,15 +1,17 @@
-(function(){
-  class MapScene extends Phaser.Scene {
+import { gameState } from '../data/game_state.js';
+
+class MapScene extends Phaser.Scene {
     constructor(){ 
       super('Map'); 
       this.selectedParty = [];
       this.isMultiplayer = false;
-      this.marketCards = [];
       this.playerLevel = 1;
       this.cleansePoints = 10; // Starting CP
+      this.pathGraphics = [];
+      this.pathNodes = [];
     }
     
-    create(){
+    create() {
       const { width: W, height: H } = this.scale;
       
       // Get party data from registry
@@ -21,38 +23,193 @@
       
       // Title
       this.add.text(W/2, 30, 'Adventure Map', { 
-        fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#e5e7eb' 
+        fontFamily: 'system-ui, Arial', 
+        fontSize: '24px', 
+        color: '#e5e7eb' 
       }).setOrigin(0.5);
       
       // Game mode indicator
       const modeText = this.isMultiplayer ? 'Multiplayer Lobby' : 'Singleplayer';
       this.add.text(W/2, 60, modeText, { 
-        fontFamily: 'system-ui, Arial', fontSize: '14px', color: '#64748b' 
+        fontFamily: 'system-ui, Arial', 
+        fontSize: '14px', 
+        color: '#64748b' 
       }).setOrigin(0.5);
       
-      // Party display (top area)
+      // Display party info
       this.displayParty();
       
-      // Player stats
-      this.displayPlayerStats();
-      
-      // Market area (bottom 6 cards as per memory)
-      this.displayMarket();
-      
-      // Combat encounter button
-      this.add.rectangle(W/2, H/2, 200, 60, 0xdc2626)
-        .setInteractive({useHandCursor: true})
-        .on('pointerdown', () => this.startCombat());
-      
-      this.add.text(W/2, H/2, 'Enter Combat', { 
-        fontFamily: 'system-ui, Arial', fontSize: '16px', color: '#e5e7eb' 
-      }).setOrigin(0.5);
+      // Draw the three paths
+      this.drawPaths();
       
       // Back to party select
       this.add.text(24, 20, '← Party Select', { 
-        fontFamily:'system-ui, Arial', fontSize:'16px', color:'#93c5fd' 
-      }).setInteractive({useHandCursor:true})
-        .on('pointerdown', () => this.scene.start('PartySelect'));
+        fontFamily: 'system-ui, Arial', 
+        fontSize: '16px', 
+        color: '#93c5fd' 
+      })
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.start('PartySelect'));
+      
+      // Show defeated dragons
+      this.displayDefeatedDragons();
+    }
+    
+    drawPaths() {
+      const { width: W, height: H } = this.scale;
+      const pathWidth = W * 0.25;
+      const startY = H * 0.3;
+      const endY = H * 0.7;
+      
+      // Clear previous graphics
+      this.pathGraphics.forEach(g => g.destroy());
+      this.pathGraphics = [];
+      this.pathNodes = [];
+      
+      // Draw each path
+      gameState.paths.forEach((path, index) => {
+        const x = (index + 1) * (W / 4);
+        const isCurrentPath = gameState.currentPath === path.id;
+        const isLocked = path.isLocked && !isCurrentPath;
+        
+        // Draw path line
+        const pathLine = this.add.graphics();
+        pathLine.lineStyle(4, isCurrentPath ? 0x3b82f6 : 0x4b5563, 1);
+        pathLine.beginPath();
+        pathLine.moveTo(x, startY);
+        pathLine.lineTo(x, endY);
+        pathLine.strokePath();
+        this.pathGraphics.push(pathLine);
+        
+        // Draw path nodes (encounters)
+        const nodeCount = 4; // Number of encounters + boss
+        const nodeSpacing = (endY - startY) / (nodeCount + 1);
+        
+        for (let i = 0; i < nodeCount; i++) {
+          const nodeY = startY + (i + 1) * nodeSpacing;
+          let nodeColor;
+          let nodeText = '';
+          
+          if (i < nodeCount - 1) {
+            // Regular encounter
+            nodeColor = 0x4b5563;
+            nodeText = 'Encounter';
+          } else {
+            // Boss node
+            nodeColor = this.getElementColor(path.dragons[0]);
+            nodeText = `${path.dragons[0]} Dragon`;
+          }
+          
+          const node = this.add.circle(x, nodeY, 15, nodeColor)
+            .setInteractive({ useHandCursor: !isLocked })
+            .on('pointerdown', () => this.selectPath(path.id, i));
+            
+          this.pathGraphics.push(node);
+          
+          // Add node text
+          const text = this.add.text(x, nodeY - 25, nodeText, {
+            fontFamily: 'system-ui, Arial',
+            fontSize: '12px',
+            color: '#e5e7eb',
+            align: 'center',
+            wordWrap: { width: 100 }
+          }).setOrigin(0.5);
+          
+          this.pathGraphics.push(text);
+          this.pathNodes.push({ node, text, pathId: path.id, nodeIndex: i });
+          
+          // Draw connection lines between nodes
+          if (i > 0) {
+            const line = this.add.graphics();
+            line.lineStyle(2, 0x4b5563, 0.5);
+            line.beginPath();
+            line.moveTo(x, startY + i * nodeSpacing + 15);
+            line.lineTo(x, startY + (i + 1) * nodeSpacing - 15);
+            line.strokePath();
+            this.pathGraphics.push(line);
+          }
+        }
+      });
+    }
+    
+    getElementColor(element) {
+      const colors = {
+        Fire: 0xef4444,
+        Water: 0x3b82f6,
+        Plant: 0x10b981,
+        Air: 0x93c5fd,
+        Lightning: 0xf59e0b,
+        Earth: 0x92400e
+      };
+      return colors[element] || 0x6b7280;
+    }
+    
+    selectPath(pathId, nodeIndex) {
+      if (gameState.currentPath !== null && gameState.currentPath !== pathId) {
+        // Already on a different path
+        return;
+      }
+      
+      const path = gameState.paths[pathId];
+      if (path.isLocked && gameState.currentPath !== pathId) {
+        // Path is locked and not the current path
+        return;
+      }
+      
+      // If this is the first selection for this path
+      if (gameState.currentPath === null) {
+        gameState.selectPath(pathId);
+        this.drawPaths();
+        return;
+      }
+      
+      // Handle node selection
+      const isBossNode = nodeIndex === 3; // Last node is boss
+      
+      if (isBossNode) {
+        // Start boss battle
+        this.startBossBattle(path.dragons[0]);
+      } else {
+        // Start regular encounter
+        this.startEncounter();
+      }
+    }
+    
+    startBossBattle(dragonElement) {
+      // Set up boss battle with the specified dragon
+      this.registry.set('encounterType', 'boss');
+      this.registry.set('bossElement', dragonElement);
+      this.scene.start('Combat');
+    }
+    
+    startEncounter() {
+      // Set up regular encounter
+      this.registry.set('encounterType', 'normal');
+      this.scene.start('Combat');
+    }
+    
+    displayDefeatedDragons() {
+      const { width: W, height: H } = this.scale;
+      
+      this.add.text(W * 0.1, H * 0.85, 'Defeated Dragons:', {
+        fontFamily: 'system-ui, Arial',
+        fontSize: '16px',
+        color: '#e5e7eb'
+      });
+      
+      // Display icons for defeated dragons
+      gameState.defeatedDragons.forEach((dragon, index) => {
+        const x = W * 0.2 + index * 40;
+        const y = H * 0.9;
+        
+        this.add.circle(x, y, 15, this.getElementColor(dragon));
+        this.add.text(x, y, dragon[0], {
+          fontFamily: 'system-ui, Arial',
+          fontSize: '12px',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+      });
     }
     
     displayParty(){
@@ -182,5 +339,5 @@
     }
   }
   
-  window.ETScenes.MapScene = MapScene;
-})();
+// Export the MapScene class
+export default MapScene;

@@ -1,33 +1,26 @@
 // source/phaser/game.js
-(function () {
-  const config = {
-    type: Phaser.AUTO,
-    parent: 'game-container',
-    backgroundColor: '#0b1220',
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: 1280,
-      height: 720
-    },
-    scene: []
-  };
+import MapScene from './scenes/MapScene.js';
+import { gameState } from './data/game_state.js';
 
-  const game = new Phaser.Game(config);
+// Initialize game configuration
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  backgroundColor: '#0b1220',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 1280,
+    height: 720
+  },
+  scene: [
+    // We'll add other scenes here as we convert them to ES modules
+    MapScene
+  ]
+};
 
-  function addScene(key, ctor) {
-    game.scene.add(key, ctor, false);
-  }
+// Create game instance
+const game = new Phaser.Game(config);
 
-  // Import scenes (attached to window by their files)
-  addScene('Boot', window.ETScenes.BootScene);
-  addScene('Load', window.ETScenes.LoadScene);
-  addScene('Menu', window.ETScenes.MenuScene);
-  addScene('PartySelect', window.ETScenes.PartySelectScene);
-  addScene('Map', window.ETScenes.MapScene);
-  addScene('Market', window.ETScenes.MarketScene);
-  addScene('Combat', window.ETScenes.CombatScene);
-
-  // Start boot
-  game.scene.start('Boot');
-})();
+// Make game state globally available for debugging
+window.gameState = gameState;

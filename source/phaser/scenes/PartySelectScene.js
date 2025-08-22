@@ -172,11 +172,11 @@
       // Check if we can select this class
       if(this.selectedClasses.length >= 4) return;
       
-      // Select the class
+      // Select the class - only update border, keep original fill and portrait
       cardData.selected = true;
-      // Only green border to indicate selection; keep original fill and colors
-      cardData.bg.setStrokeStyle(3, 0x10b981);
+      cardData.bg.setStrokeStyle(3, 0x10b981); // Green border for selection
       cardData.texts.forEach(text => text.clearTint());
+      cardData.portrait.clearTint(); // Ensure portrait is in full color
       
       this.selectedClasses.push(cardData);
       this.usedHeroes.add(cardData.heroKey);
@@ -194,12 +194,15 @@
     
     deselectClass(cardData){
       cardData.selected = false;
-      // Revert to default styling (no fill color change beyond base, normal border)
-      cardData.bg.setFillStyle(0x000000, 0.4).setStrokeStyle(2, 0x475569);
-      cardData.texts.forEach(text => text.clearTint());
-      // Ensure the portrait is in color when available
-      if (cardData.available && cardData.portrait) {
+      // Revert to default border only
+      cardData.bg.setStrokeStyle(2, 0x475569);
+      // Update visual state based on availability
+      if (cardData.available) {
         cardData.portrait.clearTint();
+        cardData.texts.forEach(text => text.clearTint());
+      } else {
+        cardData.portrait.setTint(0x666666);
+        cardData.texts.forEach(text => text.setTint(0x888888));
       }
       
       // Remove from selected arrays
@@ -228,13 +231,13 @@
         card.available = !heroConflict && !weaponConflict;
         
         // Update visual state if availability changed
-        if(wasAvailable !== card.available && !card.selected) {
+        if(wasAvailable !== card.available) {
           if(card.available) {
-            // Restore color only (no bg/border changes)
+            // Restore portrait and text color only
             card.portrait.clearTint();
             card.texts.forEach(text => text.clearTint());
-          } else {
-            // Monochrome portrait only (no bg/border changes)
+          } else if (!card.selected) {
+            // Only make unavailable cards monochrome if not selected
             card.portrait.setTint(0x666666);
             card.texts.forEach(text => text.setTint(0x888888));
           }
