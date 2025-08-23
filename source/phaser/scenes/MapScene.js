@@ -1,4 +1,4 @@
-import { gameState } from '../data/game_state.js';
+import { gameState } from '../../data/game_state.js';
 
 class MapScene extends Phaser.Scene {
     constructor(){ 
