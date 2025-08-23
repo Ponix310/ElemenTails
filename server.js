@@ -36,7 +36,8 @@ const server = http.createServer((req, res) => {
     }
     
     // Handle file serving
-    let filePath = '.' + req.url;
+    const safeUrl = decodeURIComponent(req.url);
+    let filePath = '.' + safeUrl;
     if (filePath === './') {
         filePath = './index.html';
     }

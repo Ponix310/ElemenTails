@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>ElemenTails</title>
+    <link rel="icon" href="data:,">
     <style>
         body {
             margin: 0;
@@ -23,6 +24,30 @@
 </head>
 <body>
     <div id="game-container"></div>
+    <!-- Load Phaser global before module scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+    <script>window.ETScenes = window.ETScenes || {};</script>
+    <script>
+      // Lightweight dev stub for ETFirebase to run without real Firebase
+      if (!window.ETFirebase) {
+        window.ETFirebase = {
+          app: null,
+          auth: {
+            currentUser: null,
+            onAuthStateChanged: (cb) => { try{ cb(null); }catch{} return () => {}; }
+          },
+          ensureAuth: async () => { return null; },
+          startPresenceHeartbeat: () => {},
+          stopPresenceHeartbeat: () => {},
+          onPresence: (uid, cb) => { try{ cb(false); }catch{} return () => {}; },
+          saveUsername: async (u) => u,
+          listFriends: async () => []
+        };
+      }
+    </script>
+    <!-- Load globally-scoped scenes that attach to window.ETScenes -->
+    <script src="./source/phaser/scenes/MenuScene.js"></script>
+    <script src="./source/phaser/scenes/PartySelectScene.js"></script>
     <script type="module" src="./source/phaser/game.js"></script>
 </body>
 </html>

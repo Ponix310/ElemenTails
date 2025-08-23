@@ -8,6 +8,94 @@ export default class CombatScene extends Phaser.Scene {
     this.turnPhase = 'start';
     this.combatLog = [];
     this.onCombatComplete = null;
+    this.spellsData = null;
+    this.abilitiesLayer = null;
+    // Battle map state (hex grid)
+    this.grid = null; // 2D array: rows x cols of hex cells
+    this.hexSize = 36; // radius of flat-top hex in pixels
+    this.boardOrigin = { x: 420, y: 140 }; // screen origin for board (top-left-ish visual origin)
+    this.mapKey = null; // phaser texture key for the selected map PNG
+    // Debug/align controls
+    this.sampleOrigin = { x: 36, y: 36 }; // where the first hex center lies in the PNG
+    this.showOverlay = true; // show PNG underlay for alignment
+    this.overlaySprite = null;
+    this._calibrating = false;
+    this._calibPoints = [];
+  }
+
+  // ---- Debug helpers ----
+  _rebuildGrid(){
+    const parsed = this._parseGridFromMapTexture(this.mapKey);
+    this.grid = parsed.grid;
+    this.rows = parsed.rows;
+    this.cols = parsed.cols;
+    this.gridLayer.removeAll(true);
+    this._renderGrid(parsed.rows, parsed.cols);
+  }
+
+  _setupAlignControls(){
+    if (this._alignControlsSetup) return;
+    this._alignControlsSetup = true;
+    this.input.keyboard.on('keydown-O', () => {
+      this.showOverlay = !this.showOverlay;
+      if (this.overlaySprite) this.overlaySprite.setAlpha(this.showOverlay ? 0.25 : 0);
+    });
+    this.input.keyboard.on('keydown-UP', () => { this.sampleOrigin.y = Math.max(0, this.sampleOrigin.y - 1); this._rebuildGrid(); });
+    this.input.keyboard.on('keydown-DOWN', () => { this.sampleOrigin.y += 1; this._rebuildGrid(); });
+    this.input.keyboard.on('keydown-LEFT', () => { this.sampleOrigin.x = Math.max(0, this.sampleOrigin.x - 1); this._rebuildGrid(); });
+    this.input.keyboard.on('keydown-RIGHT', () => { this.sampleOrigin.x += 1; this._rebuildGrid(); });
+    this.input.keyboard.on('keydown-Q', () => { this.hexSize = Math.max(10, this.hexSize - 1); this._rebuildAndResizeOverlay(); });
+    this.input.keyboard.on('keydown-E', () => { this.hexSize = Math.min(96, this.hexSize + 1); this._rebuildAndResizeOverlay(); });
+    this.input.keyboard.on('keydown-C', () => {
+      this._startCalibration();
+    });
+  }
+
+  _rebuildAndResizeOverlay(){
+    // Overlay is unscaled because we draw at native size; just rebuild grid for new hex size
+    this._rebuildGrid();
+  }
+
+  _startCalibration(){
+    this._calibrating = true;
+    this._calibPoints = [];
+    this.logMessage('Calibration: Click origin hex center, then its right neighbor, then its down-right neighbor.');
+    this.input.once('pointerdown', (p)=> this._collectCalibPoint(p));
+  }
+
+  _collectCalibPoint(pointer){
+    const x = pointer.worldX - this.boardOrigin.x;
+    const y = pointer.worldY - this.boardOrigin.y;
+    this._calibPoints.push({x,y});
+    const needed = 3 - this._calibPoints.length;
+    if (needed > 0){
+      this.logMessage(`Calibration: ${needed} more point(s)...`);
+      this.input.once('pointerdown', (p)=> this._collectCalibPoint(p));
+      return;
+    }
+    // points: P0 (q=0,r=0), P1 (q=1,r=0), P2 (q=0,r=1) in flat-top
+    const [P0, P1, P2] = this._calibPoints;
+    const dx = P1.x - P0.x;
+    const dy = P1.y - P0.y;
+    const dist01 = Math.hypot(dx, dy);
+    // In flat-top, delta between q neighbors is 1.5*R horizontally
+    const R = dist01 / 1.5;
+    // Compute sampleOrigin so that (q=0,r=0) -> P0
+    // For flat-top: pixel(q,r) = (1.5R*q, sqrt(3)R*(r+q/2)) + origin
+    const originX = P0.x - 0;
+    const originY = P0.y - 0;
+    // Validate P2 alignment (should be ~ (q=0,r=1) offset of sqrt(3)R)
+    const expectedP2 = { x: originX + 0, y: originY + Math.sqrt(3)*R };
+    const err = Math.hypot(expectedP2.x - P2.x, expectedP2.y - P2.y);
+    if (err > R*0.6){
+      this.logMessage('Calibration warning: clicks may not be on adjacent hex centers. Using best estimate.');
+    }
+    this.hexSize = Math.max(10, Math.min(120, R));
+    this.sampleOrigin = { x: originX, y: originY };
+    this._calibrating = false;
+    this._calibPoints = [];
+    this.logMessage(`Calibrated. R=${this.hexSize.toFixed(1)} origin=(${this.sampleOrigin.x.toFixed(1)},${this.sampleOrigin.y.toFixed(1)})`);
+    this._rebuildGrid();
   }
   
   init(data) {
@@ -22,11 +110,18 @@ export default class CombatScene extends Phaser.Scene {
     // Background
     this.add.rectangle(W/2, H/2, W, H, 0x1e293b);
     
-    // Create combat UI
+    // Create basic UI chrome
     this.createCombatUI();
-    
-    // Start combat
-    this.startCombat();
+    // Load spells data (non-blocking)
+    this.loadSpells();
+
+    // Build battle map, then start combat once ready
+    this.setupBattleMap().then(() => {
+      this.startCombat();
+    }).catch(err => {
+      console.warn('Battle map setup failed, starting combat anyway', err);
+      this.startCombat();
+    });
     
     // Debug: Press 'D' to win combat
     this.input.keyboard.on('keydown-D', () => this.endCombat(true));
@@ -46,6 +141,246 @@ export default class CombatScene extends Phaser.Scene {
     
     // Combat log
     this.createCombatLog();
+  }
+
+  // ----- Battle Map Loading & Parsing -----
+  async setupBattleMap(){
+    // Determine difficulty; default to 'easy'. Later, wire from MapScene or registry.
+    const difficulty = this.registry.get('encounterDifficulty') || 'easy';
+    // Always use built-in list to avoid network issues
+    const builtin = {
+      easy: [
+        "Screenshot_2025-04-19_184813 1.png","Screenshot_2025-04-19_184813 13.png","Screenshot_2025-04-19_184813 18.png","Screenshot_2025-04-19_184813 2.png",
+        "Screenshot_2025-04-19_184813 22.png","Screenshot_2025-04-19_184813 23.png","Screenshot_2025-04-19_184813 26.png","Screenshot_2025-04-19_184813 27.png",
+        "Screenshot_2025-04-19_184813 31.png","Screenshot_2025-04-19_184813 35.png","Screenshot_2025-04-19_184813 40.png","Screenshot_2025-04-19_184813 41.png",
+        "Screenshot_2025-04-19_184813 43.png","Screenshot_2025-04-19_184813 44.png","Screenshot_2025-04-19_184813 47.png","Screenshot_2025-04-19_184813 5.png",
+        "Screenshot_2025-04-19_184813 52.png","Screenshot_2025-04-19_184813 56.png","Screenshot_2025-04-19_184813 60.png","Screenshot_2025-04-19_184813 9.png"
+      ],
+      medium: [
+        "Screenshot_2025-04-19_184813 10.png","Screenshot_2025-04-19_184813 11.png","Screenshot_2025-04-19_184813 14.png","Screenshot_2025-04-19_184813 19.png",
+        "Screenshot_2025-04-19_184813 24.png","Screenshot_2025-04-19_184813 28.png","Screenshot_2025-04-19_184813 3.png","Screenshot_2025-04-19_184813 32.png",
+        "Screenshot_2025-04-19_184813 36.png","Screenshot_2025-04-19_184813 37.png","Screenshot_2025-04-19_184813 45.png","Screenshot_2025-04-19_184813 48.png",
+        "Screenshot_2025-04-19_184813 53.png","Screenshot_2025-04-19_184813 57.png","Screenshot_2025-04-19_184813 6.png","Screenshot_2025-04-19_184813 61.png"
+      ],
+      hard: [
+        "Screenshot_2025-04-19_184813 12.png","Screenshot_2025-04-19_184813 15.png","Screenshot_2025-04-19_184813 16.png","Screenshot_2025-04-19_184813 20.png",
+        "Screenshot_2025-04-19_184813 21.png","Screenshot_2025-04-19_184813 25.png","Screenshot_2025-04-19_184813 29.png","Screenshot_2025-04-19_184813 30.png",
+        "Screenshot_2025-04-19_184813 33.png","Screenshot_2025-04-19_184813 38.png","Screenshot_2025-04-19_184813 39.png","Screenshot_2025-04-19_184813 4.png",
+        "Screenshot_2025-04-19_184813 42.png","Screenshot_2025-04-19_184813 46.png","Screenshot_2025-04-19_184813 49.png","Screenshot_2025-04-19_184813 50.png",
+        "Screenshot_2025-04-19_184813 54.png","Screenshot_2025-04-19_184813 55.png","Screenshot_2025-04-19_184813 58.png","Screenshot_2025-04-19_184813 59.png",
+        "Screenshot_2025-04-19_184813 62.png","Screenshot_2025-04-19_184813 63.png","Screenshot_2025-04-19_184813 7.png","Screenshot_2025-04-19_184813 8.png"
+      ]
+    };
+    let list = builtin[difficulty] || builtin.easy;
+    if (!list.length) throw new Error('No maps found for difficulty');
+    const file = list[Math.floor(Math.random() * list.length)];
+    // Use absolute path to avoid relative resolution issues
+    const path = encodeURI(`/source/phaser/assets/Battle Maps/${this._folderFor(difficulty)}/${file}`);
+    console.log('Loading battle map image:', path);
+
+    // Dynamically load the image into Phaser
+    this.mapKey = `battlemap_${difficulty}_${Date.now()}`;
+    await this._loadImageAsync(this.mapKey, path);
+
+    // Create/position debug overlay (under grid)
+    if (this.overlaySprite) this.overlaySprite.destroy();
+    this.overlaySprite = this.add.image(this.boardOrigin.x, this.boardOrigin.y, this.mapKey)
+      .setOrigin(0, 0)
+      .setAlpha(this.showOverlay ? 0.25 : 0);
+
+    // Prepare grid layer for easy clearing
+    if (this.gridLayer) this.gridLayer.destroy(true);
+    this.gridLayer = this.add.layer();
+
+    // Parse pixels into a grid and render
+    this._rebuildGrid();
+
+    // Place party and enemies according to blue/red tiles
+    await this._placeUnitsFromGrid({ rows: this.rows, cols: this.cols });
+
+    // Setup debug controls for alignment
+    this._setupAlignControls();
+  }
+
+  _folderFor(diff){
+    if (diff === 'hard') return 'Hard Maps';
+    if (diff === 'medium') return 'Medium Maps';
+    return 'Easy Maps';
+  }
+
+  _loadImageAsync(key, url){
+    return new Promise((resolve, reject) => {
+      this.load.image(key, url);
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      this.load.once(Phaser.Loader.Events.LOAD_ERROR, (_file) => reject(new Error('Load error')));
+      this.load.start();
+    });
+  }
+
+  _parseGridFromMapTexture(texKey){
+    const tex = this.textures.get(texKey);
+    const src = tex.getSourceImage();
+    const imgW = src.width, imgH = src.height;
+
+    const R = this.hexSize; // radius
+    const stepX = 1.5 * R; // horizontal spacing between hex centers (flat-top)
+    const stepY = Math.sqrt(3) * R; // vertical spacing per r-step
+
+    // Estimate grid bounds that fit within the PNG using sampling origin
+    const originX = this.sampleOrigin.x;
+    const originY = this.sampleOrigin.y;
+    const cols = Math.max(1, Math.floor((imgW - originX - R) / stepX) + 1);
+    const rows = Math.max(1, Math.floor((imgH - originY - (Math.sqrt(3)/2)*R) / (Math.sqrt(3)*R)) + 1);
+    const grid = new Array(rows).fill(null).map(() => new Array(cols).fill(null));
+
+    // Robust color classification
+    const classify = (r,g,b) => {
+      // Hard white/black
+      if (r > 245 && g > 245 && b > 245) return 'void';
+      if (r < 15 && g < 15 && b < 15) return 'wall';
+      // Channel-dominance rules
+      if (r >= 160 && g <= 110 && b <= 110) return 'enemySpawn'; // red dominant
+      if (b >= 160 && r <= 110 && g <= 170) return 'playerSpawn'; // blue dominant
+      // If near white/black after compression
+      const maxc = Math.max(r,g,b), minc = Math.min(r,g,b);
+      if (maxc - minc < 12) { // nearly gray
+        if (maxc > 240) return 'void';
+        if (maxc < 20) return 'wall';
+      }
+      return 'ground';
+    };
+
+    let counts = { void:0, wall:0, ground:0, playerSpawn:0, enemySpawn:0 };
+    for (let r = 0; r < rows; r++){
+      for (let q = 0; q < cols; q++){
+        // Axial (q,r) -> pixel center within the PNG (with sampling origin)
+        const px = originX + R * (1.5 * q);
+        const py = originY + R * (Math.sqrt(3) * (r + q/2));
+        if (px >= imgW || py >= imgH) {
+          grid[r][q] = null; // outside image
+          continue;
+        }
+        const pixel = this.textures.getPixel(Math.floor(px), Math.floor(py), texKey);
+        const type = classify(pixel.r, pixel.g, pixel.b);
+        if (counts[type] !== undefined) counts[type]++;
+        const world = this._hexFlatToPixel(q, r, R);
+        const worldX = this.boardOrigin.x + world.x;
+        const worldY = this.boardOrigin.y + world.y;
+        grid[r][q] = { type, row: r, col: q, x: worldX, y: worldY, q, r };
+      }
+    }
+    console.log(`Parsed grid: ${rows}x${cols}  counts`, counts, `R=${R}`, `origin=(${originX},${originY})`);
+    return { grid, rows, cols };
+  }
+
+  _renderGrid(rows, cols){
+    const R = this.hexSize;
+    for (let r=0; r<rows; r++){
+      for (let q=0; q<cols; q++){
+        const tile = this.grid[r][q];
+        if (!tile) continue;
+        let color = 0x475569; // ground default
+        if (tile.type === 'wall') color = 0x111827;
+        if (tile.type === 'void') color = 0xffffff;
+        if (tile.type === 'playerSpawn') color = 0x3b82f6;
+        if (tile.type === 'enemySpawn') color = 0xef4444;
+        const points = this._hexCornersFlat(tile.x, tile.y, R);
+        const poly = this.add.polygon(tile.x, tile.y, points, color).setStrokeStyle(1, 0x000000).setOrigin(0.5);
+        if (tile.type === 'void') poly.setStrokeStyle(1, 0x111827);
+        this.gridLayer.add(poly);
+      }
+    }
+  }
+
+  // ---- Hex helpers (flat-top) ----
+  _hexFlatToPixel(q, r, R){
+    const x = R * (1.5 * q);
+    const y = R * (Math.sqrt(3) * (r + q/2));
+    return { x, y };
+  }
+
+  _hexCornersFlat(cx, cy, R){
+    // flat-top orientation starting at angle 0deg, step 60deg
+    const angles = [0, 60, 120, 180, 240, 300].map(a => (Math.PI/180)*a);
+    const pts = [];
+    for (const a of angles){
+      const x = cx + R * Math.cos(a);
+      const y = cy + R * Math.sin(a);
+      pts.push(x, y);
+    }
+    return pts;
+  }
+
+  async _placeUnitsFromGrid(parsed){
+    const spawnBlue = [];
+    const spawnRed = [];
+    const ground = [];
+    for (let r=0; r<parsed.rows; r++){
+      for (let c=0; c<parsed.cols; c++){
+        const t = this.grid[r][c];
+        if (!t || !t.type) continue;
+        if (t.type === 'playerSpawn') spawnBlue.push(t);
+        else if (t.type === 'enemySpawn') spawnRed.push(t);
+        else if (t.type === 'ground') ground.push(t);
+      }
+    }
+
+    if (spawnBlue.length === 0) {
+      console.warn('No blue spawn tiles found. Using ground tiles as fallback.');
+      Phaser.Utils.Array.Shuffle(ground);
+      spawnBlue.push(...ground.slice(0, Math.max(1, Math.min(4, ground.length))));
+    }
+    if (spawnRed.length === 0) {
+      console.warn('No red spawn tiles found. Using ground tiles as fallback.');
+      Phaser.Utils.Array.Shuffle(ground);
+      spawnRed.push(...ground.slice(0, Math.max(1, Math.min(4, ground.length))));
+    }
+    // Randomly choose 4 blue tiles
+    Phaser.Utils.Array.Shuffle(spawnBlue);
+    const partySpawns = spawnBlue.slice(0, Math.min(4, this.party.length, spawnBlue.length));
+    this.party.forEach((p, i) => {
+      const tile = partySpawns.length ? partySpawns[i % partySpawns.length] : null;
+      if (!tile) return;
+      p.pos = { row: tile.row, col: tile.col };
+      // Render token
+      const token = this.add.circle(tile.x, tile.y, 18, 0x22c55e).setStrokeStyle(2, 0x064e3b);
+      this.add.text(tile.x, tile.y-28, p.name || 'Hero', { fontFamily:'Arial', fontSize:'12px', color:'#e5e7eb' }).setOrigin(0.5);
+      p._token = token;
+    });
+
+    // Build enemies from commons if not provided, count = red tiles
+    if (!this.enemies || this.enemies.length === 0){
+      try{
+        const res = await fetch('source/data/enemies.json', { cache: 'no-store' });
+        const data = await res.json();
+        const commons = (data.enemies || []).filter(e => (e.rarity || 'common').toLowerCase() === 'common');
+        Phaser.Utils.Array.Shuffle(spawnRed);
+        const count = Math.min(spawnRed.length, 6); // cap to avoid overload
+        this.enemies = new Array(count).fill(null).map((_, idx) => {
+          const base = commons[idx % commons.length] || { name:'Shadow Sprite', health:10, attack:2 };
+          return {
+            name: base.name,
+            maxHealth: base.health || 10,
+            health: base.health || 10,
+            attack: base.attack || 2
+          };
+        });
+      }catch(e){
+        console.warn('Failed to build enemies from commons', e);
+      }
+    }
+
+    // Place enemies on red tiles
+    Phaser.Utils.Array.Shuffle(spawnRed);
+    this.enemies.forEach((e, i) => {
+      if (!spawnRed.length) return;
+      const tile = spawnRed[i % spawnRed.length];
+      e.pos = { row: tile.row, col: tile.col };
+      // Render token
+      const token = this.add.rectangle(tile.x, tile.y, 32, 32, 0xef4444).setStrokeStyle(2, 0x7f1d1d).setOrigin(0.5);
+      this.add.text(tile.x, tile.y-28, e.name || 'Enemy', { fontFamily:'Arial', fontSize:'12px', color:'#fecaca' }).setOrigin(0.5);
+      e._token = token;
+    });
   }
   
   createPartyUI() {
@@ -77,13 +412,12 @@ export default class CombatScene extends Phaser.Scene {
         fontSize: '14px', 
         color: '#ffffff' 
       });
-      
-      // Energy orbs
-      for (let i = 0; i < member.maxEnergy; i++) {
-        const energyX = x - 30 + (i * 15);
-        const energyColor = i < member.energy ? 0xfacc15 : 0x4b5563;
-        this.add.circle(energyX, y + 15, 5, energyColor);
-      }
+
+      // Energy pool UI (A/D/U counts)
+      member._ui = member._ui || {};
+      member._ui.energyText = this.add.text(x - 20, y + 5, 'A:0  D:0  U:0', {
+        fontFamily: 'Arial', fontSize: '14px', color: '#f8fafc'
+      });
     });
   }
   
@@ -141,8 +475,13 @@ export default class CombatScene extends Phaser.Scene {
         x: W/2 - spacing, 
         action: () => this.playerAction('attack') 
       },
+      {
+        text: 'Move',
+        x: W/2 - spacing * 2,
+        action: () => this.playerAction('move')
+      },
       { 
-        text: 'Abilities', 
+        text: 'Spells', 
         x: W/2, 
         action: () => this.showAbilities() 
       },
@@ -167,8 +506,46 @@ export default class CombatScene extends Phaser.Scene {
   }
   
   showAbilities() {
-    // TODO: Implement ability selection
-    this.logMessage('Abilities not implemented yet!');
+    // Build a minimal overlay listing known spells for party[0]
+    const actor = this.party[0];
+    if (!actor) return;
+    if (!this.spellsData) {
+      this.logMessage('Spells loading...');
+      return;
+    }
+    const known = actor.knownSpells || [];
+    if (!known.length) {
+      this.logMessage('No spells known.');
+      return;
+    }
+    // Clear previous layer
+    if (this.abilitiesLayer) {
+      this.abilitiesLayer.clear(true, true);
+    }
+    this.abilitiesLayer = this.add.group();
+    const { width: W, height: H } = this.scale;
+    const panel = this.add.rectangle(W/2, H/2, 380, 220, 0x0f172a).setStrokeStyle(2, 0x94a3b8);
+    this.abilitiesLayer.add(panel);
+    const title = this.add.text(W/2, H/2 - 90, 'Spells', { fontFamily:'Arial', fontSize:'18px', color:'#e2e8f0' }).setOrigin(0.5);
+    this.abilitiesLayer.add(title);
+    // List entries
+    let y = H/2 - 50;
+    known.forEach((key, idx) => {
+      const spell = this.findSpellByKey(key);
+      const label = spell ? `${spell.name}  (A:1)` : `${key}  (A:1)`;
+      const btn = this.add.rectangle(W/2, y + idx*36, 320, 28, 0x1e293b).setStrokeStyle(1, 0x64748b).setInteractive();
+      const txt = this.add.text(W/2, y + idx*36, label, { fontFamily:'Arial', fontSize:'14px', color:'#f1f5f9' }).setOrigin(0.5);
+      btn.on('pointerdown', () => {
+        this.castSpell(key);
+        this.hideAbilities();
+      });
+      this.abilitiesLayer.addMultiple([btn, txt]);
+    });
+    // Close button
+    const closeBtn = this.add.rectangle(W/2, H/2 + 90, 100, 28, 0x334155).setStrokeStyle(1, 0x64748b).setInteractive();
+    const closeTxt = this.add.text(W/2, H/2 + 90, 'Close', { fontFamily:'Arial', fontSize:'14px', color:'#e2e8f0' }).setOrigin(0.5);
+    closeBtn.on('pointerdown', () => this.hideAbilities());
+    this.abilitiesLayer.addMultiple([closeBtn, closeTxt]);
   }
   
   showItems() {
@@ -204,35 +581,97 @@ export default class CombatScene extends Phaser.Scene {
     this.logMessage('Combat started!');
     this.startPlayerTurn();
   }
-  
+
   startPlayerTurn() {
     this.currentTurn = 'player';
     this.logMessage('Your turn!');
-    
-    // Reset energy for party members
+
+    // Roll energy dice for each hero and update UI
     this.party.forEach(member => {
-      member.energy = member.maxEnergy;
+      member.energyPool = this.rollEnergyForMember(member);
+      this.updateEnergyUI(member);
     });
   }
-  
+
+  rollEnergyForMember(member) {
+    const energyPool = { A: 0, D: 0, U: 0 };
+    for (let i = 0; i < member.maxEnergy; i++) {
+      const roll = Math.floor(Math.random() * 3);
+      switch (roll) {
+        case 0:
+          energyPool.A++;
+          break;
+        case 1:
+          energyPool.D++;
+          break;
+        case 2:
+          energyPool.U++;
+          break;
+      }
+    }
+    return energyPool;
+  }
+
+  updateEnergyUI(member) {
+    const text = `A:${member.energyPool.A}  D:${member.energyPool.D}  U:${member.energyPool.U}`;
+    member._ui.energyText.setText(text);
+  }
+
   playerAction(action, target = null) {
-    // Simple attack for now
-    if (action === 'attack' && this.enemies.length > 0) {
+    // For MVP, all actions are performed by party[0]
+    const actor = this.party[0];
+    if (!actor || this.enemies.length === 0) return;
+
+    // Move: consume any one energy if available
+    if (action === 'move') {
+      const spent = this.trySpendAnyEnergy(actor, 1);
+      if (!spent) {
+        this.logMessage('Not enough energy to move.');
+        return;
+      }
+      this.logMessage(`${actor.name} moves (consumed 1 energy).`);
+      this.updateEnergyUI(actor);
+      this.endPlayerTurn();
+      return;
+    }
+
+    // Attack requires 1 Attack energy (A)
+    if (action === 'attack') {
+      if (!this.trySpendEnergy(actor, 'A', 1)) {
+        this.logMessage('Need 1 Attack energy (A) to attack.');
+        return;
+      }
       const enemy = this.enemies[0]; // Simple target first enemy for now
       enemy.health -= 5; // Simple damage calculation
-      this.logMessage(`You attacked ${enemy.name} for 5 damage!`);
-      
-      // Check if enemy is defeated
+      this.logMessage(`${actor.name} attacked ${enemy.name} for 5 damage!`);
       if (enemy.health <= 0) {
         this.logMessage(`${enemy.name} was defeated!`);
         this.enemies = this.enemies.filter(e => e !== enemy);
       }
-      
-      // End player turn
+      this.updateEnergyUI(actor);
       this.endPlayerTurn();
+      return;
     }
   }
-  
+
+  trySpendAnyEnergy(actor, amount) {
+    for (const type in actor.energyPool) {
+      if (actor.energyPool[type] >= amount) {
+        actor.energyPool[type] -= amount;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  trySpendEnergy(actor, type, amount) {
+    if (actor.energyPool[type] >= amount) {
+      actor.energyPool[type] -= amount;
+      return true;
+    }
+    return false;
+  }
+
   endPlayerTurn() {
     this.currentTurn = 'enemy';
     this.logMessage('Enemy turn!');
@@ -273,5 +712,68 @@ export default class CombatScene extends Phaser.Scene {
       this.onCombatComplete(victory);
       this.scene.stop();
     });
+  }
+  
+  // ----- Spells helpers (MVP) -----
+  hideAbilities(){
+    if (this.abilitiesLayer) {
+      this.abilitiesLayer.clear(true, true);
+      this.abilitiesLayer = null;
+    }
+  }
+
+  castSpell(key){
+    const actor = this.party[0];
+    if (!actor) return;
+    if (!this.trySpendEnergy(actor, 'A', 1)) {
+      this.logMessage('Need 1 Attack energy (A) to cast.');
+      return;
+    }
+    const spell = this.findSpellByKey(key);
+    const enemy = this.enemies[0];
+    if (!enemy) return;
+    const damage = this.damageForSpell(key, spell);
+    enemy.health -= damage;
+    this.logMessage(`${actor.name} casts ${spell ? spell.name : key} for ${damage} damage!`);
+    if (enemy.health <= 0) {
+      this.logMessage(`${enemy.name} was defeated!`);
+      this.enemies = this.enemies.filter(e => e !== enemy);
+    }
+    this.updateEnergyUI(actor);
+    this.endPlayerTurn();
+  }
+
+  damageForSpell(key, spell){
+    if ((key || '').toLowerCase() === 'kindlestrike') return 2;
+    if (spell && typeof spell.effect === 'string'){
+      const m = spell.effect.match(/(\d+)/);
+      if (m) return parseInt(m[1], 10);
+    }
+    return 2;
+  }
+
+  findSpellByKey(key){
+    if (!this.spellsData) return null;
+    const { spells } = this.spellsData;
+    if (!spells) return null;
+    return (spells.minor && spells.minor[key]) || (spells.major && spells.major[key]) || null;
+  }
+
+  async loadSpells(){
+    try{
+      const res = await fetch('source/data/spells.json', { cache: 'no-store' });
+      this.spellsData = await res.json();
+      if (this.party && this.party[0]){
+        const hasKindle = this.findSpellByKey('kindlestrike');
+        if (hasKindle){
+          this.party[0].knownSpells = this.party[0].knownSpells || [];
+          if (!this.party[0].knownSpells.includes('kindlestrike')){
+            this.party[0].knownSpells.push('kindlestrike');
+          }
+        }
+      }
+    }catch(e){
+      console.warn('Failed to load spells.json', e);
+    }
   }
 }

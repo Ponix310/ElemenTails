@@ -67,6 +67,10 @@ class MapScene extends Phaser.Scene {
       
       // Show defeated dragons
       this.displayDefeatedDragons();
+
+      // Player stats and Market panels
+      this.displayPlayerStats();
+      this.displayMarket();
     }
     
     drawPaths() {

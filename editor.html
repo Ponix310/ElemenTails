@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>ElemenTails - Map Editor</title>
+  <link rel="icon" href="data:,">
+  <style>
+    html, body { height: 100%; margin: 0; background: #0b1220; }
+    #game-container { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+  <script type="module" src="./source/phaser/scenes/MapEditorScene.js"></script>
+  <script type="module">
+    import MapEditorScene from './source/phaser/scenes/MapEditorScene.js';
+
+    const config = {
+      type: Phaser.AUTO,
+      parent: 'game-container',
+      backgroundColor: '#0b1220',
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 1280,
+        height: 720
+      },
+      scene: [MapEditorScene]
+    };
+    new Phaser.Game(config);
+  </script>
+</body>
+</html>
