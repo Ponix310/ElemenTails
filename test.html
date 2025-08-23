@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ElemenTails - Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #0b1220; }
+        #game-container { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script>
+        // Inline game state
+        const gameState = {
+            paths: [],
+            defeatedDragons: [],
+            availableElements: ['Fire', 'Water', 'Plant', 'Air', 'Lightning', 'Earth'],
+            currentPath: null
+        };
+
+        // MapScene class
+        class MapScene extends Phaser.Scene {
+            constructor() {
+                super('Map');
+                this.selectedParty = [
+                    {
+                        heroName: 'Hero 1',
+                        className: 'Warrior',
+                        weaponName: 'Steel Sword',
+                        elements: ['Fire', 'Earth'],
+                        corruption: 2,
+                        health: 8,
+                        maxHealth: 10,
+                        energy: '2/3',
+                        spells: ['Strike', 'Block'],
+                        buffs: ['Shield']
+                    },
+                    {
+                        heroName: 'Hero 2',
+                        className: 'Mage',
+                        weaponName: 'Crystal Staff',
+                        elements: ['Water', 'Air'],
+                        corruption: 1,
+                        health: 10,
+                        maxHealth: 10,
+                        energy: '3/3',
+                        spells: ['Heal', 'Bolt'],
+                        buffs: []
+                    },
+                    {
+                        heroName: 'Hero 3',
+                        className: 'Rogue',
+                        weaponName: 'Twin Daggers',
+                        elements: ['Lightning', 'Plant'],
+                        corruption: 0,
+                        health: 9,
+                        maxHealth: 10,
+                        energy: '1/3',
+                        spells: ['Stealth', 'Poison'],
+                        buffs: ['Haste']
+                    },
+                    {
+                        heroName: 'Hero 4',
+                        className: 'Cleric',
+                        weaponName: 'Holy Mace',
+                        elements: ['Plant', 'Water'],
+                        corruption: 3,
+                        health: 7,
+                        maxHealth: 10,
+                        energy: '2/3',
+                        spells: ['Heal', 'Purify'],
+                        buffs: ['Blessed']
+                    }
+                ];
+            }
+
+            create() {
+                const { width: W, height: H } = this.scale;
+                
+                // Background
+                this.add.rectangle(W/2, H/2, W, H, 0x0f172a);
+                
+                // Map area in center
+                this.add.rectangle(W/2, H/2 - 50, 600, 300, 0x1f2937).setStrokeStyle(2, 0x374151);
+                this.add.text(W/2, H/2 - 50, 'map', { 
+                    fontFamily: 'Arial', 
+                    fontSize: '32px', 
+                    color: '#6b7280' 
+                }).setOrigin(0.5);
+                
+                // Market cards area at bottom
+                this.add.rectangle(W/2, H - 100, 600, 120, 0x1f2937).setStrokeStyle(2, 0x374151);
+                this.add.text(W/2, H - 100, 'market cards', { 
+                    fontFamily: 'Arial', 
+                    fontSize: '24px', 
+                    color: '#6b7280' 
+                }).setOrigin(0.5);
+                
+                this.displayParty();
+            }
+
+            displayParty() {
+                const { width: W, height: H } = this.scale;
+                
+                const panelWidth = 180;
+                const panelHeight = 300;
+                const padding = 20;
+                
+                const positions = [
+                    { x: padding, y: padding },
+                    { x: W - panelWidth - padding, y: padding },
+                    { x: padding, y: H - panelHeight - padding },
+                    { x: W - panelWidth - padding, y: H - panelHeight - padding }
+                ];
+                
+                this.selectedParty.forEach((member, index) => {
+                    if (index >= 4) return;
+                    
+                    const pos = positions[index];
+                    const centerX = pos.x + (panelWidth / 2);
+                    
+                    // Panel background
+                    this.add.rectangle(
+                        centerX, 
+                        pos.y + (panelHeight / 2), 
+                        panelWidth, 
+                        panelHeight, 
+                        0x1e293b
+                    ).setStrokeStyle(2, 0x475569);
+                    
+                    // Character portrait area
+                    this.add.rectangle(
+                        centerX,
+                        pos.y + 60,
+                        panelWidth - 20,
+                        80,
+                        0x0f172a
+                    ).setStrokeStyle(1, 0x475569);
+                    
+                    // Character name
+                    this.add.text(centerX, pos.y + 20, member.heroName, {
+                        fontFamily: 'Arial',
+                        fontSize: '16px',
+                        color: '#e5e7eb'
+                    }).setOrigin(0.5);
+                    
+                    // Class
+                    this.add.text(centerX, pos.y + 40, member.className, {
+                        fontFamily: 'Arial',
+                        fontSize: '14px',
+                        color: '#fbbf24'
+                    }).setOrigin(0.5);
+                    
+                    // Spell/Ability grid (3x2)
+                    const gridStartX = pos.x + 15;
+                    const gridStartY = pos.y + 180;
+                    const cardWidth = 45;
+                    const cardHeight = 30;
+                    const cardSpacing = 5;
+                    
+                    for (let row = 0; row < 2; row++) {
+                        for (let col = 0; col < 3; col++) {
+                            const cardX = gridStartX + col * (cardWidth + cardSpacing);
+                            const cardY = gridStartY + row * (cardHeight + cardSpacing);
+                            
+                            this.add.rectangle(
+                                cardX + cardWidth/2,
+                                cardY + cardHeight/2,
+                                cardWidth,
+                                cardHeight,
+                                0x374151
+                            ).setStrokeStyle(1, 0x6b7280);
+                        }
+                    }
+                    
+                    // Stats
+                    const statsY = pos.y + 80;
+                    const statYSpacing = 25;
+                    
+                    const stats = [
+                        { label: 'HP:', value: `${member.health}/${member.maxHealth}`, color: '#ef4444' },
+                        { label: 'Energy:', value: member.energy, color: '#fbbf24' },
+                        { label: 'Corruption:', value: member.corruption, color: '#ef4444' },
+                        { label: 'Elements:', value: member.elements.join(', '), color: '#6ee7b7' }
+                    ];
+                    
+                    stats.forEach((stat, i) => {
+                        const y = statsY + (statYSpacing * i);
+                        this.add.text(pos.x + 10, y, stat.label, {
+                            fontFamily: 'Arial',
+                            fontSize: '12px',
+                            color: stat.color
+                        });
+                        
+                        this.add.text(pos.x + 80, y, stat.value, {
+                            fontFamily: 'Arial',
+                            fontSize: '12px',
+                            color: '#e5e7eb'
+                        });
+                    });
+                });
+            }
+        }
+
+        // Game config
+        const config = {
+            type: Phaser.AUTO,
+            parent: 'game-container',
+            backgroundColor: '#0b1220',
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                width: 1280,
+                height: 720
+            },
+            scene: [MapScene]
+        };
+
+        // Start game
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>

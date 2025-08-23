@@ -1,0 +1,8 @@
+Name,Element,Corruption,Speed,Range,Traits,123,456
+Pyrovolt,:F: :L:,48,2,3,"Howler, Piercing",Chain 3:L: Apply 1:burn: to each target hit,:cone3: Deal 3:F: Apply 1:weakened:
+Voltshade,:A: :L:,36,4,1,"Predatory, Flying",Deal 3:A: and Push 2,Chain 3:L: and Gain 1 :evade:
+Ashthorn,:F: :P:,36,2,2,"Scorching, Corrupted, Howler",Gain 4 :renew: and :stealth: and 2:thorns:,Gain 4:block: and 2:aegis: and 2:thorns:
+Marrowdrain,:W: :P:,38,2,1,"Shrouded, Skittish",:sburst2: Give 2:renew: and 1:inspired:,":sburst1: Deal 3:W:, Apply 1:slowed:, and Push 2"
+Cragwing,:A: :E:,36,2,1,"Flying, Heavy",:line3: Deal 3:E: and Push 1,:sburst1: Deal 3:A: and Apply:weakened:
+Steamspine,:F: :W:,36,2,2,"Scorching, Heavy",:cone3: Deal 2:F: and Apply 2:burn:,:sburst3: Pull 2 and Apply 2:burn:
+Stormshale,:L: :E:,38,3,1,"Shrouded, Heavy",:sburst3: Deal 2:E: and Gain 2:aegis:,:sburst3: Deal 2:L: and Gain:evade:

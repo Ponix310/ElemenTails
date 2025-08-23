@@ -1,0 +1,25 @@
+Name,Type,Corruption,Speed,Range,Traits,123,456
+Cinderboar,:F:,13,1,1,,"Move 2, Apply 2:burn:",1:F:; 2:F:if target has :burn:
+Emberfox,:F:,10,3,1,,2:F:,"Move 2, :sburst1: Apply 2:burn:"
+Blazetail Lizard,:F:,12,2,2,,:sburst1: Deal 1:F:,1:F:to all adjacent players
+Smokejay,:F:,11,3,3,,Apply :weakened:,Apply 2:burn:
+Vinerat,:P:,11,2,2,,:sburst2: Apply:rooted:,1:P:
+Ivycoil,:P:,13,1,1,,1:P:; 2:P:if target is :rooted:,"1:P:, Apply :rooted:"
+Mosslurker,:P:,14,1,1,,Gain 2:block: and 2:renew:,Deal 1:P:and Gain 1:thorns:
+Bramblebear,:P:,12,2,1,,:sburst1: Deal 1:P:,Gain 1:block: and 2:thorns:
+Shellsnap,:W:,13,1,1,,Gain 1:block: Deal 1:W:,Deal 1:W: Push 1
+Mudhopper,:W:,11,3,2,,Deal 1:W:,Push 1 and Apply Slowed
+Ripplefin,:W:,12,2,1,,:sburst2: Pull 1 ,:sburst1: Deal 1:W:
+Streamtail,:W:,14,1,1,,:sburst2: Apply :slowed:,Deal 1:W:
+Flashadder,:L:,11,3,1,,Chain 2:L:,Apply :weakened:
+Zap Squirrel,:L:,12,2,2,,Gain 1:inspired:,Chain 3:L:lose 3 Corruption
+Shockskink,:L:,13,2,1,,Deal 1:L:and Apply :slowed:,:sburst1: Deal 1:L:
+Sparkbeak,:L:,10,3,3,,Gain 1:evade: and Gain 1:inspired:,Chain 1:L:
+Rockupine,:E:,14,1,1,,Gain 1:block: Deal 1:E:,Deal 1:E: and Gain 1:thorns:
+Stonebuck,:E:,12,2,1,,Gain 3:block: and 1:aegis:,Move 2 and Deal 2:E:
+Dustspine,:E:,13,1,1,,Gain 2:block: for each adjacent player,:sburst1: Deal 1:E:
+Quakemoth,:E:,13,2,1,,Gain Stealth,:sburst1: Deal 1:E: or 3:E: if Stealthed
+Cloudmouse,:A:,11,3,1,,Deal 1:A: then move away 2,"Apply Exposed, then Deal 1 :A:"
+Windflutter,:A:,12,2,1,,:sburst1: 1:A:,"1:A:, then move away"
+Owlgale,:A:,12,2,3,,:sburst2: Apply :weakened:,Deal 1:A:
+Whirljay,:A:,9,2,2,,2:A:,Gain:evade: 1:A:

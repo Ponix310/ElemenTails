@@ -1,0 +1,19 @@
+Name,Element,Corruption,Speed,Range,Traits,123,456
+Cinderscale,:F::L:,34,2,1,"Howler, Heavy",:sburst1: Deal 2:F:Apply 2:burn:,Chain 3:L:
+Tortumire,:W::E:,36,2,2,"Corrupted, Vengeful",:sburst2: Give 1:aegis: and 2:block:,Deal 2:W::line3:
+Magmacoil,:F::E:,38,2,1,"Corrupted, Scorching",Gain 4:block: and 1:aegis:,:sburst1: Apply 2:burn: Gain 1:renew: per target
+Mistdrifter,:W::A:,34,4,,"Howler, Flying, Skittish",Push 1 and deal 3:W:,Apply 1 Slowed to all adjacent players
+Thornmaw,:P:,24,1,1,Retaliatory,Deal 2:P:and Apply :rooted:,:sburst1: Deal 1:P:and Gain 2:thorns:
+Grimble Snout,:E:,25,2,1,Heavy,Deal 2:E:and Gain 1:block:,:sburst1: Deal 1:E:and Apply 1:slowed:
+Sparkjaw,:L:,23,3,1,Howler,Gain 1:evade: and 1:inspired:,Chain 2:L:
+Ashpuff,:F:,24,3,2,"Shrouded, Flying",:area2: Apply 2:burn:,Deal 1:F:and Apply 1:weakened:
+Dreghorn,:E:,25,2,1,Heavy,Deal 2:E:and Push 2,Deal 2:E:+ 1:E:for each space moved this turn
+Skyrake,:A:,22,3,2,Flying,Deal 2:A:and Apply 1:weakened:,:sburst2: Deal 2:A:
+Thistlewing,:P::A:,24,4,4,"Flying, Skittish",Apply :rooted:,:sburst4: Give 3:renew:
+Bogstalker,:P::W:,25,3,2,Predatory,Deal 2:W:and Pull 1,:sburst1: Deal 2:P:and Apply :rooted:
+Tanglemaw,:P:,24,2,1,Shrouded,Deal 2:P:,Gain 4:renew:
+Flickerfox,:F::A:,23,3,1,Predatory,Deal 2:A:and Push 2,Deal 2:F:and Apply 1:burn:
+Scorchvine,:F::P:,24,2,1,Corrupted,:sburst2: 1:P:and Apply :rooted:,:sburst2: Deal 1:F:and Apply 2:burn:
+Thornbolt,:P::L:,24,2,2,"Howler, Predatory",Chain 2:P:,Chain 2:L:
+Rainscourge,:W::L:,25,2,2,Vengeful,:cone3: Deal 2:W:,:cone3: Deal 2:L:and Apply 1 :weakened:
+Briarplate,:P::E:,26,1,1,"Heavy, Corrupted",:sburst2: Give 1:inspired: and Apply :rooted:,:sburst2: Gain 4:block: and Deal 2:E:

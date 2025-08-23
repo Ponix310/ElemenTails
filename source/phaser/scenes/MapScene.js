@@ -193,13 +193,102 @@ class MapScene extends Phaser.Scene {
       // Set up boss battle with the specified dragon
       this.registry.set('encounterType', 'boss');
       this.registry.set('bossElement', dragonElement);
-      this.scene.start('Combat');
+      this._beginCombat({ bossElement: dragonElement, isBoss: true });
     }
     
     startEncounter() {
       // Set up regular encounter
       this.registry.set('encounterType', 'normal');
-      this.scene.start('Combat');
+      this._beginCombat({ isBoss: false });
+    }
+
+    // Build party objects for CombatScene expectations
+    _buildPartyForCombat() {
+      // Map selectedParty entries to have name/maxEnergy fields used by CombatScene
+      return this.selectedParty.map(p => ({
+        name: p.heroName || p.className,
+        className: p.className,
+        weaponName: p.weaponName,
+        elements: p.elements || [],
+        health: p.maxHealth || 10,
+        maxHealth: p.maxHealth || 10,
+        energy: 0,
+        maxEnergy: 3
+      }));
+    }
+
+    // Fetch enemies.json and pick a small group
+    async _buildEnemiesForCombat({ isBoss }) {
+      try {
+        const res = await fetch('source/data/enemies.json', { cache: 'no-store' });
+        const data = await res.json();
+        const all = data && data.enemies ? data.enemies : {};
+
+        // Separate by rarity if available; default to Common
+        const entries = Object.entries(all);
+        const commons = entries.filter(([, v]) => (v.rarity || 'Common') === 'Common');
+        const rares = entries.filter(([, v]) => v.rarity === 'Rare');
+        const elites = entries.filter(([, v]) => v.rarity === 'Elite');
+
+        const pickRandom = (arr, n) => {
+          const pool = [...arr];
+          const out = [];
+          while (pool.length && out.length < n) {
+            const idx = Math.floor(Math.random() * pool.length);
+            out.push(pool.splice(idx, 1)[0]);
+          }
+          return out;
+        };
+
+        let chosen = [];
+        if (isBoss && elites.length) {
+          chosen = pickRandom(elites, 1);
+        } else {
+          // 3-4 enemies, mostly commons, 20% chance to include one rare
+          const count = 3 + Math.floor(Math.random() * 2);
+          const includeRare = rares.length && Math.random() < 0.2;
+          if (includeRare) {
+            chosen = pickRandom(rares, 1).concat(pickRandom(commons, Math.max(0, count - 1)));
+          } else {
+            chosen = pickRandom(commons, count);
+          }
+        }
+
+        // Shape enemies for CombatScene MVP (health/attack defaults)
+        const shaped = chosen.map(([, v]) => ({
+          name: v.name,
+          maxHealth: v.maxCorruption ? Math.max(6, Math.round(v.maxCorruption * 0.5)) : 12,
+          health: v.maxCorruption ? Math.max(6, Math.round(v.maxCorruption * 0.5)) : 12,
+          attack: v.rarity === 'Elite' ? 4 : (v.rarity === 'Rare' ? 3 : 2)
+        }));
+        return shaped;
+      } catch (e) {
+        console.warn('Failed to load enemies.json', e);
+        // Fallback stub
+        return [
+          { name: 'Training Dummy', health: 10, maxHealth: 10, attack: 2 }
+        ];
+      }
+    }
+
+    async _beginCombat({ isBoss, bossElement = null }) {
+      const party = this._buildPartyForCombat();
+      const enemies = await this._buildEnemiesForCombat({ isBoss });
+
+      this.scene.start('Combat', {
+        party,
+        enemies,
+        onComplete: (victory) => this._afterCombat(victory)
+      });
+    }
+
+    _afterCombat(victory) {
+      if (victory) {
+        // Award a small CP amount for MVP
+        this.cleansePoints += 2;
+      }
+      // Return to map (this scene is still active, Combat stopped itself)
+      this.scene.restart();
     }
     
     displayDefeatedDragons() {

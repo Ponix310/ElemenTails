@@ -1,0 +1,19 @@
+Name,FM,FN,WM,WN,PM,PN,AM,AN,LM,LN,EM,EN,Type,EC,Area,Effect,Effect 2
+Exacted Fury,:F:,1,:W:,1,,,,,:L:,2,,,:A:,4,:starget:,Deal 9 Damage,
+Incediary Chain,:F:,2,,,:P:,1,,,:L:,1,,,:A:,5,:starget:,Chain 5,Apply 3 Burn to each target hit
+Whirlpool Burst,:F:,1,:W:,2,,,,,,,:E:,1,:A:,6,:sburst3:,Pull 2,Deal 5 Damage
+Stormpierce Arrow,:F:,1,,,,,:A:,2,:L:,1,,,:A:,4,:line5:,Teleport 3,"Deal 4 Damage, Apply 2:burn:"
+Tempest Tether,,,:W:,1,:P:,1,,,:L:,2,,,:A:,5,:range4:,Pull 3,Chain 5
+Scorchwind Tangle,:F:,1,:W:,1,:P:,1,:A:,1,,,,,:A:,5,:cone4:,Deal 3 Damage then Push 1, and Apply 3:burn:and 1:rooted:
+Blazing Comet,:F:,1,,,,,:A:,2,,,:E:,1,:A:,4,:starget:,Deal 6 Damage then Push 3,"if target hits a wall, damage x2"
+Stoneveil Ward,,,:W:,1,:P:,1,,,,,:E:,2,:D:,5,,Gain 5:block:,and 2:aegis:
+Zephyr Grace,,,,,:P:,1,:A:,2,:L:,1,,,:D:,4,:cleave3:,Push 3,Gain 3 Evade
+Tidal Shelter,,,:W:,2,:P:,1,,,,,:E:,1,:D:,6,:sburst2:,Give 2:aegis: and,and 3:block:
+Emberguard,:F:,1,,,,,,,:L:,1,:E:,2,:D:,5,,Gain 5:block: Apply 3:burn:,to melee attackers this round
+Verdant Shell,,,:W:,2,:P:,1,:A:,1,,,,,:D:,5,,Gain 5:block:,and 4:renew:
+Emerald Overbloom,,,:W:,1,:P:,2,,,:L:,1,,,:U:,5,:sburst3:,Give 3:renew:,and 2:energized:
+Cyclone Swirl,,,,,:P:,1,:A:,2,,,:E:,1,:U:,6,:sburst3:,Give Allies 2:inspired: then,Push 3 all Enemies
+Shrouded Coil,:F:,1,,,:P:,1,:A:,2,,,,,:U:,4,,Give 3:inspired:,and :Stealth:
+Arcwave Snare,,,:W:,2,,,:A:,1,:L:,1,,,:U:,5,:area4:,"Pull all enemies to center, then",Apply 1:weakened: and 1:rooted:
+Phoenix Accord,:F:,1,:W:,1,:P:,2,,,,,,,:U:,5,,Give 3:renew: and 3:thorns:,to all Allies
+Surging Tailwind,,,:W:,1,:P:,1,:A:,1,:L:,1,,,:U:,6,,Give 2:energized:,to all Allies
