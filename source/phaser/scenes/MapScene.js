@@ -1,6 +1,6 @@
-import { EventEmitter } from 'events';
-import { SpellSystem } from '../data/spell_system.js';
+import { SpellSystem } from '../../data/spell_system.js';
 import { gameState } from '../../data/game_state.js';
+import { generateSpellCardImages } from './ImageGenerator.js';
 
 class MapScene extends Phaser.Scene {
     constructor(){ 
@@ -467,7 +467,7 @@ class MapScene extends Phaser.Scene {
         
         // Load and display spell card image
         const texKey = `spell_${entry.key}`;
-        const imagePath = `source/phaser/assets/spellcards/${entry.key}.png`;
+        const imagePath = `source/phaser/assets/spellcards/${entry.tier}/${entry.key}.png`;
         
         const placeImage = () => {
           if (this.textures.exists(texKey)) {
@@ -479,7 +479,7 @@ class MapScene extends Phaser.Scene {
             this.centerMarketLayer.add(img);
             entry.ui = { bg, img };
           } else {
-            // Fallback: show spell name text
+            // Fallback: show spell name if image fails to load
             const nameText = this.add.text(cardX, cardY, entry.key, {
               fontFamily: 'Arial', fontSize: '10px', color: '#e5e7eb',
               align: 'center', wordWrap: { width: cardW - 8 }
