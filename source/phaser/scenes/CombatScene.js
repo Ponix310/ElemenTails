@@ -15,12 +15,17 @@ export default class CombatScene extends Phaser.Scene {
     this.hexSize = 36; // radius of flat-top hex in pixels
     this.boardOrigin = { x: 420, y: 140 }; // screen origin for board (top-left-ish visual origin)
     this.mapKey = null; // phaser texture key for the selected map PNG
+    this.blockedSet = new Set(); // indices of tiles that block movement/LOS
     // Debug/align controls
     this.sampleOrigin = { x: 36, y: 36 }; // where the first hex center lies in the PNG
-    this.showOverlay = true; // show PNG underlay for alignment
+    this.showOverlay = false; // hide PNG underlay by default for clarity
     this.overlaySprite = null;
     this._calibrating = false;
     this._calibPoints = [];
+    // Load persisted calibration if available
+    this._loadCalibration && this._loadCalibration();
+    // Cached center layout provided by UIScene
+    this._centerArea = null;
   }
 
   // ---- Debug helpers ----
@@ -31,6 +36,7 @@ export default class CombatScene extends Phaser.Scene {
     this.cols = parsed.cols;
     this.gridLayer.removeAll(true);
     this._renderGrid(parsed.rows, parsed.cols);
+    this._computeBlockedSet();
   }
 
   _setupAlignControls(){
@@ -49,6 +55,9 @@ export default class CombatScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-C', () => {
       this._startCalibration();
     });
+    // Persist/clear calibration
+    this.input.keyboard.on('keydown-S', () => { this._saveCalibration && this._saveCalibration(); });
+    this.input.keyboard.on('keydown-K', () => { this._clearCalibration && this._clearCalibration(); });
   }
 
   _rebuildAndResizeOverlay(){
@@ -110,7 +119,18 @@ export default class CombatScene extends Phaser.Scene {
     // Background
     this.add.rectangle(W/2, H/2, W, H, 0x1e293b);
     
-    // Create basic UI chrome
+    // Bind to UI layout from UIScene (center square between panels)
+    this._applyUILayout(this.registry.get('uiLayout'));
+    this._onUILayout = (layout) => this._applyUILayout(layout);
+    this.game.events.on('ui:layout', this._onUILayout);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this._onUILayout){
+        this.game.events.off('ui:layout', this._onUILayout);
+        this._onUILayout = null;
+      }
+    });
+    
+    // Create basic UI chrome (respect center area)
     this.createCombatUI();
     // Load spells data (non-blocking)
     this.loadSpells();
@@ -125,26 +145,25 @@ export default class CombatScene extends Phaser.Scene {
     
     // Debug: Press 'D' to win combat
     this.input.keyboard.on('keydown-D', () => this.endCombat(true));
+    // Debug: Press 'P' to rebuild a procedural map immediately
+    this.input.keyboard.on('keydown-P', () => {
+      this._buildProceduralAndRender();
+    });
   }
   
   createCombatUI() {
-    const { width: W, height: H } = this.scale;
-    
-    // Party UI (left side)
-    this.createPartyUI();
-    
-    // Enemies UI (right side)
-    this.createEnemiesUI();
-    
-    // Action buttons
-    this.createActionButtons();
-    
-    // Combat log
+    // Combat log and action buttons within center area
     this.createCombatLog();
+    this.createActionButtons();
   }
 
   // ----- Battle Map Loading & Parsing -----
   async setupBattleMap(){
+    // If caller requested procedural map, skip PNG loading
+    if (this.registry.get('useProcMap')) {
+      this._buildProceduralAndRender();
+      return;
+    }
     // Determine difficulty; default to 'easy'. Later, wire from MapScene or registry.
     const difficulty = this.registry.get('encounterDifficulty') || 'easy';
     // Always use built-in list to avoid network issues
@@ -182,17 +201,29 @@ export default class CombatScene extends Phaser.Scene {
     this.mapKey = `battlemap_${difficulty}_${Date.now()}`;
     await this._loadImageAsync(this.mapKey, path);
 
+    // Compute board origin centered within the UIScene center area
+    const srcImg = this.textures.get(this.mapKey).getSourceImage();
+    const viewW = this.scale.width;
+    const viewH = this.scale.height;
+    const area = this._centerArea || { x: Math.floor(viewW/2), y: Math.floor(viewH/2), width: viewW, height: viewH };
+    this.boardOrigin = {
+      x: Math.floor(area.x - srcImg.width / 2),
+      y: Math.floor(area.y - srcImg.height / 2)
+    };
+
     // Create/position debug overlay (under grid)
     if (this.overlaySprite) this.overlaySprite.destroy();
     this.overlaySprite = this.add.image(this.boardOrigin.x, this.boardOrigin.y, this.mapKey)
       .setOrigin(0, 0)
-      .setAlpha(this.showOverlay ? 0.25 : 0);
+      .setAlpha(this.showOverlay ? 0.25 : 0)
+      .setDepth(-20);
 
     // Prepare grid layer for easy clearing
     if (this.gridLayer) this.gridLayer.destroy(true);
     this.gridLayer = this.add.layer();
+    this.gridLayer.setDepth(-10); // ensure grid stays under UI
 
-    // Parse pixels into a grid and render
+    // Parse pixels into a grid and render (now that origin is centered)
     this._rebuildGrid();
 
     // Place party and enemies according to blue/red tiles
@@ -200,6 +231,66 @@ export default class CombatScene extends Phaser.Scene {
 
     // Setup debug controls for alignment
     this._setupAlignControls();
+  }
+
+  // ---- UIScene layout integration ----
+  _applyUILayout(layout){
+    if (!layout || !layout.center) return;
+    const c = layout.center; // { x, y, size } square
+    this._centerArea = { x: c.x, y: c.y, width: c.size, height: c.size };
+    // If UI already exists, rebuild center-dependent UI
+    if (this.logBg || this.abilitiesLayer) {
+      this._rebuildCenterUI();
+    }
+  }
+
+  _rebuildCenterUI(){
+    // Destroy and recreate log and action buttons to respect new layout
+    if (this.logBg) { this.logBg.destroy(); this.logBg = null; }
+    if (this.logText) { this.logText.destroy(); this.logText = null; }
+    // Action buttons are ephemeral; rely on re-creation (no handles kept)
+    this.createCombatLog();
+    this.createActionButtons();
+  }
+
+  _buildProceduralAndRender(){
+    // Remove overlay if present
+    if (this.overlaySprite) { this.overlaySprite.destroy(); this.overlaySprite = null; }
+    if (this.gridLayer) this.gridLayer.destroy(true);
+    this.gridLayer = this.add.layer();
+    const dims = this._buildProceduralGrid(13, 17); // rows, cols
+    this._renderGrid(dims.rows, dims.cols);
+    this._placeUnitsFromGrid(dims);
+    this._computeBlockedSet();
+    this.logMessage('Procedural map generated (press P again to re-roll).');
+  }
+
+  _buildProceduralGrid(rows, cols){
+    // Create a reasonable board with left/right spawn zones and scattered walls
+    const R = this.hexSize;
+    this.rows = rows; this.cols = cols;
+    this.grid = new Array(rows).fill(null).map(()=> new Array(cols).fill(null));
+    const noise = (q,r)=>{
+      const s = Math.sin((q*37 + r*57) * 0.25);
+      return (s + 1)/2; // 0..1
+    };
+    for (let r=0; r<rows; r++){
+      for (let q=0; q<cols; q++){
+        const p = this._hexFlatToPixel(q, r, R);
+        const x = this.boardOrigin.x + p.x;
+        const y = this.boardOrigin.y + p.y;
+        let type = 'ground';
+        // Spawn bands: first 3 cols blue, last 3 cols red
+        if (q <= 2) type = 'playerSpawn';
+        else if (q >= cols - 3) type = 'enemySpawn';
+        // Random obstacles in the middle band only
+        if (q >= 3 && q <= cols - 4){
+          if (noise(q,r) > 0.82) type = 'wall';
+        }
+        this.grid[r][q] = { type, row:r, col:q, x, y, q, r };
+      }
+    }
+    return { rows, cols };
   }
 
   _folderFor(diff){
@@ -285,9 +376,38 @@ export default class CombatScene extends Phaser.Scene {
         if (tile.type === 'playerSpawn') color = 0x3b82f6;
         if (tile.type === 'enemySpawn') color = 0xef4444;
         const points = this._hexCornersFlat(tile.x, tile.y, R);
-        const poly = this.add.polygon(tile.x, tile.y, points, color).setStrokeStyle(1, 0x000000).setOrigin(0.5);
-        if (tile.type === 'void') poly.setStrokeStyle(1, 0x111827);
+        const poly = this.add.polygon(tile.x, tile.y, points, 0xffffff).setOrigin(0.5);
+        // Outline-first rendering: ground has no fill, others semi-transparent
+        if (tile.type === 'ground') {
+          poly.setFillStyle(color, 0);
+          poly.setStrokeStyle(1, 0x0b1220, 0.6);
+        } else if (tile.type === 'void') {
+          poly.setFillStyle(color, 0.9);
+          poly.setStrokeStyle(1, 0x111827, 0.8);
+        } else if (tile.type === 'wall') {
+          poly.setFillStyle(color, 0.9);
+          poly.setStrokeStyle(1, 0x000000, 0.9);
+        } else {
+          // spawns
+          poly.setFillStyle(color, 0.6);
+          poly.setStrokeStyle(1, 0x000000, 0.8);
+        }
         this.gridLayer.add(poly);
+      }
+    }
+  }
+
+  // Build a fast lookup set of blocked tiles for LOS/movement
+  _computeBlockedSet(){
+    this.blockedSet = new Set();
+    if (!this.grid || !this.rows || !this.cols) return;
+    for (let r=0; r<this.rows; r++){
+      for (let q=0; q<this.cols; q++){
+        const t = this.grid[r][q];
+        if (!t) continue;
+        if (t.type === 'wall' || t.type === 'void'){
+          this.blockedSet.add(this._indexFromQR(q, r));
+        }
       }
     }
   }
@@ -309,6 +429,13 @@ export default class CombatScene extends Phaser.Scene {
       pts.push(x, y);
     }
     return pts;
+  }
+
+  // Linearize axial q,r into a single integer index for fast Set lookups
+  _indexFromQR(q, r){
+    // Guard against undefined cols
+    const cols = Math.max(0, this.cols | 0);
+    return r * cols + q;
   }
 
   async _placeUnitsFromGrid(parsed){
@@ -344,7 +471,8 @@ export default class CombatScene extends Phaser.Scene {
       p.pos = { row: tile.row, col: tile.col };
       // Render token
       const token = this.add.circle(tile.x, tile.y, 18, 0x22c55e).setStrokeStyle(2, 0x064e3b);
-      this.add.text(tile.x, tile.y-28, p.name || 'Hero', { fontFamily:'Arial', fontSize:'12px', color:'#e5e7eb' }).setOrigin(0.5);
+      token.setDepth(10);
+      this.add.text(tile.x, tile.y-28, p.name || 'Hero', { fontFamily:'Arial', fontSize:'12px', color:'#e5e7eb' }).setOrigin(0.5).setDepth(11);
       p._token = token;
     });
 
@@ -378,7 +506,8 @@ export default class CombatScene extends Phaser.Scene {
       e.pos = { row: tile.row, col: tile.col };
       // Render token
       const token = this.add.rectangle(tile.x, tile.y, 32, 32, 0xef4444).setStrokeStyle(2, 0x7f1d1d).setOrigin(0.5);
-      this.add.text(tile.x, tile.y-28, e.name || 'Enemy', { fontFamily:'Arial', fontSize:'12px', color:'#fecaca' }).setOrigin(0.5);
+      token.setDepth(10);
+      this.add.text(tile.x, tile.y-28, e.name || 'Enemy', { fontFamily:'Arial', fontSize:'12px', color:'#fecaca' }).setOrigin(0.5).setDepth(11);
       e._token = token;
     });
   }
@@ -465,29 +594,29 @@ export default class CombatScene extends Phaser.Scene {
   }
   
   createActionButtons() {
-    const { width: W, height: H } = this.scale;
-    const buttonY = H - 80;
-    const spacing = 150;
+    const center = this._centerArea || { x: this.scale.width/2, y: this.scale.height/2, width: this.scale.width, height: this.scale.height };
+    const buttonY = center.y + center.height/2 - 40;
+    const spacing = Math.max(120, Math.floor(center.width * 0.18));
     
     const actions = [
       { 
         text: 'Attack', 
-        x: W/2 - spacing, 
+        x: center.x - spacing, 
         action: () => this.playerAction('attack') 
       },
       {
         text: 'Move',
-        x: W/2 - spacing * 2,
+        x: center.x - spacing * 2,
         action: () => this.playerAction('move')
       },
       { 
         text: 'Spells', 
-        x: W/2, 
+        x: center.x, 
         action: () => this.showAbilities() 
       },
       { 
         text: 'Items', 
-        x: W/2 + spacing, 
+        x: center.x + spacing, 
         action: () => this.showItems() 
       }
     ];
@@ -554,18 +683,20 @@ export default class CombatScene extends Phaser.Scene {
   }
   
   createCombatLog() {
-    const { width: W, height: H } = this.scale;
-    
+    const center = this._centerArea || { x: this.scale.width/2, y: this.scale.height/2, width: this.scale.width-40, height: 200 };
+    const logW = Math.max(240, Math.floor(center.width * 0.6));
+    const logH = Math.min(120, Math.floor(center.height * 0.22));
+    const cx = center.x;
+    const cy = center.y + center.height/2 - logH/2 - 10;
     // Log background
-    this.logBg = this.add.rectangle(W/2, H - 150, W - 40, 100, 0x1e293b)
+    this.logBg = this.add.rectangle(cx, cy, logW, logH, 0x1e293b)
       .setStrokeStyle(1, 0x64748b);
-    
     // Log text
-    this.logText = this.add.text(W/2 - 180, H - 180, '', {
+    this.logText = this.add.text(cx - logW/2 + 12, cy - logH/2 + 10, '', {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#e2e8f0',
-      wordWrap: { width: 360 }
+      wordWrap: { width: logW - 24 }
     });
   }
   
@@ -613,13 +744,134 @@ export default class CombatScene extends Phaser.Scene {
   }
 
   updateEnergyUI(member) {
-    const text = `A:${member.energyPool.A}  D:${member.energyPool.D}  U:${member.energyPool.U}`;
-    member._ui.energyText.setText(text);
+    const a = member.energyPool.A|0, d = member.energyPool.D|0, u = member.energyPool.U|0;
+    const total = a+d+u;
+    // legacy text if present
+    if (member._ui && member._ui.energyText){
+      member._ui.energyText.setText(`A:${a}  D:${d}  U:${u}`);
+    }
+    // mats bars
+    if (member._mat){
+      const m = member._mat;
+      const cap = 10; // simple cap for bar visuals
+      const energyWidth = Math.max(0, Math.min(cap, total)) / cap * (m.bars.width - 4);
+      m.bars.energyFill.width = energyWidth;
+      m.bars.energyTxt.setText(`${total}/${cap}`);
+      const mana = member.mana|0;
+      const manaWidth = Math.max(0, Math.min(cap, mana)) / cap * (m.bars.width - 4);
+      m.bars.manaFill.width = manaWidth;
+      m.bars.manaTxt.setText(`${mana}/${cap}`);
+      const corruption = member.corruption|0;
+      const corrCap = 10;
+      const corrWidth = Math.max(0, Math.min(corrCap, corruption)) / corrCap * (m.bars.width - 4);
+      m.bars.corrFill.width = corrWidth;
+      m.bars.corrTxt.setText(`${corruption}/${corrCap}`);
+    }
+  }
+
+  // ---- Player Mats (corner UI) ----
+  createPlayerMatsUI(){
+    const { width: W, height: H } = this.scale;
+    const pad = 20;
+    const matW = 280, matH = 190; // portrait area
+    const cardW = 70, cardH = 96, cardGap = 10;
+    const corners = [
+      { name:'TL', x: pad, y: pad },
+      { name:'TR', x: W - pad - matW, y: pad },
+      { name:'BL', x: pad, y: H - pad - matH },
+      { name:'BR', x: W - pad - matW, y: H - pad - matH }
+    ];
+    (this.party || []).slice(0,4).forEach((member, idx) => {
+      const c = corners[idx];
+      if (!c) return;
+      this._createSingleMat(member, c.x, c.y, matW, matH, { cardW, cardH, cardGap }, idx);
+    });
+    // After mats exist, apply initial highlight
+    this._updateActiveHighlight();
+  }
+
+  _createSingleMat(member, x, y, matW, matH, cards, index){
+    const group = this.add.layer();
+    group.setDepth(20);
+    const frame = this.add.rectangle(x + matW/2, y + matH/2, matW, matH, 0x0b1220).setStrokeStyle(2, 0x64748b).setOrigin(0.5);
+    group.add(frame);
+    // Portrait placeholder
+    const portrait = this.add.rectangle(x + matW/2, y + 70, matW - 16, 110, 0x1e293b).setStrokeStyle(1, 0x94a3b8);
+    const nameTxt = this.add.text(x + 10, y + 8, member.name || 'Hero', { fontFamily:'Arial', fontSize:'14px', color:'#e5e7eb' });
+    group.add(portrait);
+    group.add(nameTxt);
+    // Bars: Energy, Mana, Corruption
+    const barsX = x + 12, barsY = y + 130, barsW = matW - 24, barsH = 12, gap = 16;
+    const makeBar = (label, by, colorFill, colorStroke)=>{
+      const lbl = this.add.text(barsX, by-12, label, { fontFamily:'Arial', fontSize:'12px', color:'#cbd5e1' });
+      const bg = this.add.rectangle(barsX + barsW/2, by, barsW, barsH, 0x0f172a).setStrokeStyle(1, colorStroke).setOrigin(0.5,0.5);
+      const fill = this.add.rectangle(barsX + 2, by, 0, barsH-4, colorFill).setOrigin(0,0.5);
+      const txt = this.add.text(barsX + barsW - 34, by-10, '0/10', { fontFamily:'Arial', fontSize:'11px', color:'#e2e8f0' });
+      group.add(lbl);
+      group.add(bg);
+      group.add(fill);
+      group.add(txt);
+      return { bg, fill, txt };
+    };
+    const energyBar = makeBar('Energy', barsY, 0x10b981, 0x134e4a);
+    const manaBar = makeBar('Mana', barsY + gap, 0x60a5fa, 0x1d4ed8);
+    const corrBar = makeBar('Corruption', barsY + gap*2, 0xf87171, 0x7f1d1d);
+    // Spell cards (simple placeholders) to the side of portrait
+    const startCX = x + matW + 12;
+    const startCY = y + 12;
+    const known = (member.knownSpells || []).slice(0,6);
+    known.forEach((key, i) => {
+      const cx = startCX + (i%3) * (cards.cardW + cards.cardGap);
+      const cy = startCY + Math.floor(i/3) * (cards.cardH + cards.cardGap);
+      const card = this.add.rectangle(cx + cards.cardW/2, cy + cards.cardH/2, cards.cardW, cards.cardH, 0x1f2937).setStrokeStyle(2, 0x94a3b8).setDepth(21);
+      const label = this.add.text(cx + 6, cy + 6, (this.findSpellByKey(key)?.name) || key, { fontFamily:'Arial', fontSize:'11px', color:'#e5e7eb', wordWrap:{ width: cards.cardW-12 }}).setDepth(22);
+      group.add(card);
+      group.add(label);
+    });
+    // Interactions: clicking anywhere in the frame selects this hero
+    frame.setInteractive({ useHandCursor: true });
+    portrait.setInteractive({ useHandCursor: true });
+    frame.on('pointerdown', () => this._setActiveHero(index));
+    portrait.on('pointerdown', () => this._setActiveHero(index));
+
+    member._mat = {
+      group,
+      frame,
+      bars: {
+        width: barsW,
+        energyFill: energyBar.fill,
+        energyTxt: energyBar.txt,
+        manaFill: manaBar.fill,
+        manaTxt: manaBar.txt,
+        corrFill: corrBar.fill,
+        corrTxt: corrBar.txt
+      }
+    };
+  }
+
+  _setActiveHero(index){
+    if (typeof index !== 'number' || !this.party || index < 0 || index >= this.party.length) return;
+    this.activeHeroIndex = index;
+    this._updateActiveHighlight();
+  }
+
+  _updateActiveHighlight(){
+    (this.party||[]).forEach((m, i) => {
+      const isActive = i === this.activeHeroIndex;
+      if (m._mat && m._mat.frame){
+        m._mat.frame.setStrokeStyle(2, isActive ? 0xf59e0b : 0x64748b);
+        m._mat.group.setDepth(isActive ? 25 : 20);
+      }
+      if (m._token){
+        m._token.setScale(isActive ? 1.15 : 1.0);
+        m._token.setStrokeStyle(isActive ? 3 : 2, isActive ? 0xf59e0b : 0x064e3b);
+      }
+    });
   }
 
   playerAction(action, target = null) {
-    // For MVP, all actions are performed by party[0]
-    const actor = this.party[0];
+    // Actions performed by the selected hero
+    const actor = this.party[this.activeHeroIndex || 0];
     if (!actor || this.enemies.length === 0) return;
 
     // Move: consume any one energy if available
@@ -642,6 +894,20 @@ export default class CombatScene extends Phaser.Scene {
         return;
       }
       const enemy = this.enemies[0]; // Simple target first enemy for now
+      // LOS check using wall/void blockers
+      const aPos = actor.pos;
+      const ePos = enemy.pos;
+      if (!aPos || !ePos){
+        this.logMessage('Positions not set.');
+        return;
+      }
+      const canSee = this.hasLineOfSight({ q: aPos.col, r: aPos.row }, { q: ePos.col, r: ePos.row });
+      if (!canSee){
+        this.logMessage('No line of sight. Attack fails.');
+        // refund energy for UX? keep it simple: not refunded
+        this.updateEnergyUI(actor);
+        return;
+      }
       enemy.health -= 5; // Simple damage calculation
       this.logMessage(`${actor.name} attacked ${enemy.name} for 5 damage!`);
       if (enemy.health <= 0) {
@@ -688,7 +954,10 @@ export default class CombatScene extends Phaser.Scene {
         // Check if party member is defeated
         if (target.health <= 0) {
           this.logMessage(`${target.name} was defeated!`);
-          this.party = this.party.filter(p => p !== target);
+          // Pull the 4 chosen classes from Party Select if available
+          const selected = this.registry.get('partySelected'); // expected array of hero objects
+          this.party = Array.isArray(selected) && selected.length ? selected.slice(0,4) : (this.registry.get('party') || this._createDefaultParty());
+          this.activeHeroIndex = 0; // default to first
         }
         
         // Check win/lose conditions
@@ -774,6 +1043,40 @@ export default class CombatScene extends Phaser.Scene {
       }
     }catch(e){
       console.warn('Failed to load spells.json', e);
+    }
+  }
+
+  // ---- Calibration persistence ----
+  _loadCalibration(){
+    try{
+      const raw = localStorage.getItem('et_board_calib');
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d && typeof d.R === 'number' && d.origin && typeof d.origin.x === 'number' && typeof d.origin.y === 'number'){
+        this.hexSize = d.R;
+        this.sampleOrigin = { x: d.origin.x, y: d.origin.y };
+      }
+    }catch(e){
+      console.warn('Failed to load calibration', e);
+    }
+  }
+
+  _saveCalibration(){
+    try{
+      const payload = { R: this.hexSize, origin: { x: this.sampleOrigin.x, y: this.sampleOrigin.y } };
+      localStorage.setItem('et_board_calib', JSON.stringify(payload));
+      this.logMessage && this.logMessage('Calibration saved.');
+    }catch(e){
+      console.warn('Failed to save calibration', e);
+    }
+  }
+
+  _clearCalibration(){
+    try{
+      localStorage.removeItem('et_board_calib');
+      this.logMessage && this.logMessage('Calibration cleared.');
+    }catch(e){
+      // noop
     }
   }
 }

@@ -5,20 +5,16 @@
     <title>ElemenTails</title>
     <link rel="icon" href="data:,">
     <style>
+        html, body { height: 100%; }
         body {
             margin: 0;
             padding: 0;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            background: #0b1220;
             overflow: hidden;
         }
         #game-container {
-            width: 1280px;
-            height: 720px;
-            margin: 0 auto;
+            width: 100vw;
+            height: 100vh;
         }
     </style>
 </head>
@@ -49,5 +45,6 @@
     <script src="./source/phaser/scenes/MenuScene.js"></script>
     <script src="./source/phaser/scenes/PartySelectScene.js"></script>
     <script type="module" src="./source/phaser/game.js"></script>
+    
 </body>
 </html>

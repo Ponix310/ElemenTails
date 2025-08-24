@@ -1,0 +1,31 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "hex73_template.tmj": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 376,
+                "y": 195.5
+            }
+        }
+    },
+    "map.height": 24,
+    "map.lastUsedFormat": "json",
+    "map.orientation": "4",
+    "map.tileHeight": 64,
+    "map.tileWidth": 64,
+    "map.width": 40,
+    "openFiles": [
+    ],
+    "project": "ElemenTails.tiled-project",
+    "recentFiles": [
+        "hex73_template.tmj"
+    ]
+}

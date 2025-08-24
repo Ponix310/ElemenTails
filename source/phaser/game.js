@@ -1,6 +1,7 @@
 // source/phaser/game.js
 import MapScene from './scenes/MapScene.js';
 import CombatScene from './scenes/CombatScene.js';
+import UIScene from './scenes/UIScene.js';
 import { gameState } from '../data/game_state.js';
 
 // Pull globally attached scenes (loaded via non-module scripts)
@@ -11,15 +12,15 @@ const PartySelectScene = (window.ETScenes && window.ETScenes.PartySelectScene) ?
 const sceneOrder = [];
 if (MenuScene) sceneOrder.push(MenuScene);
 if (PartySelectScene) sceneOrder.push(PartySelectScene);
-sceneOrder.push(MapScene, CombatScene);
+sceneOrder.push(MapScene, CombatScene, UIScene);
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
   backgroundColor: '#0b1220',
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.NO_CENTER,
     width: 1280,
     height: 720
   },

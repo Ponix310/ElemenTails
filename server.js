@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 8000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 8000;
 const MIME_TYPES = {
     '.html': 'text/html',
     '.js': 'text/javascript',
@@ -40,6 +40,10 @@ const server = http.createServer((req, res) => {
     let filePath = '.' + safeUrl;
     if (filePath === './') {
         filePath = './index.html';
+    }
+    // convenience route: /editor -> /editor.html
+    if (safeUrl === '/editor') {
+        filePath = './editor.html';
     }
     
     const extname = String(path.extname(filePath)).toLowerCase();

@@ -1,3 +1,5 @@
+import { EventEmitter } from 'events';
+import { SpellSystem } from '../data/spell_system.js';
 import { gameState } from '../../data/game_state.js';
 
 class MapScene extends Phaser.Scene {
@@ -6,12 +8,17 @@ class MapScene extends Phaser.Scene {
       this.selectedParty = [];
       this.isMultiplayer = false;
       this.playerLevel = 1;
-      this.cleansePoints = 10; // Starting CP
+      this.cleansePoints = 10; // Deprecated: using per-hero cp
       this.pathGraphics = [];
-      this.pathNodes = [];
+      this.marketSpells = [];
+      this.activeHeroIndex = 0;
+      this.spellSystem = new SpellSystem(this);
+      this.spellsData = null; // loaded from data file
+      this.marketSpells = []; // 4 minor + 2 major roll
+      // Legacy UI arrays removed; UIScene is now the sole owner of character panels
     }
     
-    create() {
+    async create() {
       const { width: W, height: H } = this.scale;
       
       // Get party data from registry and ensure it has all required fields
@@ -29,32 +36,55 @@ class MapScene extends Phaser.Scene {
         maxHealth: member.maxHealth || 10,
         energy: member.energy || '0/3',
         spells: member.spells || [],
-        buffs: member.buffs || []
+        buffs: member.buffs || [],
+        cp: typeof member.cp === 'number' ? member.cp : 3
       }));
+
+      // Launch persistent UI overlay and initialize panels
+      try {
+        if (!this.scene.isActive('UI')) {
+          this.scene.launch('UI');
+        }
+        // Defer one frame to ensure UI scene create() runs
+        this.time.delayedCall(0, () => {
+          this.game.events.emit('ui:initParty', { party: this.selectedParty });
+          this.game.events.emit('ui:setActiveHero', { index: this.activeHeroIndex });
+        });
+        // Listen for hero selection from UI
+        this._onUISetActiveHero = ({ index }) => { this.activeHeroIndex = index|0; };
+        this.game.events.on('ui:setActiveHero', this._onUISetActiveHero);
+        // Cleanup on shutdown
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+          if (this._onUISetActiveHero) {
+            this.game.events.off('ui:setActiveHero', this._onUISetActiveHero);
+            this._onUISetActiveHero = null;
+          }
+        });
+      } catch (e) { console.warn('UIScene launch failed or not available', e); }
       
-      // Background
+      // Background across full canvas
       this.add.rectangle(W/2, H/2, W, H, 0x0f172a);
-      
-      // Title
-      this.add.text(W/2, 30, 'Adventure Map', { 
-        fontFamily: 'system-ui, Arial', 
-        fontSize: '24px', 
-        color: '#e5e7eb' 
+
+      // Build a layer for center-square content
+      this.centerLayer = this.add.layer();
+      // Create header labels we can reposition on layout changes
+      this.titleText = this.add.text(0, 0, 'Adventure Map', { 
+        fontFamily: 'system-ui, Arial', fontSize: '24px', color: '#e5e7eb' 
       }).setOrigin(0.5);
-      
-      // Game mode indicator
-      const modeText = this.isMultiplayer ? 'Multiplayer Lobby' : 'Singleplayer';
-      this.add.text(W/2, 60, modeText, { 
-        fontFamily: 'system-ui, Arial', 
-        fontSize: '14px', 
-        color: '#64748b' 
+      this.modeLabel = this.add.text(0, 0, this.isMultiplayer ? 'Multiplayer Lobby' : 'Singleplayer', { 
+        fontFamily: 'system-ui, Arial', fontSize: '14px', color: '#64748b' 
       }).setOrigin(0.5);
-      
-      // Display party info
-      this.displayParty();
-      
-      // Draw the three paths
-      this.drawPaths();
+      this.centerLayer.add([this.titleText, this.modeLabel]);
+
+      // Initial layout render
+      this._rebuildCenteredUI();
+
+      // React to UI layout changes (resize/orientation)
+      this._onUILayout = (layout)=>{ this._rebuildCenteredUI(layout); };
+      this.game.events.on('ui:layout', this._onUILayout);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, ()=>{
+        if (this._onUILayout){ this.game.events.off('ui:layout', this._onUILayout); this._onUILayout = null; }
+      });
       
       // Back to party select
       this.add.text(24, 20, '← Party Select', { 
@@ -68,16 +98,48 @@ class MapScene extends Phaser.Scene {
       // Show defeated dragons
       this.displayDefeatedDragons();
 
-      // Player stats and Market panels
-      this.displayPlayerStats();
+      // Player stats (edge HUD) and Market (center square bottom)
+      await this._ensureSpellsLoaded();
+      await this.spellSystem.loadSpells();
+      this._rollMarketSpells();
       this.displayMarket();
     }
     
-    drawPaths() {
+    _getCenterRect(){
+      const ui = this.registry.get('uiLayout');
+      if (ui && ui.center && ui.center.size){
+        return { x: ui.center.x, y: ui.center.y, width: ui.center.size, height: ui.center.size };
+      }
       const { width: W, height: H } = this.scale;
+      const s = Math.min(W, H);
+      return { x: Math.floor(W/2), y: Math.floor(H/2), width: s, height: s };
+    }
+
+    _rebuildCenteredUI(layout){
+      const C = this._getCenterRect();
+      const left = C.x - C.width/2;
+      const top = C.y - C.height/2;
+      // Position header inside center square
+      this.titleText?.setPosition(C.x, top + 24);
+      this.modeLabel?.setPosition(C.x, top + 54);
+      // Redraw paths using center rect
+      this.drawPaths();
+      // Reposition market cards if already displayed
+      if (this.marketSpells && this.marketSpells.length){
+        // Remove market UI and rebuild for new layout
+        this.centerMarketLayer?.destroy(true);
+        this.centerMarketLayer = null;
+        this.displayMarket();
+      }
+    }
+
+    drawPaths() {
+      const C = this._getCenterRect();
+      const W = C.width; const H = C.height;
+      const offsetX = C.x - W/2; const offsetY = C.y - H/2;
       const pathWidth = W * 0.25;
-      const startY = H * 0.3;
-      const endY = H * 0.7;
+      const startY = offsetY + H * 0.30;
+      const endY = offsetY + H * 0.70;
       
       // Clear previous graphics
       this.pathGraphics.forEach(g => g.destroy());
@@ -86,7 +148,7 @@ class MapScene extends Phaser.Scene {
       
       // Draw each path
       gameState.paths.forEach((path, index) => {
-        const x = (index + 1) * (W / 4);
+        const x = offsetX + (index + 1) * (W / 4);
         const isCurrentPath = gameState.currentPath === path.id;
         const isLocked = path.isLocked && !isCurrentPath;
         
@@ -217,7 +279,9 @@ class MapScene extends Phaser.Scene {
         health: p.maxHealth || 10,
         maxHealth: p.maxHealth || 10,
         energy: 0,
-        maxEnergy: 3
+        maxEnergy: 3,
+        knownSpells: p.spells || [],
+        cp: p.cp || 0
       }));
     }
 
@@ -289,7 +353,11 @@ class MapScene extends Phaser.Scene {
     _afterCombat(victory) {
       if (victory) {
         // Award a small CP amount for MVP
-        this.cleansePoints += 2;
+        this.selectedParty.forEach((p, i) => {
+          p.cp = (p.cp || 0) + 2;
+          // Notify UIScene to refresh CP display
+          this.game.events.emit('ui:updateCP', { index: i, cp: p.cp });
+        });
       }
       // Return to map (this scene is still active, Combat stopped itself)
       this.scene.restart();
@@ -319,148 +387,7 @@ class MapScene extends Phaser.Scene {
       });
     }
     
-    displayParty(){
-      const { width: W, height: H } = this.scale;
-      
-      // Panel dimensions and positions
-      const panelWidth = 180;
-      const panelHeight = 300;
-      const padding = 20;
-      
-      // Panel positions (top-left, top-right, bottom-left, bottom-right)
-      const positions = [
-        { x: padding, y: padding },                     // Top-left
-        { x: W - panelWidth - padding, y: padding },    // Top-right
-        { x: padding, y: H - panelHeight - padding },   // Bottom-left
-        { x: W - panelWidth - padding, y: H - panelHeight - padding } // Bottom-right
-      ];
-      
-      // Display each party member in their own panel
-      this.selectedParty.forEach((member, index) => {
-        if (index >= 4) return; // Max 4 party members
-        
-        const pos = positions[index];
-        const centerX = pos.x + (panelWidth / 2);
-        
-        // Panel background
-        const bg = this.add.rectangle(
-          centerX, 
-          pos.y + (panelHeight / 2), 
-          panelWidth, 
-          panelHeight, 
-          0x1e293b
-        ).setStrokeStyle(2, 0x475569);
-        
-        // Character portrait area (top half)
-        const portraitHeight = 120;
-        this.add.rectangle(
-          centerX,
-          pos.y + (portraitHeight / 2) + 10,
-          panelWidth - 20,
-          portraitHeight,
-          0x0f172a
-        ).setStrokeStyle(1, 0x475569);
-        
-        // Character name and class
-        this.add.text(centerX, pos.y + 20, member.heroName, {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '16px',
-          color: '#e5e7eb'
-        }).setOrigin(0.5);
-        
-        this.add.text(centerX, pos.y + 40, member.className, {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '14px',
-          color: '#fbbf24'
-        }).setOrigin(0.5);
-        
-        // Stats area (bottom half)
-        const statsY = pos.y + portraitHeight + 20;
-        const statYSpacing = 25;
-        
-        // Corruption
-        this.add.text(pos.x + 10, statsY, 'Corruption:', {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '12px',
-          color: '#ef4444'
-        });
-        
-        // Corruption bar
-        const corruptionWidth = 100;
-        const corruptionHeight = 8;
-        const corruptionBg = this.add.rectangle(
-          pos.x + panelWidth - 60,
-          statsY + 5,
-          corruptionWidth,
-          corruptionHeight,
-          0x4b5563
-        ).setOrigin(0, 0.5);
-        
-        const corruptionFill = this.add.rectangle(
-          corruptionBg.x,
-          corruptionBg.y,
-          (member.corruption || 0) * (corruptionWidth / 10), // Assuming max 10 corruption
-          corruptionHeight,
-          0xef4444
-        ).setOrigin(0, 0.5);
-        
-        // Elements
-        this.add.text(pos.x + 10, statsY + statYSpacing, 'Elements:', {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '12px',
-          color: '#6ee7b7'
-        });
-        
-        const elementsText = member.elements.join(' + ');
-        this.add.text(pos.x + 80, statsY + statYSpacing, elementsText, {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '12px',
-          color: '#e5e7eb'
-        });
-        
-        // Weapon
-        this.add.text(pos.x + 10, statsY + (statYSpacing * 2), 'Weapon:', {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '12px',
-          color: '#93c5fd'
-        });
-        
-        this.add.text(pos.x + 80, statsY + (statYSpacing * 2), member.weaponName, {
-          fontFamily: 'system-ui, Arial',
-          fontSize: '12px',
-          color: '#e5e7eb'
-        });
-        
-        // Stats (example - customize based on your game's stats)
-        const stats = [
-          { label: 'HP:', value: `${member.health || 10}/${member.maxHealth || 10}`, color: '#ef4444' },
-          { label: 'Energy:', value: member.energy || '0/3', color: '#fbbf24' },
-          { label: 'Spells:', value: member.spells ? member.spells.length : '0', color: '#93c5fd' },
-          { label: 'Buffs:', value: member.buffs ? member.buffs.length : '0', color: '#6ee7b7' }
-        ];
-        
-        stats.forEach((stat, i) => {
-          const y = statsY + (statYSpacing * (i + 3));
-          this.add.text(pos.x + 10, y, stat.label, {
-            fontFamily: 'system-ui, Arial',
-            fontSize: '12px',
-            color: stat.color
-          });
-          
-          this.add.text(pos.x + 80, y, stat.value, {
-            fontFamily: 'system-ui, Arial',
-            fontSize: '12px',
-            color: '#e5e7eb'
-          });
-        });
-        
-        // Add click handler for future mobile integration
-        bg.setInteractive().on('pointerdown', () => {
-          // Will be used for mobile interaction
-          console.log('Character selected:', member.heroName);
-        });
-      });
-    }
+    // Legacy displayParty removed; UIScene renders all character panels
     
     displayPlayerStats(){
       const { width: W } = this.scale;
@@ -473,78 +400,177 @@ class MapScene extends Phaser.Scene {
       this.add.text(W - 150, 130, `Level: ${this.playerLevel}`, { 
         fontFamily: 'system-ui, Arial', fontSize: '14px', color: '#e5e7eb' 
       });
+    }
+    
+    async displayMarket(){
+      // Clear any existing market first
+      if (this.centerMarketLayer) {
+        this.centerMarketLayer.destroy(true);
+        this.centerMarketLayer = null;
+      }
       
-      this.add.text(W - 150, 150, `CP: ${this.cleansePoints}`, { 
-        fontFamily: 'system-ui, Arial', fontSize: '14px', color: '#34d399' 
+      // Get center area between side panels
+      const layout = this.registry.get('uiLayout');
+      
+      if (!layout || !layout.center) {
+        // Fallback to screen center
+        const { width: W, height: H } = this.scale;
+        const centerX = W / 2;
+        const centerY = H / 2;
+        const centerW = W * 0.6;
+        const centerH = H;
+        
+        this._displayMarketCards(centerX, centerY, centerW, centerH);
+        return;
+      }
+      
+      const centerX = layout.center.x;
+      const centerY = layout.center.y;
+      const centerW = layout.center.width;
+      const centerH = layout.center.height;
+      
+      this._displayMarketCards(centerX, centerY, centerW, centerH);
+    }
+    
+    _displayMarketCards(centerX, centerY, centerW, centerH) {
+      // Create new market layer
+      this.centerMarketLayer = this.add.layer();
+
+      // Simple fixed sizing - 6 cards in a row
+      const cardW = 80;
+      const cardH = 112;
+      const gap = 12;
+      const totalRowW = 6 * cardW + 5 * gap;
+      
+      // Position at bottom of center area
+      const bottomY = centerY + centerH/2 - 30;
+      const cardY = bottomY - cardH/2;
+      const startX = centerX - totalRowW/2 + cardW/2;
+
+      // Header
+      const headerY = cardY - cardH/2 - 25;
+      const header = this.add.text(centerX, headerY, 'Market', {
+        fontFamily: 'system-ui, Arial', fontSize: '18px', color: '#fbbf24'
+      }).setOrigin(0.5);
+      this.centerMarketLayer.add(header);
+
+      // Create 6 cards
+      this.marketSpells.forEach((entry, i) => {
+        const cardX = startX + i * (cardW + gap);
+        const isMajor = entry.tier === 'major';
+        const cost = isMajor ? 3 : 1;
+        
+        // Card background (keep for border/interaction)
+        const bg = this.add.rectangle(cardX, cardY, cardW, cardH, 0x000000, 0)
+          .setStrokeStyle(2, isMajor ? 0xdc2626 : 0x475569)
+          .setInteractive({ useHandCursor: true });
+        
+        // Load and display spell card image
+        const texKey = `spell_${entry.key}`;
+        const imagePath = `source/phaser/assets/spellcards/${entry.key}.png`;
+        
+        const placeImage = () => {
+          if (this.textures.exists(texKey)) {
+            const img = this.add.image(cardX, cardY, texKey);
+            // Fit image to card size with small padding
+            const targetW = cardW - 4;
+            const targetH = cardH - 4;
+            img.setDisplaySize(targetW, targetH);
+            this.centerMarketLayer.add(img);
+            entry.ui = { bg, img };
+          } else {
+            // Fallback: show spell name text
+            const nameText = this.add.text(cardX, cardY, entry.key, {
+              fontFamily: 'Arial', fontSize: '10px', color: '#e5e7eb',
+              align: 'center', wordWrap: { width: cardW - 8 }
+            }).setOrigin(0.5);
+            this.centerMarketLayer.add(nameText);
+            entry.ui = { bg, nameText };
+          }
+        };
+
+        if (!this.textures.exists(texKey)) {
+          this.load.image(texKey, imagePath);
+          const onFileComplete = (key) => {
+            if (key === texKey) {
+              placeImage();
+              this.load.off('filecomplete', onFileComplete);
+            }
+          };
+          this.load.on('filecomplete', onFileComplete);
+          this.load.start();
+        } else {
+          placeImage();
+        }
+
+        bg.on('pointerdown', () => this.purchaseSpell({ key: entry.key, tier: entry.tier, cost, index: i }));
+        this.centerMarketLayer.add(bg);
       });
     }
     
-    displayMarket(){
-      const { width: W, height: H } = this.scale;
-      
-      // Market header
-      this.add.text(W/2, H - 200, 'Market (4 Minor + 2 Major Spells)', { 
-        fontFamily: 'system-ui, Arial', fontSize: '16px', color: '#fbbf24' 
-      }).setOrigin(0.5);
-      
-      // Generate market cards (placeholder for now)
-      for(let i = 0; i < 6; i++) {
-        const x = 100 + (i * 120);
-        const y = H - 120;
-        const isMajor = i >= 4;
-        
-        // Card background
-        const cardBg = this.add.rectangle(x, y, 100, 80, isMajor ? 0x7c2d12 : 0x1e293b)
-          .setStrokeStyle(2, isMajor ? 0xdc2626 : 0x475569)
-          .setInteractive({useHandCursor: true});
-        
-        // Card type
-        this.add.text(x, y - 25, isMajor ? 'Major' : 'Minor', { 
-          fontFamily: 'system-ui, Arial', fontSize: '10px', 
-          color: isMajor ? '#fca5a5' : '#94a3b8' 
-        }).setOrigin(0.5);
-        
-        // Placeholder spell name
-        this.add.text(x, y, `Spell ${i + 1}`, { 
-          fontFamily: 'system-ui, Arial', fontSize: '12px', color: '#e5e7eb' 
-        }).setOrigin(0.5);
-        
-        // Cost
-        const cost = isMajor ? 3 : 1;
-        this.add.text(x, y + 25, `${cost} CP`, { 
-          fontFamily: 'system-ui, Arial', fontSize: '10px', color: '#34d399' 
-        }).setOrigin(0.5);
-        
-        cardBg.on('pointerdown', () => this.purchaseSpell(i, cost));
+    purchaseSpell({ key, tier, cost, index }){
+      // Prevent re-purchase of sold cards
+      const marketItem = this.marketSpells[index];
+      if (!marketItem || marketItem.sold) { console.log('Already sold.'); return; }
+      const buyer = this.selectedParty[this.activeHeroIndex];
+      if (!buyer){ console.log('No active hero selected'); return; }
+      if ((buyer.cp ?? 0) < cost) { console.log('Not enough CP!'); return; }
+      // Deduct CP and add spell to buyer
+      buyer.cp -= cost;
+      // Inform UI overlay of CP change
+      this.game.events.emit('ui:updateCP', { index: this.activeHeroIndex, cp: buyer.cp });
+      buyer.spells = buyer.spells || [];
+      buyer.spells.push(key);
+      console.log(`Purchased ${key} (${tier}) for ${buyer.heroName}`);
+
+      // Mark market item as sold and visually disable
+      marketItem.sold = true;
+      if (marketItem.ui && marketItem.ui.bg) {
+        marketItem.ui.bg.disableInteractive();
+        marketItem.ui.bg.setAlpha(0.35);
       }
-      
-      // Market refresh info
-      this.add.text(W/2, H - 40, 'Market refreshes after each combat', { 
-        fontFamily: 'system-ui, Arial', fontSize: '12px', color: '#64748b' 
-      }).setOrigin(0.5);
+      if (marketItem.ui && marketItem.ui.costText){
+        marketItem.ui.costText.setText('SOLD');
+        marketItem.ui.costText.setColor('#f87171');
+      }
+
+      // Inform UI overlay of spell list change
+      this.game.events.emit('ui:updateSpells', { index: this.activeHeroIndex, spells: buyer.spells.slice() });
     }
-    
-    purchaseSpell(index, cost){
-      if(this.cleansePoints >= cost) {
-        this.cleansePoints -= cost;
-        // Update CP display
-        this.children.list.forEach(child => {
-          if(child.text && child.text.startsWith('CP:')) {
-            child.setText(`CP: ${this.cleansePoints}`);
-          }
-        });
-        
-        // TODO: Add spell to player inventory
-        console.log(`Purchased spell ${index + 1} for ${cost} CP`);
-      } else {
-        console.log('Not enough CP!');
+
+    async _ensureSpellsLoaded(){
+      if (this.spellsData) return;
+      try{
+        const res = await fetch('source/data/spells.json', { cache: 'no-store' });
+        this.spellsData = await res.json();
+      }catch(e){
+        console.warn('Failed to load spells.json', e);
+        this.spellsData = { spells: { minor:{}, major:{} } };
       }
     }
+
+    _rollMarketSpells(){
+      const minor = Object.keys(this.spellsData.spells.minor || {});
+      const major = Object.keys(this.spellsData.spells.major || {});
+      const pick = (arr, n)=>{
+        const pool = [...arr]; const out=[];
+        while(pool.length && out.length<n){ const i=Math.floor(Math.random()*pool.length); out.push(pool.splice(i,1)[0]); }
+        return out;
+      };
+      const minors = pick(minor, 4).map(k=>({ tier:'minor', key:k, sold:false }));
+      const majors = pick(major, 2).map(k=>({ tier:'major', key:k, sold:false }));
+      this.marketSpells = minors.concat(majors);
+    }
+
+    _getSpellByKey(key, tier){
+      return (this.spellsData && this.spellsData.spells && this.spellsData.spells[tier] && this.spellsData.spells[tier][key]) || null;
+    }
+
+    // _renderHeroSpells removed; UIScene renders spells inside its own slots
     
     startCombat(){
       // Pass current game state to combat
       this.registry.set('playerLevel', this.playerLevel);
-      this.registry.set('cleansePoints', this.cleansePoints);
       this.scene.start('Combat');
     }
   }
